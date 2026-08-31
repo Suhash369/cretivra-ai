@@ -15,9 +15,13 @@ class UserDB(Base):
     username = Column(String, unique=True, index=True, nullable=True)
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
+    is_subscribed = Column(Boolean, default=False)
+    subscription_expires_at = Column(DateTime, nullable=True)
+    plan_name = Column(String, default="15-Day Pass")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     conversations = relationship("ConversationDB", back_populates="user", cascade="all, delete-orphan")
+    payments = relationship("PaymentDB", back_populates="user", cascade="all, delete-orphan", order_by="desc(PaymentDB.created_at)")
 
 class ConversationDB(Base):
     __tablename__ = "conversations"
@@ -84,3 +88,20 @@ class SystemSettingDB(Base):
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class PaymentDB(Base):
+    __tablename__ = "payments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    amount = Column(Float, default=20.0, nullable=False)
+    currency = Column(String, default="INR", nullable=False)
+    gateway = Column(String, default="razorpay")  # razorpay, upi, manual
+    payment_id = Column(String, nullable=True)
+    order_id = Column(String, nullable=True)
+    status = Column(String, default="completed")  # completed, pending, failed
+    plan_name = Column(String, default="15-Day Pass")
+    days_added = Column(Integer, default=15)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("UserDB", back_populates="payments")

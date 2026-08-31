@@ -124,3 +124,12 @@ export interface ImageModelCatalog {
   aspect_ratios: string[];
   styles: string[];
 }
+
+export interface SubscriptionStatus {
+  is_subscribed: boolean;
+  subscription_expires_at: string | null;
+  days_left: number;
+  plan_name: string;
+  is_expired: boolean;
+}
+

@@ -57,6 +57,85 @@ export async function fetchCurrentUserProfileApi(): Promise<{ id: string; email:
   return res.json();
 }
 
+export async function fetchSubscriptionStatusApi(): Promise<{
+  is_subscribed: boolean;
+  subscription_expires_at: string | null;
+  days_left: number;
+  plan_name: string;
+  is_expired: boolean;
+}> {
+  const res = await fetch(`${API_BASE}/payments/status`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    return {
+      is_subscribed: false,
+      subscription_expires_at: null,
+      days_left: 0,
+      plan_name: 'Free / Unpaid',
+      is_expired: true,
+    };
+  }
+  return res.json();
+}
+
+export async function createPaymentOrderApi(plan_name = '15-Day Pass'): Promise<{
+  order_id: string;
+  amount: number;
+  amount_inr: number;
+  currency: string;
+  key_id: string;
+  plan_name: string;
+  duration_days: number;
+  user_email: string;
+  user_name: string;
+}> {
+  const res = await fetch(`${API_BASE}/payments/create-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ plan_name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to create payment order');
+  }
+  return res.json();
+}
+
+export async function verifyRazorpayPaymentApi(payload: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature?: string;
+}): Promise<any> {
+  const res = await fetch(`${API_BASE}/payments/verify-razorpay`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Payment verification failed');
+  }
+  return res.json();
+}
+
+export async function submitUpiPaymentApi(payload: {
+  utr_transaction_id: string;
+  upi_id?: string;
+  amount?: number;
+}): Promise<any> {
+  const res = await fetch(`${API_BASE}/payments/submit-upi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'UPI payment submission failed');
+  }
+  return res.json();
+}
+
 export async function fetchHealth(): Promise<HealthStatus> {
   const res = await fetch(`${API_BASE}/health`, {
     headers: { ...getAuthHeaders() },

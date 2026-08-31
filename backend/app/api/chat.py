@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -12,6 +13,23 @@ from app.core.logging import logger
 
 router = APIRouter(prefix="", tags=["Chat"])
 
+def verify_subscription_access(user: Optional[UserDB]):
+    """
+    Enforces active ₹20 / 15-day subscription requirement.
+    """
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Please sign in and subscribe (₹20 for 15 Days) to use Cretivra AI."
+        )
+    
+    now = datetime.utcnow()
+    if not user.is_subscribed or not user.subscription_expires_at or user.subscription_expires_at <= now:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Subscription required (₹20 for 15 Days). Please activate your subscription pass to continue."
+        )
+
 @router.post("/chat/stream")
 async def chat_stream(
     payload: ChatRequest,
@@ -19,10 +37,13 @@ async def chat_stream(
     db: Session = Depends(get_db)
 ):
     """
-    Streaming SSE chat endpoint supporting per-user conversation isolation.
+    Streaming SSE chat endpoint supporting per-user conversation isolation & subscription guard.
     """
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+
+    # Enforce active ₹20 / 15-day subscription
+    verify_subscription_access(current_user)
 
     # Create conversation if id not provided
     conversation_id = payload.conversation_id
@@ -73,6 +94,8 @@ async def edit_message(
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
 
+    verify_subscription_access(current_user)
+
     try:
         result = conversation_service.edit_message(db, message_id, payload.message.strip())
     except ValueError as e:
@@ -103,6 +126,8 @@ async def regenerate_message(
     """
     Regenerates assistant response for a conversation starting after the preceding user prompt.
     """
+    verify_subscription_access(current_user)
+
     try:
         result = conversation_service.prepare_regeneration(db, message_id)
     except ValueError as e:
