@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  cretivra-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - DATABASE_URL=sqlite:///./cretivra.db
+      - DEFAULT_MODEL=cretivra-1
+      - MAX_CONTEXT_MESSAGES=30
+      - TEMPERATURE=0.7
+      - MAX_OUTPUT_TOKENS=4096
+      - MAX_UPLOAD_SIZE_MB=20
+      - ENABLE_MOCK_OLLAMA=false
+    volumes:
+      - cretivra_data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  cretivra_data:

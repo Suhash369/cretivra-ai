@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: cretivra-ai
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: Dockerfile
+    dockerContext: .
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: OLLAMA_BASE_URL
+        sync: false
