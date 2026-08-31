@@ -582,6 +582,21 @@ export function App() {
 
         {/* Floating Composer */}
         <div className="cv-composer-wrap">
+          {user && (!subscription?.is_subscribed || subscription?.is_expired) && (
+            <div 
+              onClick={() => setSubscriptionOpen(true)}
+              className="mb-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-purple-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-between text-xs cursor-pointer hover:border-amber-300 transition-all shadow-lg backdrop-blur-md"
+            >
+              <div className="flex items-center gap-2 font-medium">
+                <Crown size={15} className="text-amber-400 shrink-0" />
+                <span>Cretivra AI Pass Required (₹20 for 15 Days) — Click to Pay & Activate</span>
+              </div>
+              <span className="font-bold text-[11px] bg-amber-500/30 px-2.5 py-1 rounded-lg border border-amber-400/40 text-white">
+                Unlock AI (₹20)
+              </span>
+            </div>
+          )}
+
           <div className={`cv-composer ${isCurrentImg ? 'border-purple-500/40 focus-within:border-purple-400' : ''}`}>
             {/* Attachment preview chips */}
             {attachments.length > 0 && (
@@ -694,6 +709,12 @@ export function App() {
           setUser(userData);
           clearActiveChat();
           refreshConversations();
+          fetchSubscriptionStatusApi().then((sub) => {
+            setSubscription(sub);
+            if (!sub.is_subscribed || sub.is_expired) {
+              setSubscriptionOpen(true);
+            }
+          });
         }}
       />
 
@@ -709,6 +730,7 @@ export function App() {
         isOpen={subscriptionOpen}
         onClose={() => setSubscriptionOpen(false)}
         subscription={subscription}
+        isMandatory={!!user && (!subscription?.is_subscribed || !!subscription?.is_expired)}
         onSubscriptionSuccess={(newSub) => {
           setSubscription(newSub);
         }}

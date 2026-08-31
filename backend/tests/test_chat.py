@@ -7,8 +7,8 @@ def get_subscribed_client_headers(client):
     token = res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
     # Activate subscription
-    client.post("/api/payments/submit-upi", json={
-        "utr_transaction_id": "TEST_UTR_123456"
+    client.post("/api/payments/verify-upi", json={
+        "utr_number": "TEST_UTR_123456"
     }, headers=headers)
     return headers
 

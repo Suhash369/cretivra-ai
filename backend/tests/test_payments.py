@@ -1,9 +1,9 @@
-def test_subscription_paywall_and_activation(client):
+def test_realtime_upi_paywall_and_verification(client):
     # 1. Register a new user
     res = client.post("/api/auth/register", json={
-        "email": "payuser@cretivra.ai",
+        "email": "payuser_real@cretivra.ai",
         "password": "securepass123",
-        "full_name": "Pay User"
+        "full_name": "Real Pay User"
     })
     assert res.status_code == 201
     token = res.json()["access_token"]
@@ -21,43 +21,52 @@ def test_subscription_paywall_and_activation(client):
     assert res.status_code == 402
     assert "₹20 for 15 Days" in res.json()["detail"]
 
-    # 4. Create ₹20 payment order
-    res = client.post("/api/payments/create-order", json={"plan_name": "15-Day Pass"}, headers=headers)
+    # 4. Create real-time UPI Order (locked to suhashsugi369-1@oksbi, ₹20.00)
+    res = client.post("/api/payments/create-upi-order", json={"plan_name": "15-Day Pass"}, headers=headers)
     assert res.status_code == 200
     order_data = res.json()
     assert order_data["amount_inr"] == 20.0
-    assert order_data["amount"] == 2000
-    assert "order_id" in order_data
+    assert order_data["upi_id"] == "suhashsugi369-1@oksbi"
+    assert order_data["merchant_name"] == "SUHASH MAHADEVA"
+    assert "CV20_" in order_data["order_id"]
+    assert "upi://pay?" in order_data["upi_intent_url"]
+    order_id = order_data["order_id"]
 
-    # 5. Verify Razorpay payment
-    res = client.post("/api/payments/verify-razorpay", json={
-        "razorpay_order_id": order_data["order_id"],
-        "razorpay_payment_id": "pay_rzp_mock_12345"
+    # 5. Check order status before payment -> status == "pending"
+    res = client.get(f"/api/payments/check-order/{order_id}", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["status"] == "pending"
+    assert res.json()["is_subscribed"] is False
+
+    # 6. Verify UPI payment with genuine 12-digit UTR
+    res = client.post("/api/payments/verify-upi", json={
+        "order_id": order_id,
+        "utr_number": "428392817263",
+        "upi_id": "suhashsugi369-1@oksbi",
+        "amount": 20.0
     }, headers=headers)
     assert res.status_code == 200
     assert res.json()["is_subscribed"] is True
     assert res.json()["days_left"] == 15
+    assert res.json()["utr_id"] == "428392817263"
 
-    # 6. Check subscription status -> now Active with 15 days left
+    # 7. Check order status after payment -> status == "completed", is_subscribed == True
+    res = client.get(f"/api/payments/check-order/{order_id}", headers=headers)
+    assert res.status_code == 200
+    assert res.json()["status"] == "completed"
+    assert res.json()["is_subscribed"] is True
+
+    # 8. Check subscription status -> now Active with 15 days
     res = client.get("/api/payments/status", headers=headers)
     assert res.status_code == 200
     assert res.json()["is_subscribed"] is True
     assert res.json()["days_left"] >= 14
 
-    # 7. Test direct UPI QR submission on another user
-    res_b = client.post("/api/auth/register", json={
-        "email": "upi_user@cretivra.ai",
-        "password": "upipassword123",
-        "full_name": "UPI User"
-    })
-    token_b = res_b.json()["access_token"]
-    headers_b = {"Authorization": f"Bearer {token_b}"}
-
-    res = client.post("/api/payments/submit-upi", json={
-        "utr_transaction_id": "UTR892837492837",
-        "upi_id": "upi_user@okaxis",
+    # 9. Anti-fraud check: Prevent duplicate reuse of same UTR
+    res_fraud = client.post("/api/payments/verify-upi", json={
+        "order_id": order_id,
+        "utr_number": "428392817263",
         "amount": 20.0
-    }, headers=headers_b)
-    assert res.status_code == 200
-    assert res.json()["is_subscribed"] is True
-    assert res.json()["days_left"] == 15
+    }, headers=headers)
+    assert res_fraud.status_code == 400
+    assert "already been redeemed" in res_fraud.json()["detail"]
