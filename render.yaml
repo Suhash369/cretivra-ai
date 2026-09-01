@@ -13,3 +13,12 @@ services:
         sync: false
       - key: OLLAMA_BASE_URL
         sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: UPI_ID
+        value: suhashsugi369-1@oksbi
+      - key: UPI_NAME
+        value: SUHASH MAHADEVA
+

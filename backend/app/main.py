@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.logging import logger
 from app.database.database import init_db
-from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images, payments
+from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,7 +38,6 @@ app.add_middleware(
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(models.router, prefix=settings.API_V1_STR)
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
-app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(conversations.router, prefix=settings.API_V1_STR)
 app.include_router(chat.router, prefix=settings.API_V1_STR)
 app.include_router(images.router, prefix=settings.API_V1_STR)
@@ -69,6 +68,16 @@ for p in possible_dist_paths:
 
 if frontend_dist:
     logger.info(f"Serving built frontend assets from: {frontend_dist}")
+    
+    # Custom 404 fallback for SPA client-side routing
+    @app.exception_handler(404)
+    async def custom_404_handler(request: Request, exc):
+        if not request.url.path.startswith(settings.API_V1_STR):
+            index_file = os.path.join(frontend_dist, "index.html")
+            if os.path.exists(index_file):
+                return FileResponse(index_file)
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+        
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 else:
     @app.get("/")
@@ -79,3 +88,4 @@ else:
             "status": "online",
             "docs": "/docs"
         }
+

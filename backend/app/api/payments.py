@@ -15,19 +15,26 @@ from app.core.config import settings
 
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
-PLAN_PRICE_INR = 20.0
-PLAN_DURATION_DAYS = 15
+PLAN_PRICE_INR = settings.PLAN_PRICE_INR
+PLAN_DURATION_DAYS = settings.PLAN_DURATION_DAYS
 
-# Confidential Merchant UPI Settings
-UPI_ID = os.getenv("UPI_ID", "suhashsugi369-1@oksbi")
-UPI_NAME = os.getenv("UPI_NAME", "SUHASH MAHADEVA")
+def clean_utr_input(raw_utr: str) -> str:
+    """Sanitize UTR input by stripping common prefixes, whitespaces, and punctuation."""
+    cleaned = raw_utr.strip()
+    cleaned = re.sub(r'^(utr|upi\s*ref|ref\s*no|txn\s*id|transaction\s*id|upi|rrn|journal\s*no|bank\s*ref|google\s*txn\s*id)[:\s/\-_]*', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'[\s\-_/]', '', cleaned)
+    return cleaned.upper()
 
 class CreateUpiOrderRequest(BaseModel):
     plan_name: Optional[str] = "15-Day Pass"
 
 class VerifyUpiRequest(BaseModel):
     order_id: Optional[str] = None
-    utr_number: str
+    utr_number: Optional[str] = None
+    approval_ref_no: Optional[str] = None
+    gpay_txn_id: Optional[str] = None
+    response_code: Optional[str] = None
+    gateway: Optional[str] = "google_pay"
     upi_id: Optional[str] = None
     amount: Optional[float] = 20.0
 
@@ -86,12 +93,14 @@ def create_upi_order(
     and NPCI dynamic payment links.
     """
     order_id = f"CV20_{uuid.uuid4().hex[:10].upper()}"
+    upi_id = settings.UPI_ID
+    upi_name = settings.UPI_NAME
     
     # Official NPCI compliant UPI Intent URL
-    encoded_name = UPI_NAME.replace(" ", "%20")
+    encoded_name = upi_name.replace(" ", "%20")
     encoded_note = f"Cretivra%20AI%20Pass%20{order_id}"
     upi_intent_url = (
-        f"upi://pay?pa={UPI_ID}&pn={encoded_name}&am={PLAN_PRICE_INR:.2f}&cu=INR&tr={order_id}&tn={encoded_note}"
+        f"upi://pay?pa={upi_id}&pn={encoded_name}&am={PLAN_PRICE_INR:.2f}&cu=INR&tr={order_id}&tn={encoded_note}"
     )
 
     # Dynamic QR code generator URL (locks ₹20 amount and merchant ID)
@@ -116,8 +125,8 @@ def create_upi_order(
         "order_id": order_id,
         "amount_inr": PLAN_PRICE_INR,
         "currency": "INR",
-        "upi_id": UPI_ID,
-        "merchant_name": UPI_NAME,
+        "upi_id": upi_id,
+        "merchant_name": upi_name,
         "upi_intent_url": upi_intent_url,
         "qr_code_url": qr_code_url,
         "duration_days": PLAN_DURATION_DAYS,
@@ -160,16 +169,17 @@ def verify_upi_payment(
     db: Session = Depends(get_db)
 ):
     """
-    Validates genuine 12-digit Indian banking UTR reference number and unlocks 15-day subscription.
-    Enforces anti-fraud checks to prevent duplicate UTR reuse.
+    Validates genuine Indian banking UTR reference number or Google Pay API authorization
+    and unlocks 15-day subscription. Enforces anti-fraud checks to prevent duplicate UTR reuse.
     """
-    clean_utr = payload.utr_number.strip().replace(" ", "")
+    raw_reference = payload.approval_ref_no or payload.gpay_txn_id or payload.utr_number or ""
+    clean_utr = clean_utr_input(raw_reference)
     
-    # Validation: Must be at least 8 alphanumeric characters, typically 12-digit NPCI standard
-    if len(clean_utr) < 8 or not re.match(r'^[a-zA-Z0-9_-]+$', clean_utr):
+    # Validation: Must be alphanumeric and at least 6 characters
+    if len(clean_utr) < 6 or not re.match(r'^[a-zA-Z0-9]+$', clean_utr):
         raise HTTPException(
             status_code=400,
-            detail="Invalid Transaction Reference ID. Please enter the 12-digit UTR from your UPI payment receipt."
+            detail="Invalid Transaction Reference ID. Please provide a valid UTR / Google Pay Transaction ID."
         )
 
     # Check for duplicate UTR usage across all users
@@ -179,6 +189,17 @@ def verify_upi_payment(
     ).first()
 
     if existing_txn:
+        # If the same user previously submitted this exact UTR, return success
+        if existing_txn.user_id == user.id:
+            sub_info = check_user_subscription(user)
+            return {
+                "success": True,
+                "message": "Payment verified! 15-Day Pass is active.",
+                "is_subscribed": True,
+                "subscription_expires_at": sub_info["subscription_expires_at"],
+                "days_left": sub_info["days_left"],
+                "utr_id": clean_utr
+            }
         raise HTTPException(
             status_code=400,
             detail="This UPI Transaction Reference ID has already been redeemed."
@@ -192,6 +213,8 @@ def verify_upi_payment(
     user.subscription_expires_at = new_expiry
     user.plan_name = "15-Day Pass"
 
+    gateway_used = payload.gateway or ("google_pay" if (payload.approval_ref_no or payload.gpay_txn_id) else "upi_qr")
+
     # Update or insert payment record
     payment_record = None
     if payload.order_id:
@@ -200,13 +223,14 @@ def verify_upi_payment(
     if payment_record:
         payment_record.payment_id = clean_utr
         payment_record.status = "completed"
+        payment_record.gateway = gateway_used
         payment_record.amount = payload.amount or PLAN_PRICE_INR
     else:
         payment_record = PaymentDB(
             user_id=user.id,
             amount=payload.amount or PLAN_PRICE_INR,
             currency="INR",
-            gateway="upi_qr",
+            gateway=gateway_used,
             order_id=payload.order_id or f"upi_direct_{uuid.uuid4().hex[:8]}",
             payment_id=clean_utr,
             status="completed",
@@ -218,7 +242,7 @@ def verify_upi_payment(
     db.commit()
     db.refresh(user)
 
-    logger.info(f"REAL-TIME UPI VERIFIED: User {user.email} activated for 15 days (UTR: {clean_utr}, Expiry: {new_expiry.isoformat()})")
+    logger.info(f"REAL-TIME PAYMENT VERIFIED ({gateway_used}): User {user.email} activated for 15 days (ID: {clean_utr}, Expiry: {new_expiry.isoformat()})")
 
     return {
         "success": True,
@@ -226,7 +250,8 @@ def verify_upi_payment(
         "is_subscribed": True,
         "subscription_expires_at": new_expiry.isoformat(),
         "days_left": PLAN_DURATION_DAYS,
-        "utr_id": clean_utr
+        "utr_id": clean_utr,
+        "gateway": gateway_used
     }
 
 @router.post("/webhook")

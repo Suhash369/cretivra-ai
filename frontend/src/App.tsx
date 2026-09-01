@@ -23,7 +23,6 @@ import {
   AlertCircle,
   RefreshCw,
   Palette,
-  Crown,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -33,11 +32,10 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
-import { SubscriptionModal } from './components/subscription/SubscriptionModal';
 import { GeneratedImageCard } from './components/chat/ChatMessage';
 import { CretivraMark } from './components/common/CretivraLogo';
-import { fetchHealth, fetchSubscriptionStatusApi } from './services/api';
-import type { HealthStatus, Conversation, CretivraModel, SubscriptionStatus } from './types';
+import { fetchHealth } from './services/api';
+import type { HealthStatus, Conversation, CretivraModel } from './types';
 
 const SUGGESTIONS = [
   {
@@ -163,11 +161,9 @@ export function App() {
   const [healthOpen, setHealthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [subscriptionOpen, setSubscriptionOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthStatus | null>(null);
-  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
   const [user, setUser] = useState<any>(() => {
     try {
       const saved = localStorage.getItem("cretivra_user");
@@ -221,32 +217,14 @@ export function App() {
     }
   }, []);
 
-  const loadSubscriptionStatus = useCallback(async () => {
-    if (user) {
-      try {
-        const data = await fetchSubscriptionStatusApi();
-        setSubscription(data);
-      } catch (err) {
-        console.error('Failed to fetch subscription:', err);
-      }
-    } else {
-      setSubscription(null);
-    }
-  }, [user]);
-
   useEffect(() => {
     loadHealthStatus();
-    loadSubscriptionStatus();
-  }, [loadHealthStatus, loadSubscriptionStatus]);
+  }, [loadHealthStatus]);
 
   const handleSend = (textToSend?: string) => {
     const content = (textToSend ?? input).trim();
     if (!user) {
       setAuthOpen(true);
-      return;
-    }
-    if (!subscription?.is_subscribed || subscription.is_expired) {
-      setSubscriptionOpen(true);
       return;
     }
     if ((content || attachments.length > 0) && !isGenerating) {
@@ -436,27 +414,6 @@ export function App() {
             <span>Image Studio</span>
           </button>
 
-          {/* Subscription Pass Pill */}
-          <button
-            onClick={() => {
-              if (!user) setAuthOpen(true);
-              else setSubscriptionOpen(true);
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full border shadow-sm transition-all cursor-pointer ${
-              subscription?.is_subscribed && !subscription.is_expired
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-                : 'bg-gradient-to-r from-amber-500/30 to-orange-500/20 border-amber-500/40 text-amber-300 hover:border-amber-400 hover:text-white'
-            }`}
-            title="15-Day Pass (₹20)"
-          >
-            <Crown size={13} className="text-amber-400" />
-            <span>
-              {subscription?.is_subscribed && !subscription.is_expired
-                ? `${subscription.days_left}d Pass`
-                : '₹20 Pass'}
-            </span>
-          </button>
-
           {/* Action buttons */}
           {activeConversationId && (
             <button className="cv-icon-btn" title="Share" onClick={() => setShareId(activeConversationId)}>
@@ -582,21 +539,6 @@ export function App() {
 
         {/* Floating Composer */}
         <div className="cv-composer-wrap">
-          {user && (!subscription?.is_subscribed || subscription?.is_expired) && (
-            <div 
-              onClick={() => setSubscriptionOpen(true)}
-              className="mb-2 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-purple-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-between text-xs cursor-pointer hover:border-amber-300 transition-all shadow-lg backdrop-blur-md"
-            >
-              <div className="flex items-center gap-2 font-medium">
-                <Crown size={15} className="text-amber-400 shrink-0" />
-                <span>Cretivra AI Pass Required (₹20 for 15 Days) — Click to Pay & Activate</span>
-              </div>
-              <span className="font-bold text-[11px] bg-amber-500/30 px-2.5 py-1 rounded-lg border border-amber-400/40 text-white">
-                Unlock AI (₹20)
-              </span>
-            </div>
-          )}
-
           <div className={`cv-composer ${isCurrentImg ? 'border-purple-500/40 focus-within:border-purple-400' : ''}`}>
             {/* Attachment preview chips */}
             {attachments.length > 0 && (
@@ -709,12 +651,6 @@ export function App() {
           setUser(userData);
           clearActiveChat();
           refreshConversations();
-          fetchSubscriptionStatusApi().then((sub) => {
-            setSubscription(sub);
-            if (!sub.is_subscribed || sub.is_expired) {
-              setSubscriptionOpen(true);
-            }
-          });
         }}
       />
 
@@ -723,16 +659,6 @@ export function App() {
         onClose={() => setImageStudioOpen(false)}
         onInsertToChat={(_imageUrl, promptText) => {
           sendMessage(promptText, selectedModel);
-        }}
-      />
-
-      <SubscriptionModal
-        isOpen={subscriptionOpen}
-        onClose={() => setSubscriptionOpen(false)}
-        subscription={subscription}
-        isMandatory={!!user && (!subscription?.is_subscribed || !!subscription?.is_expired)}
-        onSubscriptionSuccess={(newSub) => {
-          setSubscription(newSub);
         }}
       />
     </div>

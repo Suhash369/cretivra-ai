@@ -1,19 +1,14 @@
-def get_subscribed_client_headers(client):
+def get_auth_client_headers(client):
     res = client.post("/api/auth/register", json={
         "email": "tester_chat@cretivra.ai",
         "password": "password123",
         "full_name": "Chat Tester"
     })
     token = res.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
-    # Activate subscription
-    client.post("/api/payments/verify-upi", json={
-        "utr_number": "TEST_UTR_123456"
-    }, headers=headers)
-    return headers
+    return {"Authorization": f"Bearer {token}"}
 
 def test_chat_streaming(client):
-    headers = get_subscribed_client_headers(client)
+    headers = get_auth_client_headers(client)
     payload = {
         "message": "Explain quantum computing briefly.",
         "model_id": "cretivra-1"
@@ -25,7 +20,7 @@ def test_chat_streaming(client):
     assert "data:" in content
 
 def test_message_editing_and_regeneration(client):
-    headers = get_subscribed_client_headers(client)
+    headers = get_auth_client_headers(client)
     # Create conversation and add messages
     c_res = client.post("/api/conversations", json={"title": "Original Chat"}, headers=headers)
     conv_id = c_res.json()["id"]

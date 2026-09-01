@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = Field(default="")
     UPLOAD_DIR: str = Field(default="./uploads")
     
+
     SYSTEM_PROMPT: str = Field(
         default="You are Cretivra AI, an intelligent AI assistant created by Cretivra. "
                 "Be helpful, accurate, clear and honest. If you are uncertain, say so. "
