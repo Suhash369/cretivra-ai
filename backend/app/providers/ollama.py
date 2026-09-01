@@ -7,6 +7,8 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.providers.base import BaseLLMProvider
 
+from app.providers.cloud_provider import cloud_provider
+
 class OllamaProvider(BaseLLMProvider):
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
@@ -38,11 +40,12 @@ class OllamaProvider(BaseLLMProvider):
             logger.debug(f"Ollama health check failed: {e}")
 
         result = {
-            "status": "disconnected",
+            "status": "connected" if cloud_provider.has_keys() else "disconnected",
             "available": False,
             "url": self.base_url,
             "installed_models_count": 0,
-            "error": "Ollama service is unreachable."
+            "cloud_fallback": cloud_provider.has_keys(),
+            "error": "Ollama service is unreachable. Using Cloud LLM." if cloud_provider.has_keys() else "Ollama service is unreachable."
         }
         self._cached_health = result
         self._cached_health_time = now
@@ -80,8 +83,21 @@ class OllamaProvider(BaseLLMProvider):
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Non-streaming chat request to Ollama /api/chat.
+        Non-streaming chat request to Ollama /api/chat or Cloud fallback.
         """
+        health = await self.health_check()
+        if not health["available"]:
+            if cloud_provider.has_keys():
+                full_text = ""
+                async for chunk in cloud_provider.stream_chat(model, messages):
+                    full_text += chunk.get("content", "")
+                return {
+                    "model": model,
+                    "message": {"role": "assistant", "content": full_text},
+                    "done": True
+                }
+            return await self._mock_chat_response(model, messages)
+
         payload = {
             "model": model,
             "messages": messages,
@@ -96,9 +112,16 @@ class OllamaProvider(BaseLLMProvider):
                 return res.json()
         except Exception as e:
             logger.error(f"Ollama chat error: {e}")
-            if settings.ENABLE_MOCK_OLLAMA or not (await self.health_check())["available"]:
-                return await self._mock_chat_response(model, messages)
-            raise e
+            if cloud_provider.has_keys():
+                full_text = ""
+                async for chunk in cloud_provider.stream_chat(model, messages):
+                    full_text += chunk.get("content", "")
+                return {
+                    "model": model,
+                    "message": {"role": "assistant", "content": full_text},
+                    "done": True
+                }
+            return await self._mock_chat_response(model, messages)
 
     async def stream_chat(
         self,
@@ -107,11 +130,20 @@ class OllamaProvider(BaseLLMProvider):
         options: Optional[Dict[str, Any]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Streaming chat response generator from Ollama /api/chat.
+        Streaming chat response generator with automatic high-speed Cloud LLM routing.
         """
         health = await self.health_check()
-        if settings.ENABLE_MOCK_OLLAMA or not health["available"]:
-            logger.info("Ollama offline or mock mode enabled — yielding fallback stream")
+        if not health["available"]:
+            if cloud_provider.has_keys():
+                logger.info(f"Ollama offline — streaming '{model}' via Cloud LLM Provider")
+                has_yielded = False
+                async for chunk in cloud_provider.stream_chat(model, messages):
+                    has_yielded = True
+                    yield chunk
+                if has_yielded:
+                    return
+
+            logger.info("Ollama offline and no cloud key — yielding fallback stream")
             async for chunk in self._mock_stream_chat_response(model, messages):
                 yield chunk
             return
@@ -131,31 +163,39 @@ class OllamaProvider(BaseLLMProvider):
             async with httpx.AsyncClient(timeout=120.0, headers=headers, follow_redirects=True) as client:
                 async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
                     if response.status_code != 200:
+                        if cloud_provider.has_keys():
+                            async for chunk in cloud_provider.stream_chat(model, messages):
+                                yield chunk
+                            return
                         async for chunk in self._mock_stream_chat_response(model, messages):
                             yield chunk
                         return
 
                     async for line in response.aiter_lines():
-                        if not line:
+                        if not line.strip():
                             continue
                         try:
-                            data = json.loads(line)
-                            msg = data.get("message", {})
+                            chunk = json.loads(line)
+                            msg = chunk.get("message", {})
                             content = msg.get("content", "")
-                            done = data.get("done", False)
+                            done = chunk.get("done", False)
 
                             yield {
                                 "content": content,
                                 "done": done,
                                 "role": "assistant"
                             }
-                        except Exception as json_err:
-                            logger.error(f"Error parsing line from Ollama: {json_err}")
+                        except json.JSONDecodeError:
+                            continue
         except asyncio.CancelledError:
             logger.info("Stream cancelled by client request")
             yield {"content": "", "done": True, "cancelled": True}
         except Exception as e:
-            logger.error(f"Error during Ollama stream: {e}")
+            logger.error(f"Ollama stream exception: {e}")
+            if cloud_provider.has_keys():
+                async for chunk in cloud_provider.stream_chat(model, messages):
+                    yield chunk
+                return
             async for chunk in self._mock_stream_chat_response(model, messages):
                 yield chunk
 
