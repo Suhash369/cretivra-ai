@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -27,15 +27,13 @@ import {
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
 import { SearchModal } from './components/sidebar/SearchModal';
-import { HealthModal } from './components/settings/HealthModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
 import { GeneratedImageCard } from './components/chat/ChatMessage';
 import { CretivraMark } from './components/common/CretivraLogo';
-import { fetchHealth } from './services/api';
-import type { HealthStatus, Conversation, CretivraModel } from './types';
+import type { Conversation, CretivraModel } from './types';
 
 const SUGGESTIONS = [
   {
@@ -158,12 +156,10 @@ export function App() {
   const [input, setInput] = useState('');
   const [modelOpen, setModelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [healthOpen, setHealthOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [health, setHealth] = useState<HealthStatus | null>(null);
   const [user, setUser] = useState<any>(() => {
     try {
       const saved = localStorage.getItem("cretivra_user");
@@ -207,19 +203,6 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  const loadHealthStatus = useCallback(async () => {
-    try {
-      const data = await fetchHealth();
-      setHealth(data);
-    } catch (err) {
-      console.error('Failed to fetch health:', err);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadHealthStatus();
-  }, [loadHealthStatus]);
 
   const handleSend = (textToSend?: string) => {
     const content = (textToSend ?? input).trim();
@@ -420,9 +403,6 @@ export function App() {
               <Share2 size={15} />
             </button>
           )}
-          <button className="cv-icon-btn" title="System Health" onClick={() => setHealthOpen(true)}>
-            <div className={`w-2 h-2 rounded-full ${health?.status === 'healthy' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-          </button>
           {/* Sign In / Account Pill */}
           {user ? (
             <button
@@ -465,8 +445,8 @@ export function App() {
               <span>{chatError}</span>
             </div>
             <button
-              onClick={() => loadHealthStatus()}
-              className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-900/60 hover:bg-rose-900 text-white font-medium"
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-900/60 hover:bg-rose-900 text-white font-medium cursor-pointer"
             >
               <RefreshCw className="w-3 h-3" />
               <span>Retry</span>
@@ -618,14 +598,6 @@ export function App() {
         }}
         onSearchQuery={setSearchQuery}
         conversations={conversations}
-      />
-
-      <HealthModal
-        isOpen={healthOpen}
-        onClose={() => setHealthOpen(false)}
-        health={health}
-        onRefresh={loadHealthStatus}
-        loading={false}
       />
 
       <SettingsModal
