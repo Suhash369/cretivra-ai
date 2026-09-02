@@ -90,23 +90,11 @@ class ChatService:
                 live_web_context = search_snippets
                 last_reasoning_status = "Processing live web results..."
 
-        # Formulate system prompt with current live date and live web context
+        # Formulate system prompt with current live date
         from datetime import datetime
         today_str = datetime.now().strftime("%B %d, %Y")
         base_sys = system_prompt or settings.SYSTEM_PROMPT
-
-        if live_web_context:
-            sys_content = (
-                f"{base_sys}\n\n"
-                f"CURRENT DATE: {today_str}.\n"
-                f"You have real-time live web access enabled.\n"
-                f"[LIVE REAL-TIME WEB CONTEXT AS OF {today_str.upper()}]:\n{live_web_context}\n\n"
-                f"MANDATORY DIRECTIVE: You MUST answer using the live real-time web facts provided above. "
-                f"The live real-time web context ALWAYS supersedes older training data and previous conversation messages. "
-                f"State the current facts directly and authoritatively. Never say you lack verified post-2024 information or claim cutoff dates when live web context is provided."
-            )
-        else:
-            sys_content = f"{base_sys}\n\nToday's date is {today_str}."
+        sys_content = f"{base_sys}\n\nToday's date is {today_str}."
 
         formatted_messages = [{"role": "system", "content": sys_content}]
 
@@ -118,12 +106,13 @@ class ChatService:
                 "content": m.content
             })
 
-        # Inject real-time web search context into the latest user prompt if available
+        # Inject real-time web search context into the latest user prompt cleanly
         if live_web_context:
+            user_orig_q = formatted_messages[-1]["content"]
             formatted_messages[-1]["content"] = (
-                f"{formatted_messages[-1]['content']}\n\n"
-                f"[Real-Time News / Live Web Grounding as of {today_str}]:\n{live_web_context}\n\n"
-                f"(Answer authoritatively based on the latest live news above)"
+                f"Question: {user_orig_q}\n\n"
+                f"[Verified Real-Time Search Facts as of {today_str}]:\n{live_web_context}\n\n"
+                f"Please answer the question directly and factually using the verified search facts above."
             )
 
         # Append file attachments text to prompt context if present

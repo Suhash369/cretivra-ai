@@ -39,23 +39,9 @@ class CloudLLMProvider:
         model: str,
         messages: List[Dict[str, Any]]
     ) -> AsyncGenerator[Dict[str, Any], None]:
-        # Enforce Cretivra AI system prompt at the core provider layer
-        clean_messages = []
-        has_system = False
-        for m in messages:
-            if m.get("role") == "system":
-                has_system = True
-                content = m.get("content", "")
-                if "Cretivra" not in content:
-                    content = f"{settings.SYSTEM_PROMPT}\n\n{content}"
-                clean_messages.append({"role": "system", "content": content})
-            else:
-                clean_messages.append(m)
-
-        if not has_system:
-            clean_messages.insert(0, {"role": "system", "content": settings.SYSTEM_PROMPT})
-
-        messages = clean_messages
+        # Enforce system prompt if not present
+        if not messages or messages[0].get("role") != "system":
+            messages = [{"role": "system", "content": settings.SYSTEM_PROMPT}] + list(messages)
         # 1. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
             try:
@@ -261,7 +247,7 @@ class CloudLLMProvider:
             "messages": messages,
             "stream": True,
             "temperature": 0.2,
-            "max_tokens": 4096
+            "max_tokens": 2048
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:

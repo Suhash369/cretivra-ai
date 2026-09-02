@@ -53,6 +53,10 @@ class WebSearchService:
         if any(prefix in q for prefix in ["write code", "solve", "calculate", "translate", "generate image", "create image", "draw", "render"]):
             return False
 
+        # Exclude self-identity, origin, and architecture queries to always assert Cretivra Engine persona
+        if any(w in q for w in ["who are you", "who built you", "how were you built", "how you built", "who created you", "what is your name", "what are you", "tell me about yourself"]):
+            return False
+
         for pattern in self.SEARCH_INTENT_PATTERNS:
             if re.search(pattern, q, re.IGNORECASE):
                 return True
