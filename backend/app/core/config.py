@@ -1,6 +1,7 @@
 import os
+from typing import Any
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator
 
 def _default_db_url() -> str:
     env_val = os.getenv("DATABASE_URL")
@@ -55,6 +56,18 @@ class Settings(BaseSettings):
                 "Be helpful, accurate, clear and honest. If you are uncertain, say so. "
                 "Never fabricate information."
     )
+
+    @field_validator(
+        "GROQ_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", 
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "TOGETHER_API_KEY",
+        "TAVILY_API_KEY", "SERPER_API_KEY", "SERPAPI_API_KEY",
+        mode="before"
+    )
+    @classmethod
+    def ensure_string(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        return str(v)
 
     class Config:
         env_file = ".env"
