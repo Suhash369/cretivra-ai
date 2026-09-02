@@ -8,19 +8,31 @@ from app.core.logging import logger
 class WebSearchService:
     """
     High-Reliability Real-Time Live Web & Current Affairs Search Service for Cretivra AI.
-    Integrates Google News Live RSS, Wikipedia API, and Web Search engines to provide
-    guaranteed live data access on cloud platforms (Render, Docker, Cloud VMs).
+    Integrates Google News Live RSS, Wikipedia API, and Web Search engines with automatic
+    query normalization to provide guaranteed live data access on cloud platforms (Render).
     """
 
     SEARCH_INTENT_PATTERNS = [
-        r"\b(?:current|currently|latest|today|now|recent|recently|breaking|live)\b",
-        r"\b(?:who is|who are|what is the current|who is the current|who is currently)\b",
-        r"\b(?:2024|2025|2026|2027)\b",
-        r"\b(?:chief minister|prime minister|president|governor|cm of|pm of|minister)\b",
-        r"\b(?:stock price|weather in|election results|who won|score|match|gold rate)\b",
-        r"\b(?:news about|update on|what happened|current affairs)\b",
-        r"\b(?:tamilnadu|tamil nadu|india|usa|government|parliament|assembly)\b"
+        r"(?:current|currently|latest|today|now|recent|recently|breaking|live)",
+        r"(?:who is|who are|what is the current|who is the current|who is currently|who iscurrent)",
+        r"(?:2024|2025|2026|2027)",
+        r"(?:chief minister|prime minister|president|governor|cm of|pm of|minister)",
+        r"(?:stock price|weather in|election results|who won|score|match|gold rate)",
+        r"(?:news about|update on|what happened|current affairs)",
+        r"(?:tamilnadu|tamil nadu|india|usa|government|parliament|assembly)"
     ]
+
+    def normalize_query(self, query: str) -> str:
+        """
+        Normalizes common contractions, joined words, and typos in search queries.
+        """
+        q = query.strip()
+        q = re.sub(r'iscurrent', 'is current', q, flags=re.IGNORECASE)
+        q = re.sub(r'whois', 'who is', q, flags=re.IGNORECASE)
+        q = re.sub(r'tamilnadu', 'tamil nadu', q, flags=re.IGNORECASE)
+        q = re.sub(r'\bcm\b', 'chief minister', q, flags=re.IGNORECASE)
+        q = re.sub(r'\bpm\b', 'prime minister', q, flags=re.IGNORECASE)
+        return q.strip()
 
     def should_search_web(self, query: str) -> bool:
         """
@@ -42,13 +54,14 @@ class WebSearchService:
     async def search(self, query: str, max_results: int = 6) -> str:
         """
         Multi-source real-time live search pipeline.
-        Tries Google News Live RSS first (cloud datacenter safe), then DuckDuckGo and Wikipedia.
+        Tries Google News Live RSS first (cloud datacenter safe), then Wikipedia and DuckDuckGo.
         """
+        clean_q = self.normalize_query(query)
         results: List[str] = []
 
         # 1. Google News Live RSS Search (100% reliable on Cloud/Datacenter IPs like Render)
         try:
-            google_results = await self._search_google_news(query, max_results=max_results)
+            google_results = await self._search_google_news(clean_q, max_results=max_results)
             if google_results:
                 results.extend(google_results)
         except Exception as e:
@@ -57,7 +70,7 @@ class WebSearchService:
         # 2. Wikipedia Live API (if results are sparse)
         if len(results) < 3:
             try:
-                wiki_results = await self._search_wikipedia(query)
+                wiki_results = await self._search_wikipedia(clean_q)
                 if wiki_results:
                     results.extend(wiki_results)
             except Exception as e:
@@ -66,7 +79,7 @@ class WebSearchService:
         # 3. DuckDuckGo HTML / Lite Fallback
         if len(results) < 3:
             try:
-                ddg_results = await self._search_duckduckgo(query, max_results=max_results)
+                ddg_results = await self._search_duckduckgo(clean_q, max_results=max_results)
                 if ddg_results:
                     results.extend(ddg_results)
             except Exception as e:
@@ -109,7 +122,6 @@ class WebSearchService:
                 pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
                 if title_match:
                     title = html.unescape(title_match.group(1)).strip()
-                    # Strip standard source suffix e.g. " - The Hindu" if needed
                     pub = pub_match.group(1).strip() if pub_match else ""
                     results.append(f"{title} ({pub})" if pub else title)
             return results

@@ -90,19 +90,25 @@ class ChatService:
                 live_web_context = search_snippets
                 last_reasoning_status = "Processing live web results..."
 
-        # Formulate system prompt with current live date
+        # Formulate system prompt with current live date and live web context
         from datetime import datetime
         today_str = datetime.now().strftime("%B %d, %Y")
         base_sys = system_prompt or settings.SYSTEM_PROMPT
-        sys_content = f"{base_sys}\n\nToday's date is {today_str}. Provide accurate, up-to-date information as of {today_str}."
-
-        formatted_messages = [{"role": "system", "content": sys_content}]
 
         if live_web_context:
-            formatted_messages.append({
-                "role": "system",
-                "content": f"[Live Real-Time Web Context as of {today_str}]:\n{live_web_context}\n\nDirective: Use the live real-time web data above to answer the user's question directly and authoritatively. Do not state you have knowledge cutoff limits when live context is provided."
-            })
+            sys_content = (
+                f"{base_sys}\n\n"
+                f"CURRENT DATE: {today_str}.\n"
+                f"You have real-time live web access enabled.\n"
+                f"[LIVE REAL-TIME WEB CONTEXT AS OF {today_str.upper()}]:\n{live_web_context}\n\n"
+                f"MANDATORY DIRECTIVE: You MUST answer using the live real-time web facts provided above. "
+                f"The live real-time web context ALWAYS supersedes older training data and previous conversation messages. "
+                f"State the current facts directly and authoritatively. Never say you lack verified post-2024 information or claim cutoff dates when live web context is provided."
+            )
+        else:
+            sys_content = f"{base_sys}\n\nToday's date is {today_str}."
+
+        formatted_messages = [{"role": "system", "content": sys_content}]
 
         # Append recent history
         recent_history = messages_db[-settings.MAX_CONTEXT_MESSAGES:]
@@ -114,7 +120,11 @@ class ChatService:
 
         # Inject real-time web search context into the latest user prompt if available
         if live_web_context:
-            formatted_messages[-1]["content"] = f"{formatted_messages[-1]['content']}\n\n[Live Real-Time Web Search Context]:\n{live_web_context}"
+            formatted_messages[-1]["content"] = (
+                f"{formatted_messages[-1]['content']}\n\n"
+                f"[Real-Time News / Live Web Grounding as of {today_str}]:\n{live_web_context}\n\n"
+                f"(Answer authoritatively based on the latest live news above)"
+            )
 
         # Append file attachments text to prompt context if present
         if attachments:
