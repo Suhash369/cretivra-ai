@@ -18,8 +18,11 @@ def _default_groq_key() -> str:
     p1 = "gs" + "k_" + "Tbq7"
     p2 = "BkAmp8oOtHaZg"
     p3 = "TM2WGdyb3FYgJi3gzr7y6"
-    p4 = "vQ24hDTXMIagoi"
-    return p1 + p2 + p3 + p4
+def _default_tavily_key() -> str:
+    env_val = os.getenv("TAVILY_API_KEY")
+    if env_val:
+        return env_val
+    return "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"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CRETIVRA AI"
@@ -34,7 +37,7 @@ class Settings(BaseSettings):
     ENABLE_MOCK_OLLAMA: bool = Field(default=False)
     GROQ_API_KEY: str = Field(default_factory=_default_groq_key)
     GEMINI_API_KEY: str = Field(default="")
-    TAVILY_API_KEY: str = Field(default="")
+    TAVILY_API_KEY: str = Field(default_factory=_default_tavily_key)
     SERPER_API_KEY: str = Field(default="")
     SERPAPI_API_KEY: str = Field(default="")
     UPLOAD_DIR: str = Field(default="./uploads")

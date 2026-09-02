@@ -135,7 +135,7 @@ class WebSearchService:
 
         return ""
 
-    async def _search_tavily(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+    async def _search_tavily(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
         url = "https://api.tavily.com/search"
         payload = {
             "api_key": api_key,
@@ -151,16 +151,15 @@ class WebSearchService:
                 results = []
                 if data.get("answer"):
                     results.append(f"• Direct Fact: {data['answer']}")
-                for r in data.get("results", []):
-                    title = r.get("title", "")
-                    content = r.get("content", "")
-                    url_link = r.get("url", "")
+                for r in data.get("results", [])[:max_results]:
+                    title = r.get("title", "").strip()
+                    content = r.get("content", "").strip()[:160].replace("\n", " ")
                     if content:
-                        results.append(f"• {title}: {content} ({url_link})")
+                        results.append(f"• {title}: {content}")
                 return results
         return []
 
-    async def _search_serper(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+    async def _search_serper(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
         url = "https://google.serper.dev/search"
         headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
         payload = {"q": query, "num": max_results}
@@ -174,15 +173,14 @@ class WebSearchService:
                     if ans:
                         results.append(f"• Direct Fact: {ans}")
                 for item in data.get("organic", [])[:max_results]:
-                    title = item.get("title", "")
-                    snippet = item.get("snippet", "")
-                    link = item.get("link", "")
+                    title = item.get("title", "").strip()
+                    snippet = item.get("snippet", "").strip()[:160].replace("\n", " ")
                     if snippet:
-                        results.append(f"• {title}: {snippet} ({link})")
+                        results.append(f"• {title}: {snippet}")
                 return results
         return []
 
-    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
         url = "https://serpapi.com/search.json"
         params = {"q": query, "api_key": api_key, "num": max_results}
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -195,11 +193,10 @@ class WebSearchService:
                     if ans:
                         results.append(f"• Direct Fact: {ans}")
                 for item in data.get("organic_results", [])[:max_results]:
-                    title = item.get("title", "")
-                    snippet = item.get("snippet", "")
-                    link = item.get("link", "")
+                    title = item.get("title", "").strip()
+                    snippet = item.get("snippet", "").strip()[:160].replace("\n", " ")
                     if snippet:
-                        results.append(f"• {title}: {snippet} ({link})")
+                        results.append(f"• {title}: {snippet}")
                 return results
         return []
 

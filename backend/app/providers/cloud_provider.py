@@ -51,13 +51,11 @@ class CloudLLMProvider:
 
     def _resolve_groq_model(self, model: str) -> str:
         m = (model or "").lower()
-        if "reason" in m or "deepseek" in m:
-            return "openai/gpt-oss-120b"
-        elif "fast" in m or "1.2" in m or "mini" in m:
+        if "fast" in m or "1.2" in m or "mini" in m:
             return "openai/gpt-oss-20b"
         elif "compound" in m:
             return "groq/compound"
-        return "qwen/qwen3.8-27b"
+        return "openai/gpt-oss-120b"
 
     async def _stream_groq(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
         url = "https://api.groq.com/openai/v1/chat/completions"
