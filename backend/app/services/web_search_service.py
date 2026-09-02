@@ -2,14 +2,21 @@ import re
 import html
 import httpx
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+from app.core.config import settings
 from app.core.logging import logger
 
 class WebSearchService:
     """
-    High-Reliability Real-Time Live Web & Current Affairs Search Service for Cretivra AI.
-    Integrates Google News Live RSS, Wikipedia API, and Web Search engines with automatic
-    query normalization to provide guaranteed live data access on cloud platforms (Render).
+    Production-Grade Multi-Source Search Engine Service for Cretivra AI.
+    
+    Supports:
+    1. Tavily AI Search API (Designed specifically for LLM search grounding)
+    2. Google Search via Serper.dev API
+    3. Google Search via SerpAPI
+    4. Google News Live RSS (Zero-cost, reliable on cloud servers)
+    5. Wikipedia Live API (Instant verified factual grounding)
+    6. DuckDuckGo Search (Fallback)
     """
 
     SEARCH_INTENT_PATTERNS = [
@@ -53,13 +60,44 @@ class WebSearchService:
 
     async def search(self, query: str, max_results: int = 6) -> str:
         """
-        Multi-source real-time live search pipeline.
-        Tries Google News Live RSS first (cloud datacenter safe), then Wikipedia and DuckDuckGo.
+        Multi-tier search pipeline.
+        Tries dedicated search APIs first (Tavily, Serper, SerpAPI), then falls back
+        to zero-cost Google News RSS, Wikipedia, and DuckDuckGo.
         """
         clean_q = self.normalize_query(query)
         results: List[str] = []
 
-        # 1. Google News Live RSS Search (100% reliable on Cloud/Datacenter IPs like Render)
+        # 1. Tavily AI Search API (if configured)
+        tavily_key = getattr(settings, "TAVILY_API_KEY", "")
+        if tavily_key:
+            try:
+                tavily_res = await self._search_tavily(clean_q, tavily_key, max_results=max_results)
+                if tavily_res:
+                    return "\n".join(tavily_res[:max_results])
+            except Exception as e:
+                logger.warning(f"Tavily search error: {e}")
+
+        # 2. Serper (Google Search JSON API, if configured)
+        serper_key = getattr(settings, "SERPER_API_KEY", "")
+        if serper_key:
+            try:
+                serper_res = await self._search_serper(clean_q, serper_key, max_results=max_results)
+                if serper_res:
+                    return "\n".join(serper_res[:max_results])
+            except Exception as e:
+                logger.warning(f"Serper search error: {e}")
+
+        # 3. SerpAPI (Google Search API, if configured)
+        serpapi_key = getattr(settings, "SERPAPI_API_KEY", "")
+        if serpapi_key:
+            try:
+                serpapi_res = await self._search_serpapi(clean_q, serpapi_key, max_results=max_results)
+                if serpapi_res:
+                    return "\n".join(serpapi_res[:max_results])
+            except Exception as e:
+                logger.warning(f"SerpAPI search error: {e}")
+
+        # 4. Google News Live RSS Search (Zero-cost, 100% reliable on Cloud/Datacenter IPs)
         try:
             google_results = await self._search_google_news(clean_q, max_results=max_results)
             if google_results:
@@ -67,7 +105,7 @@ class WebSearchService:
         except Exception as e:
             logger.debug(f"Google News RSS error: {e}")
 
-        # 2. Wikipedia Live API (if results are sparse)
+        # 5. Wikipedia Live API (if results are sparse)
         if len(results) < 3:
             try:
                 wiki_results = await self._search_wikipedia(clean_q)
@@ -76,7 +114,7 @@ class WebSearchService:
             except Exception as e:
                 logger.debug(f"Wikipedia search error: {e}")
 
-        # 3. DuckDuckGo HTML / Lite Fallback
+        # 6. DuckDuckGo HTML / Lite Fallback
         if len(results) < 3:
             try:
                 ddg_results = await self._search_duckduckgo(clean_q, max_results=max_results)
@@ -86,7 +124,6 @@ class WebSearchService:
                 logger.debug(f"DuckDuckGo search error: {e}")
 
         if results:
-            # Deduplicate and return formatted bullet points
             seen = set()
             unique_results = []
             for r in results:
@@ -97,6 +134,74 @@ class WebSearchService:
             return "\n".join(unique_results[:max_results])
 
         return ""
+
+    async def _search_tavily(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+        url = "https://api.tavily.com/search"
+        payload = {
+            "api_key": api_key,
+            "query": query,
+            "search_depth": "basic",
+            "include_answer": True,
+            "max_results": max_results
+        }
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.post(url, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                results = []
+                if data.get("answer"):
+                    results.append(f"• Direct Fact: {data['answer']}")
+                for r in data.get("results", []):
+                    title = r.get("title", "")
+                    content = r.get("content", "")
+                    url_link = r.get("url", "")
+                    if content:
+                        results.append(f"• {title}: {content} ({url_link})")
+                return results
+        return []
+
+    async def _search_serper(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+        url = "https://google.serper.dev/search"
+        headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
+        payload = {"q": query, "num": max_results}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.post(url, headers=headers, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                results = []
+                if data.get("answerBox"):
+                    ans = data["answerBox"].get("snippet") or data["answerBox"].get("title") or ""
+                    if ans:
+                        results.append(f"• Direct Fact: {ans}")
+                for item in data.get("organic", [])[:max_results]:
+                    title = item.get("title", "")
+                    snippet = item.get("snippet", "")
+                    link = item.get("link", "")
+                    if snippet:
+                        results.append(f"• {title}: {snippet} ({link})")
+                return results
+        return []
+
+    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 5) -> List[str]:
+        url = "https://serpapi.com/search.json"
+        params = {"q": query, "api_key": api_key, "num": max_results}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(url, params=params)
+            if res.status_code == 200:
+                data = res.json()
+                results = []
+                if data.get("answer_box"):
+                    ans = data["answer_box"].get("answer") or data["answer_box"].get("snippet") or ""
+                    if ans:
+                        results.append(f"• Direct Fact: {ans}")
+                for item in data.get("organic_results", [])[:max_results]:
+                    title = item.get("title", "")
+                    snippet = item.get("snippet", "")
+                    link = item.get("link", "")
+                    if snippet:
+                        results.append(f"• {title}: {snippet} ({link})")
+                return results
+        return []
 
     async def _search_google_news(self, query: str, max_results: int = 5) -> List[str]:
         url = "https://news.google.com/rss/search"

@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     ENABLE_MOCK_OLLAMA: bool = Field(default=False)
     GROQ_API_KEY: str = Field(default_factory=_default_groq_key)
     GEMINI_API_KEY: str = Field(default="")
+    TAVILY_API_KEY: str = Field(default="")
+    SERPER_API_KEY: str = Field(default="")
+    SERPAPI_API_KEY: str = Field(default="")
     UPLOAD_DIR: str = Field(default="./uploads")
     
 
