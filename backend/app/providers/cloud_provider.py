@@ -47,7 +47,19 @@ class CloudLLMProvider:
             except Exception as e:
                 logger.error(f"Gemini stream error: {e}")
 
-        yield {"content": "I am Cretivra AI. Please set your GROQ_API_KEY or GEMINI_API_KEY in Render Environment to enable high-speed cloud intelligence.", "done": True, "error": True}
+        yield {"content": "I am Cretivra AI. Please configure your GROQ_API_KEY or GEMINI_API_KEY in Environment Settings to enable high-speed cloud intelligence.", "done": True, "error": True}
+
+    def _resolve_groq_model(self, model: str) -> str:
+        m = (model or "").lower()
+        if "reason" in m or "deepseek" in m:
+            return "openai/gpt-oss-120b"
+        elif "qwen" in m or "cretivra-q" in m or "code" in m:
+            return "qwen/qwen3.8-27b"
+        elif "fast" in m or "1.2" in m or "mini" in m:
+            return "openai/gpt-oss-20b"
+        elif "compound" in m:
+            return "groq/compound"
+        return "openai/gpt-oss-120b"
 
     async def _stream_groq(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -56,12 +68,7 @@ class CloudLLMProvider:
             "Content-Type": "application/json"
         }
         
-        # Select best Groq model
-        groq_model = "openai/gpt-oss-120b"
-        if "qwen" in model.lower() or "cretivra-q" in model.lower():
-            groq_model = "qwen/qwen3.8-27b"
-        elif "compound" in model.lower() or "mini" in model.lower():
-            groq_model = "groq/compound"
+        groq_model = self._resolve_groq_model(model)
 
         payload = {
             "model": groq_model,
@@ -74,9 +81,10 @@ class CloudLLMProvider:
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
-                    # Fallback to qwen/qwen3.8-27b if gpt-oss-120b failed
-                    logger.warning(f"Groq {groq_model} returned {response.status_code}, falling back to qwen/qwen3.8-27b")
-                    payload["model"] = "qwen/qwen3.8-27b"
+                    # Fallback to qwen/qwen3.8-27b if primary failed
+                    fallback_model = "qwen/qwen3.8-27b" if groq_model != "qwen/qwen3.8-27b" else "openai/gpt-oss-120b"
+                    logger.warning(f"Groq {groq_model} returned {response.status_code}, falling back to {fallback_model}")
+                    payload["model"] = fallback_model
                     async with client.stream("POST", url, headers=headers, json=payload) as fb_resp:
                         if fb_resp.status_code != 200:
                             err = await fb_resp.aread()
@@ -88,7 +96,8 @@ class CloudLLMProvider:
                                 if data_str == "[DONE]": break
                                 try:
                                     data = json.loads(data_str)
-                                    text = data["choices"][0]["delta"].get("content", "")
+                                    delta = data["choices"][0].get("delta", {})
+                                    text = delta.get("content", "")
                                     if text:
                                         yield {"content": text, "done": False, "role": "assistant"}
                                 except Exception:
@@ -102,7 +111,8 @@ class CloudLLMProvider:
                         if data_str == "[DONE]": break
                         try:
                             data = json.loads(data_str)
-                            text = data["choices"][0]["delta"].get("content", "")
+                            delta = data["choices"][0].get("delta", {})
+                            text = delta.get("content", "")
                             if text:
                                 yield {"content": text, "done": False, "role": "assistant"}
                         except Exception:
@@ -110,7 +120,6 @@ class CloudLLMProvider:
                 yield {"content": "", "done": True, "role": "assistant"}
 
     async def _stream_gemini(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={self.gemini_api_key}"
         contents = []
         for m in messages:
             role = "user" if m.get("role") in ["user", "system"] else "model"
@@ -118,27 +127,41 @@ class CloudLLMProvider:
 
         payload = {"contents": contents}
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream("POST", url, json=payload) as response:
-                if response.status_code != 200:
-                    err = await response.aread()
-                    logger.error(f"Gemini API returned {response.status_code}: {err.decode('utf-8')}")
-                    return
+        # Candidate Gemini models in priority order
+        gemini_models = [
+            "gemini-flash-latest",
+            "gemini-3.6-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-1.5-flash"
+        ]
 
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if not data_str: continue
-                        try:
-                            data = json.loads(data_str)
-                            candidates = data.get("candidates", [])
-                            if candidates:
-                                parts = candidates[0].get("content", {}).get("parts", [])
-                                text = parts[0].get("text", "") if parts else ""
-                                if text:
-                                    yield {"content": text, "done": False, "role": "assistant"}
-                        except Exception:
-                            pass
-                yield {"content": "", "done": True, "role": "assistant"}
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            for g_model in gemini_models:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:streamGenerateContent?alt=sse&key={self.gemini_api_key}"
+                try:
+                    async with client.stream("POST", url, json=payload) as response:
+                        if response.status_code == 200:
+                            async for line in response.aiter_lines():
+                                if line.startswith("data: "):
+                                    data_str = line[6:].strip()
+                                    if not data_str: continue
+                                    try:
+                                        data = json.loads(data_str)
+                                        candidates = data.get("candidates", [])
+                                        if candidates:
+                                            parts = candidates[0].get("content", {}).get("parts", [])
+                                            text = parts[0].get("text", "") if parts else ""
+                                            if text:
+                                                yield {"content": text, "done": False, "role": "assistant"}
+                                    except Exception:
+                                        pass
+                            yield {"content": "", "done": True, "role": "assistant"}
+                            return
+                        else:
+                            logger.warning(f"Gemini model {g_model} returned {response.status_code}, trying next model...")
+                except Exception as e:
+                    logger.warning(f"Gemini {g_model} connection error: {e}")
+                    continue
 
 cloud_provider = CloudLLMProvider()
