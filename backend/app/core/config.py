@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = Field(default="")
     TOGETHER_API_KEY: str = Field(default="")
     TAVILY_API_KEY: str = Field(default_factory=_default_tavily_key)
+    BRAVE_API_KEY: str = Field(default="")
     SERPER_API_KEY: str = Field(default="")
     SERPAPI_API_KEY: str = Field(default="")
     UPLOAD_DIR: str = Field(default="./uploads")
@@ -73,7 +74,7 @@ class Settings(BaseSettings):
     @field_validator(
         "GROQ_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", 
         "OPENROUTER_API_KEY", "OPENAI_API_KEY", "TOGETHER_API_KEY",
-        "TAVILY_API_KEY", "SERPER_API_KEY", "SERPAPI_API_KEY",
+        "TAVILY_API_KEY", "BRAVE_API_KEY", "SERPER_API_KEY", "SERPAPI_API_KEY",
         mode="before"
     )
     @classmethod

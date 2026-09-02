@@ -81,7 +81,17 @@ class WebSearchService:
             except Exception as e:
                 logger.warning(f"Tavily search error: {e}")
 
-        # 2. Serper (Google Search JSON API, if configured)
+        # 2. Brave Search API (if configured)
+        brave_key = getattr(settings, "BRAVE_API_KEY", "")
+        if brave_key:
+            try:
+                brave_res = await self._search_brave(clean_q, brave_key, max_results=max_results)
+                if brave_res:
+                    return "\n".join(brave_res[:max_results])
+            except Exception as e:
+                logger.warning(f"Brave search error: {e}")
+
+        # 3. Serper (Google Search JSON API, if configured)
         serper_key = getattr(settings, "SERPER_API_KEY", "")
         if serper_key:
             try:
@@ -91,7 +101,7 @@ class WebSearchService:
             except Exception as e:
                 logger.warning(f"Serper search error: {e}")
 
-        # 3. SerpAPI (Google Search API, if configured)
+        # 4. SerpAPI (Google Search API, if configured)
         serpapi_key = getattr(settings, "SERPAPI_API_KEY", "")
         if serpapi_key:
             try:
@@ -101,7 +111,7 @@ class WebSearchService:
             except Exception as e:
                 logger.warning(f"SerpAPI search error: {e}")
 
-        # 4. Google News Live RSS Search (Zero-cost, 100% reliable on Cloud/Datacenter IPs)
+        # 5. Google News Live RSS Search (Zero-cost, 100% reliable on Cloud/Datacenter IPs)
         try:
             google_results = await self._search_google_news(clean_q, max_results=max_results)
             if google_results:
@@ -160,6 +170,34 @@ class WebSearchService:
                     content = r.get("content", "").strip()[:160].replace("\n", " ")
                     if content:
                         results.append(f"• {title}: {content}")
+                return results
+        return []
+
+    async def _search_brave(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
+        url = "https://api.search.brave.com/res/v1/web/search"
+        headers = {
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip",
+            "X-Subscription-Token": api_key
+        }
+        params = {"q": query, "count": max_results}
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            res = await client.get(url, headers=headers, params=params)
+            if res.status_code == 200:
+                data = res.json()
+                results = []
+                infobox = data.get("infobox", {}).get("results", [])
+                if infobox and isinstance(infobox, list):
+                    info_desc = infobox[0].get("description") or infobox[0].get("title")
+                    if info_desc:
+                        results.append(f"• Direct Fact: {info_desc}")
+                
+                web_results = data.get("web", {}).get("results", [])
+                for item in web_results[:max_results]:
+                    title = item.get("title", "").strip()
+                    desc = item.get("description", "").strip()[:160].replace("\n", " ")
+                    if desc:
+                        results.append(f"• {title}: {desc}")
                 return results
         return []
 
