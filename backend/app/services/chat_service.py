@@ -87,13 +87,22 @@ class ChatService:
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Searching the live web for current information...'})}\n\n"
             search_snippets = await web_search_service.search(user_message_content)
             if search_snippets:
-                live_web_context = f"\n\n[Live Real-Time Web Search Context]:\n{search_snippets}\n\nUse the live real-time information above to provide an accurate, up-to-date answer."
+                live_web_context = search_snippets
                 last_reasoning_status = "Processing live web results..."
 
-        # Formulate system prompt
-        sys_content = system_prompt or settings.SYSTEM_PROMPT
+        # Formulate system prompt with current live date
+        from datetime import datetime
+        today_str = datetime.now().strftime("%B %d, %Y")
+        base_sys = system_prompt or settings.SYSTEM_PROMPT
+        sys_content = f"{base_sys}\n\nToday's date is {today_str}. Provide accurate, up-to-date information as of {today_str}."
 
         formatted_messages = [{"role": "system", "content": sys_content}]
+
+        if live_web_context:
+            formatted_messages.append({
+                "role": "system",
+                "content": f"[Live Real-Time Web Context as of {today_str}]:\n{live_web_context}\n\nDirective: Use the live real-time web data above to answer the user's question directly and authoritatively. Do not state you have knowledge cutoff limits when live context is provided."
+            })
 
         # Append recent history
         recent_history = messages_db[-settings.MAX_CONTEXT_MESSAGES:]
@@ -105,7 +114,7 @@ class ChatService:
 
         # Inject real-time web search context into the latest user prompt if available
         if live_web_context:
-            formatted_messages[-1]["content"] = f"{formatted_messages[-1]['content']}{live_web_context}"
+            formatted_messages[-1]["content"] = f"{formatted_messages[-1]['content']}\n\n[Live Real-Time Web Search Context]:\n{live_web_context}"
 
         # Append file attachments text to prompt context if present
         if attachments:
