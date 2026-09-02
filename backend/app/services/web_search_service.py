@@ -29,7 +29,7 @@ class WebSearchService:
         q = query.strip()
         q = re.sub(r'iscurrent', 'is current', q, flags=re.IGNORECASE)
         q = re.sub(r'whois', 'who is', q, flags=re.IGNORECASE)
-        q = re.sub(r'tamilnadu', 'tamil nadu', q, flags=re.IGNORECASE)
+        q = re.sub(r'tamilandu|tamilnadu|tamilnad', 'tamil nadu', q, flags=re.IGNORECASE)
         q = re.sub(r'\bcm\b', 'chief minister', q, flags=re.IGNORECASE)
         q = re.sub(r'\bpm\b', 'prime minister', q, flags=re.IGNORECASE)
         return q.strip()

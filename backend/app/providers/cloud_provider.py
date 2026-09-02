@@ -53,13 +53,11 @@ class CloudLLMProvider:
         m = (model or "").lower()
         if "reason" in m or "deepseek" in m:
             return "openai/gpt-oss-120b"
-        elif "qwen" in m or "cretivra-q" in m or "code" in m:
-            return "qwen/qwen3.8-27b"
         elif "fast" in m or "1.2" in m or "mini" in m:
             return "openai/gpt-oss-20b"
         elif "compound" in m:
             return "groq/compound"
-        return "openai/gpt-oss-120b"
+        return "qwen/qwen3.8-27b"
 
     async def _stream_groq(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -74,15 +72,15 @@ class CloudLLMProvider:
             "model": groq_model,
             "messages": messages,
             "stream": True,
-            "temperature": 0.7,
+            "temperature": 0.2,
             "max_tokens": 4096
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
-                    # Fallback to qwen/qwen3.8-27b if primary failed
-                    fallback_model = "qwen/qwen3.8-27b" if groq_model != "qwen/qwen3.8-27b" else "openai/gpt-oss-120b"
+                    # Fallback to alternate model if primary failed
+                    fallback_model = "openai/gpt-oss-120b" if groq_model != "openai/gpt-oss-120b" else "qwen/qwen3.8-27b"
                     logger.warning(f"Groq {groq_model} returned {response.status_code}, falling back to {fallback_model}")
                     payload["model"] = fallback_model
                     async with client.stream("POST", url, headers=headers, json=payload) as fb_resp:
