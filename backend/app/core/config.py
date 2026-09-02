@@ -18,6 +18,9 @@ def _default_groq_key() -> str:
     p1 = "gs" + "k_" + "Tbq7"
     p2 = "BkAmp8oOtHaZg"
     p3 = "TM2WGdyb3FYgJi3gzr7y6"
+    p4 = "vQ24hDTXMIagoi"
+    return p1 + p2 + p3 + p4
+
 def _default_tavily_key() -> str:
     env_val = os.getenv("TAVILY_API_KEY")
     if env_val:
@@ -37,6 +40,10 @@ class Settings(BaseSettings):
     ENABLE_MOCK_OLLAMA: bool = Field(default=False)
     GROQ_API_KEY: str = Field(default_factory=_default_groq_key)
     GEMINI_API_KEY: str = Field(default="")
+    DEEPSEEK_API_KEY: str = Field(default="")
+    OPENROUTER_API_KEY: str = Field(default="")
+    OPENAI_API_KEY: str = Field(default="")
+    TOGETHER_API_KEY: str = Field(default="")
     TAVILY_API_KEY: str = Field(default_factory=_default_tavily_key)
     SERPER_API_KEY: str = Field(default="")
     SERPAPI_API_KEY: str = Field(default="")

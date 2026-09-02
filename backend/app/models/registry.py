@@ -112,6 +112,42 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
         version="1.0",
         category="Reasoning"
     ),
+    "cretivra-coder": CretivraModel(
+        id="cretivra-coder",
+        display_name="Cretivra Coder Pro",
+        description="State-of-the-art coding, full-stack architecture, and debugging specialist",
+        provider="ollama",
+        underlying_model="qwen2.5-coder:32b",
+        capabilities=["chat", "code", "architecture"],
+        context_length=131072,
+        enabled=True,
+        version="2.5",
+        category="Code Specialist"
+    ),
+    "cretivra-omni": CretivraModel(
+        id="cretivra-omni",
+        display_name="Cretivra Omni 4",
+        description="Multimodal frontier intelligence with live web grounding and reasoning",
+        provider="ollama",
+        underlying_model="gpt-4o",
+        capabilities=["chat", "code", "vision", "reasoning"],
+        context_length=128000,
+        enabled=True,
+        version="4.0",
+        category="Omni Intelligence"
+    ),
+    "cretivra-deepseek": CretivraModel(
+        id="cretivra-deepseek",
+        display_name="Cretivra DeepSeek R1",
+        description="Frontier open-weights deep reasoning engine with chain-of-thought tokens",
+        provider="ollama",
+        underlying_model="deepseek-r1:70b",
+        capabilities=["chat", "reasoning", "math", "code"],
+        context_length=131072,
+        enabled=True,
+        version="1.0",
+        category="Deep Reasoning"
+    ),
     "cretivra-flux": CretivraModel(
         id="cretivra-flux",
         display_name="Cretivra FLUX.1 Art",

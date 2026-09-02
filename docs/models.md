@@ -13,11 +13,14 @@ Cretivra AI uses a proprietary model registry and branding abstraction layer. Th
 | `cretivra-1` | **Cretivra 1** | `llama3` / `llama3.3` | `openai/gpt-oss-120b` | `["chat", "code"]` | Balanced | 128,000 tokens |
 | `cretivra-1.1` | **Cretivra 1.1** | `llama3.1` | `openai/gpt-oss-120b` | `["chat", "code", "multimodal"]` | Advanced | 128,000 tokens |
 | `cretivra-1.2` | **Cretivra 1.2** | `llama3.2` | `openai/gpt-oss-20b` | `["chat", "fast"]` | Fast | 128,000 tokens |
-| `cretivra-q` | **Cretivra Q** | `qwen2.5` | `qwen/qwen3.8-27b` | `["chat", "code", "multilingual"]` | Code & Fast | 128,000 tokens |
+| `cretivra-q` | **Cretivra Q** | `qwen2.5` | `openai/gpt-oss-120b` | `["chat", "code", "multilingual"]` | Code & Fast | 128,000 tokens |
+| `cretivra-coder` | **Cretivra Coder Pro** | `qwen2.5-coder:32b` | `openai/gpt-oss-120b` / OpenRouter | `["chat", "code", "architecture"]` | Code Specialist | 131,072 tokens |
+| `cretivra-omni` | **Cretivra Omni 4** | `gpt-4o` | `openai/gpt-oss-120b` / Gemini 3.7 | `["chat", "code", "vision", "reasoning"]` | Omni Intelligence | 128,000 tokens |
+| `cretivra-deepseek` | **Cretivra DeepSeek R1** | `deepseek-r1:70b` | DeepSeek API / OpenRouter | `["chat", "reasoning", "math", "code"]` | Deep Reasoning | 131,072 tokens |
 | `cretivra-m` | **Cretivra M** | `mistral` | `groq/compound` | `["chat", "creative"]` | Creative | 32,768 tokens |
 | `cretivra-g` | **Cretivra G** | `gemma` / `gemma2` | `openai/gpt-oss-20b` | `["chat"]` | Balanced | 8,192 tokens |
-| `cretivra-p` | **Cretivra P** | `phi` / `phi-3` | `groq/compound-mini` | `["chat", "logic"]` | Compact | 16,384 tokens |
-| `cretivra-reason` | **Cretivra Reason** | `deepseek-r1` | `openai/gpt-oss-120b` / `qwen3.8` | `["chat", "reasoning", "code"]` | Reasoning | 128,000 tokens |
+| `cretivra-p` | **Cretivra P** | `phi` / `phi-3` | `openai/gpt-oss-20b` | `["chat", "logic"]` | Compact | 16,384 tokens |
+| `cretivra-reason` | **Cretivra Reason** | `deepseek-r1` | `openai/gpt-oss-120b` | `["chat", "reasoning", "code"]` | Reasoning | 128,000 tokens |
 
 ---
 
