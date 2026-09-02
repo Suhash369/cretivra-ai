@@ -8,6 +8,7 @@ from app.models.registry import registry
 from app.providers.ollama import ollama_provider
 from app.services.conversation_service import conversation_service
 from app.services.image_service import image_service
+from app.services.web_search_service import web_search_service
 from app.core.logging import logger
 
 class ChatService:
@@ -78,6 +79,17 @@ class ChatService:
             )
             return
 
+        # Check if query requires real-time web search
+        live_web_context = ""
+        last_reasoning_status = "Thinking..." if "reason" in model_id or "deepseek" in underlying_model else None
+
+        if web_search_service.should_search_web(user_message_content):
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Searching the live web for current information...'})}\n\n"
+            search_snippets = await web_search_service.search(user_message_content)
+            if search_snippets:
+                live_web_context = f"\n\n[Live Real-Time Web Search Context]:\n{search_snippets}\n\nUse the live real-time information above to provide an accurate, up-to-date answer."
+                last_reasoning_status = "Processing live web results..."
+
         # Formulate system prompt
         sys_content = system_prompt or settings.SYSTEM_PROMPT
 
@@ -91,6 +103,10 @@ class ChatService:
                 "content": m.content
             })
 
+        # Inject real-time web search context into the latest user prompt if available
+        if live_web_context:
+            formatted_messages[-1]["content"] = f"{formatted_messages[-1]['content']}{live_web_context}"
+
         # Append file attachments text to prompt context if present
         if attachments:
             attach_texts = []
@@ -99,10 +115,9 @@ class ChatService:
                     attach_texts.append(f"--- File Attachment ({att.get('filename')}) ---\n{att.get('extracted_text')}\n--- End File ---")
             if attach_texts:
                 combined_attachment_str = "\n\n".join(attach_texts)
-                formatted_messages[-1]["content"] = f"{user_message_content}\n\n[Attached Context]:\n{combined_attachment_str}"
+                formatted_messages[-1]["content"] = f"{formatted_messages[-1]['content']}\n\n[Attached Context]:\n{combined_attachment_str}"
 
         full_assistant_reply = ""
-        last_reasoning_status = "Thinking..." if "reason" in model_id or "deepseek" in underlying_model else None
 
         try:
             async for chunk in ollama_provider.stream_chat(underlying_model, formatted_messages):
