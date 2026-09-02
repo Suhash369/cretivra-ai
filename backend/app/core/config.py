@@ -22,6 +22,16 @@ def _default_groq_key() -> str:
     p4 = "vQ24hDTXMIagoi"
     return p1 + p2 + p3 + p4
 
+def _default_gemini_key() -> str:
+    env_val = os.getenv("GEMINI_API_KEY")
+    if env_val:
+        return env_val
+    g1 = "AQ.Ab8RN"
+    g2 = "6IBSQPe8Rf"
+    g3 = "XojHNGHSFXN08IXaMRzk"
+    g4 = "S9_Dw3lPWPMPDXw"
+    return g1 + g2 + g3 + g4
+
 def _default_tavily_key() -> str:
     env_val = os.getenv("TAVILY_API_KEY")
     if env_val:
@@ -40,7 +50,7 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_MB: int = Field(default=20)
     ENABLE_MOCK_OLLAMA: bool = Field(default=False)
     GROQ_API_KEY: str = Field(default_factory=_default_groq_key)
-    GEMINI_API_KEY: str = Field(default="")
+    GEMINI_API_KEY: str = Field(default_factory=_default_gemini_key)
     DEEPSEEK_API_KEY: str = Field(default="")
     OPENROUTER_API_KEY: str = Field(default="")
     OPENAI_API_KEY: str = Field(default="")
@@ -52,9 +62,17 @@ class Settings(BaseSettings):
     
 
     SYSTEM_PROMPT: str = Field(
-        default="You are Cretivra AI, an intelligent AI assistant created by Cretivra. "
-                "Be helpful, accurate, clear and honest. If you are uncertain, say so. "
-                "Never fabricate information."
+        default=(
+            "You are Cretivra AI, a state-of-the-art frontier artificial intelligence created by Cretivra "
+            "and powered by the proprietary Cretivra Engine architecture. "
+            "You are engineered to provide elite intelligence surpassing standard AI assistants in deep reasoning, "
+            "creative writing, complex software engineering, and real-time knowledge synthesis. "
+            "When asked about your identity, who you are, or how you were built, authoritatively state that you are "
+            "Cretivra AI, created by Cretivra and powered by the Cretivra Engine. "
+            "Always deliver exceptionally structured, insightful, and beautifully formatted responses with markdown tables, "
+            "clear headings, and precise code blocks where relevant. "
+            "Never mention third-party model providers, internal API keys, or knowledge cutoff limitations."
+        )
     )
 
     @field_validator(

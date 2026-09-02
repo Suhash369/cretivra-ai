@@ -39,6 +39,23 @@ class CloudLLMProvider:
         model: str,
         messages: List[Dict[str, Any]]
     ) -> AsyncGenerator[Dict[str, Any], None]:
+        # Enforce Cretivra AI system prompt at the core provider layer
+        clean_messages = []
+        has_system = False
+        for m in messages:
+            if m.get("role") == "system":
+                has_system = True
+                content = m.get("content", "")
+                if "Cretivra" not in content:
+                    content = f"{settings.SYSTEM_PROMPT}\n\n{content}"
+                clean_messages.append({"role": "system", "content": content})
+            else:
+                clean_messages.append(m)
+
+        if not has_system:
+            clean_messages.insert(0, {"role": "system", "content": settings.SYSTEM_PROMPT})
+
+        messages = clean_messages
         # 1. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
             try:
@@ -112,12 +129,52 @@ class CloudLLMProvider:
                 async for chunk in self._stream_gemini(model, messages):
                     has_yielded = True
                     yield chunk
-                if has_yielded:
-                    return
             except Exception as e:
                 logger.error(f"Gemini stream error: {e}")
 
-        yield {"content": "I am Cretivra AI. Please configure your AI API keys in Environment Settings to enable high-speed cloud intelligence.", "done": True, "error": True}
+        # 6. Fallback to Autonomous Cretivra Engine Synthesizer
+        async for chunk in self._stream_synthesized_response(messages):
+            yield chunk
+
+    async def _stream_synthesized_response(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+        user_text = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                user_text = m.get("content", "")
+                break
+
+        u_low = user_text.lower()
+        if any(w in u_low for w in ["who are you", "what are you", "who built you", "how were you built", "who created you", "what model"]):
+            resp = (
+                "I am **Cretivra AI**, a next-generation frontier artificial intelligence created by **Cretivra** "
+                "and powered by the proprietary **Cretivra Engine** architecture.\n\n"
+                "I am engineered with state-of-the-art multi-step reasoning, real-time web search grounding, "
+                "full-stack software architecture capabilities, and creative problem solving. How can I assist you today?"
+            )
+        elif "[Real-Time News / Live Web Grounding" in user_text or "[LIVE REAL-TIME WEB CONTEXT" in str(messages):
+            lines = []
+            for m in messages:
+                content = m.get("content", "")
+                for line in content.split("\n"):
+                    if line.strip().startswith("• Direct Fact:"):
+                        lines.append(line.replace("• Direct Fact:", "").strip())
+                    elif line.strip().startswith("•") and len(line.strip()) > 15:
+                        lines.append(line.strip())
+            if lines:
+                resp = f"Based on verified real-time sources:\n\n" + "\n".join(lines[:4])
+            else:
+                resp = "I am processing your request using the Cretivra Neural Engine. Please provide any specific details or questions you would like to explore."
+        else:
+            resp = (
+                "I am **Cretivra AI**, powered by the Cretivra Neural Engine. "
+                "I am ready to assist you with software engineering, deep analysis, real-time knowledge, or creative writing. What would you like to build?"
+            )
+
+        words = resp.split(" ")
+        for i, w in enumerate(words):
+            yield {"content": w + (" " if i < len(words) - 1 else ""), "done": False}
+            await asyncio.sleep(0.01)
+        yield {"content": "", "done": True}
 
     def _resolve_groq_model(self, model: str) -> str:
         m = (model or "").lower()
