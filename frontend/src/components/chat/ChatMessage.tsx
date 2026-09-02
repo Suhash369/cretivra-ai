@@ -114,7 +114,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 remarkPlugins={[remarkGfm]}
                 components={{
                   img({ src, alt }) {
-                    return <GeneratedImageCard src={src} alt={alt} />;
+                    const imageSrc = typeof src === 'string' ? src : undefined;
+                    return <GeneratedImageCard src={imageSrc} alt={alt} />;
                   },
                   code({ inline, className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || '');

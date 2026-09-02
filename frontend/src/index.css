@@ -23,7 +23,8 @@
     background-color: var(--bg-base);
     color: var(--text);
     font-family: -apple-system, "Inter", "Segoe UI", Roboto, sans-serif;
-    overflow: hidden;
+    overflow-x: hidden;
+    min-height: 100vh;
     -webkit-font-smoothing: antialiased;
   }
 }

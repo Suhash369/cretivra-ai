@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -101,7 +103,8 @@ function renderMessageContent(text: string) {
         remarkPlugins={[remarkGfm]}
         components={{
           img({ src, alt }) {
-            return <GeneratedImageCard src={src} alt={alt} />;
+            const imageSrc = typeof src === 'string' ? src : undefined;
+            return <GeneratedImageCard src={imageSrc} alt={alt} />;
           },
           code({ inline, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
