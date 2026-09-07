@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { OpenStudioButton, StudioScrollWatcher } from '../components/common/OpenStudioButton';
 import '../index.css';
 
 export const metadata: Metadata = {
@@ -97,7 +98,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark scroll-smooth">
       <head>
         <script
           type="application/ld+json"
@@ -110,6 +111,7 @@ export default function RootLayout({
           <div className="cv-orb cv-orb-1" />
           <div className="cv-orb cv-orb-2" />
         </div>
+        <StudioScrollWatcher />
 
         {/* Global SEO / Brand Header Bar */}
         <header className="sticky top-0 z-50 w-full border-b border-[#232d45]/70 bg-[#060911]/85 backdrop-blur-md">
@@ -157,12 +159,9 @@ export default function RootLayout({
             </nav>
 
             <div className="flex items-center gap-3">
-              <Link
-                href="#chat-workspace"
-                className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all"
-              >
+              <OpenStudioButton className="inline-flex items-center justify-center px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all">
                 Open Studio
-              </Link>
+              </OpenStudioButton>
             </div>
           </div>
         </header>

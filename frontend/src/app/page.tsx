@@ -229,7 +229,7 @@ export default function HomePage() {
       {/* Interactive AI Chat & Image Studio Workspace */}
       <section
         id="chat-workspace"
-        className="relative border-t border-b border-[#232d45] bg-[#060911]"
+        className="relative border-t border-b border-[#232d45] bg-[#060911] scroll-mt-14 sm:scroll-mt-16"
       >
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[#232d45]/60 mb-2">
