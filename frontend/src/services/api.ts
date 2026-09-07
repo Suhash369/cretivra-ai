@@ -1,6 +1,14 @@
 import type { HealthStatus, SystemSettings, CretivraModel, Conversation, GroupedConversations, Attachment } from '../types';
 
-const API_BASE = '/api';
+export const API_BASE = (() => {
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BACKEND_URL) {
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL.replace(/\/$/, '')}/api`;
+  }
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_BACKEND_URL) {
+    return `${(import.meta as any).env.VITE_BACKEND_URL.replace(/\/$/, '')}/api`;
+  }
+  return '/api';
+})();
 
 export function getAuthToken(): string | null {
   try {

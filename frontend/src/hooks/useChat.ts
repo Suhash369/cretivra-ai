@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Message, Attachment, CretivraModel } from '../types';
-import { getConversation, uploadFile, fetchModels } from '../services/api';
+import { getConversation, uploadFile, fetchModels, API_BASE } from '../services/api';
 import { readSSEStream } from '../services/streaming';
 
 export function useChat() {
@@ -90,7 +90,7 @@ export function useChat() {
       abortControllerRef.current = controller;
 
       try {
-        await readSSEStream('/api/chat/stream', {
+        await readSSEStream(`${API_BASE}/chat/stream`, {
           method: 'POST',
           body: {
             conversation_id: activeConversationId,
@@ -169,7 +169,7 @@ export function useChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      await readSSEStream(`/api/messages/${messageId}`, {
+      await readSSEStream(`${API_BASE}/messages/${messageId}`, {
         method: 'PATCH',
         body: { message: newContent.trim() },
         signal: controller.signal,
@@ -217,7 +217,7 @@ export function useChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      await readSSEStream(`/api/messages/${assistantMessageId}/regenerate`, {
+      await readSSEStream(`${API_BASE}/messages/${assistantMessageId}/regenerate`, {
         method: 'POST',
         signal: controller.signal,
         onChunk: (chunk) => {

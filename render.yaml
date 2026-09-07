@@ -1,12 +1,15 @@
 services:
   - type: web
-    name: cretivra-ai
-    env: docker
+    name: cretivra-ai-backend
+    env: python
     region: oregon
     plan: free
-    dockerfilePath: Dockerfile
-    dockerContext: .
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
     envVars:
+      - key: PYTHONPATH
+        value: backend
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
@@ -15,17 +18,9 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      - key: DEEPSEEK_API_KEY
-        sync: false
-      - key: OPENROUTER_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
       - key: TAVILY_API_KEY
         sync: false
-      - key: BRAVE_API_KEY
-        sync: false
-      - key: SERPER_API_KEY
-        sync: false
-      - key: OLLAMA_BASE_URL
-        value: http://host.docker.internal:11434
+      - key: DEFAULT_MODEL
+        value: cretivra-1
+      - key: ENABLE_MOCK_OLLAMA
+        value: "false"
