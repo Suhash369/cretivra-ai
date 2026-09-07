@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database.database import get_db
-from app.database.models import UserDB
+from app.database.models import UserDB, MessageDB
 from app.api.auth import get_optional_user
 from app.services.chat_service import chat_service
 from app.services.conversation_service import conversation_service
@@ -70,20 +70,26 @@ async def edit_message(
 ):
     """
     Edits a user message, truncates later messages, and streams fresh assistant response.
+    Validates ownership BEFORE mutating any database records.
     """
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
 
-    try:
-        result = conversation_service.edit_message(db, message_id, payload.message.strip())
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    # 1. Pre-validation and ownership check BEFORE mutation
+    target_msg = db.query(MessageDB).filter(MessageDB.id == message_id).first()
+    if not target_msg:
+        raise HTTPException(status_code=404, detail="Message not found.")
 
-    conv_id = result["conversation_id"]
-    conv = conversation_service.get_conversation(db, conv_id)
-    if conv and conv.user_id and (not current_user or current_user.id != conv.user_id):
+    conv = conversation_service.get_conversation(db, target_msg.conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to this conversation.")
 
+    # 2. Safely mutate message now that authorization is verified
+    result = conversation_service.edit_message(db, message_id, payload.message.strip())
+    conv_id = result["conversation_id"]
     model_id = conv.model_id if conv else "cretivra-1"
 
     generator = chat_service.generate_response_stream(
@@ -103,16 +109,23 @@ async def regenerate_message(
 ):
     """
     Regenerates assistant response for a conversation starting after the preceding user prompt.
+    Validates ownership BEFORE mutating any database records.
     """
-    try:
-        result = conversation_service.prepare_regeneration(db, message_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    # 1. Pre-validation and ownership check BEFORE mutation
+    target_msg = db.query(MessageDB).filter(MessageDB.id == message_id).first()
+    if not target_msg:
+        raise HTTPException(status_code=404, detail="Target message not found.")
 
-    conv_id = result["conversation_id"]
-    conv = conversation_service.get_conversation(db, conv_id)
-    if conv and conv.user_id and (not current_user or current_user.id != conv.user_id):
+    conv = conversation_service.get_conversation(db, target_msg.conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to this conversation.")
+
+    # 2. Safely prepare regeneration now that authorization is verified
+    result = conversation_service.prepare_regeneration(db, message_id)
+    conv_id = result["conversation_id"]
 
     if not conv or not conv.messages:
         raise HTTPException(status_code=400, detail="No preceding user message to regenerate.")

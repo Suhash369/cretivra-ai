@@ -1,0 +1,15 @@
+{
+  "name": "cretivra-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cretivra AI - Multi-User Privacy-First AI Platform",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:vite": "npm --prefix frontend run dev:vite",
+    "build": "npm --prefix frontend run build",
+    "build:vite": "npm --prefix frontend run build:vite",
+    "lint": "npm --prefix frontend run lint",
+    "backend": "uvicorn app.main:app --reload --port 8000",
+    "test": "pytest"
+  }
+}

@@ -1,0 +1,33 @@
+# Git & VCS
+.git/
+.gitignore
+
+# Python virtual environment & caches
+backend/venv/
+venv/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+
+# Node.js modules & caches
+frontend/node_modules/
+node_modules/
+.npm/
+frontend/.next/
+
+# Local data & databases
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+scratch/
+.env
+.env.local
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
