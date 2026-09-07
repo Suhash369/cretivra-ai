@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
       process.env.BACKEND_URL ||
       process.env.NEXT_PUBLIC_BACKEND_URL ||
       (process.env.NODE_ENV === 'production'
-        ? 'https://cretivra-ai.onrender.com'
+        ? 'https://cretivra-ai-backend.onrender.com'
         : 'http://127.0.0.1:8000');
 
     return [
