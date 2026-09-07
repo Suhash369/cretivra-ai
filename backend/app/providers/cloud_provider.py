@@ -61,22 +61,22 @@ class CloudLLMProvider:
 
         # 2. Try OpenRouter API if configured
         if self.openrouter_api_key:
-            try:
-                or_model = self._resolve_openrouter_model(model)
-                has_yielded = False
-                async for chunk in self._stream_openai_compatible(
-                    url="https://openrouter.ai/api/v1/chat/completions",
-                    api_key=self.openrouter_api_key,
-                    model=or_model,
-                    messages=messages,
-                    extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Cretivra AI"}
-                ):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.error(f"OpenRouter stream error: {e}")
+            for or_model in self._resolve_openrouter_models(model):
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_openai_compatible(
+                        url="https://openrouter.ai/api/v1/chat/completions",
+                        api_key=self.openrouter_api_key,
+                        model=or_model,
+                        messages=messages,
+                        extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Cretivra AI"}
+                    ):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.warning(f"OpenRouter ({or_model}) stream error: {e}")
 
         # 3. Try Groq API (ultra-fast inference)
         if self.groq_api_key:
@@ -170,17 +170,19 @@ class CloudLLMProvider:
             return "groq/compound"
         return "openai/gpt-oss-120b"
 
-    def _resolve_openrouter_model(self, model: str) -> str:
+    def _resolve_openrouter_models(self, model: str) -> List[str]:
         m = (model or "").lower()
+        if "free" in m:
+            return [model, "openrouter/free"]
         if "reason" in m or "deepseek" in m:
-            return "deepseek/deepseek-r1"
+            return ["deepseek/deepseek-r1", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "openrouter/free"]
         elif "coder" in m or "code" in m:
-            return "qwen/qwen-2.5-coder-32b-instruct"
+            return ["qwen/qwen-2.5-coder-32b-instruct", "cohere/north-mini-code:free", "openrouter/free"]
         elif "omni" in m or "4o" in m:
-            return "openai/gpt-4o"
+            return ["openai/gpt-4o", "openrouter/free"]
         elif "claude" in m:
-            return "anthropic/claude-3.5-sonnet"
-        return "meta-llama/llama-3.3-70b-instruct"
+            return ["anthropic/claude-3.5-sonnet", "openrouter/free"]
+        return ["meta-llama/llama-3.3-70b-instruct", "openrouter/free"]
 
     async def _stream_openai_compatible(
         self,
@@ -224,10 +226,10 @@ class CloudLLMProvider:
                             data = json.loads(data_str)
                             delta = data.get("choices", [{}])[0].get("delta", {})
                             content = delta.get("content", "")
-                            # Also stream reasoning tokens if provided by DeepSeek / o1
+                            # Stream reasoning status if provided by DeepSeek / o1
                             reasoning = delta.get("reasoning_content", "")
                             if reasoning:
-                                yield {"content": f"<think>\n{reasoning}\n</think>\n" if not content else "", "reasoning": reasoning, "done": False}
+                                yield {"content": "", "reasoning_status": "Thinking...", "done": False}
                             if content:
                                 yield {"content": content, "done": False}
                         except Exception:
