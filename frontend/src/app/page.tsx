@@ -100,7 +100,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="/#chat-workspace"
+              href="/studio"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all"
@@ -243,9 +243,19 @@ export default function HomePage() {
                 Asura AI by Cretivra Intelligence Studio
               </h2>
             </div>
-            <div className="text-xs text-gray-400 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              Direct access to frontier models, web search grounding &amp; image creation
+            <div className="text-xs text-gray-400 flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                Direct access to frontier models, web search grounding &amp; image creation
+              </span>
+              <a
+                href="/studio"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold border border-cyan-500/30 transition-all"
+              >
+                Open Fullscreen Studio &nearr;
+              </a>
             </div>
           </div>
         </div>
@@ -297,7 +307,7 @@ export default function HomePage() {
           </p>
           <div className="pt-2 flex justify-center gap-3">
             <a
-              href="/#chat-workspace"
+              href="/studio"
               target="_blank"
               rel="noopener noreferrer"
               className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-[#060911] font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all"

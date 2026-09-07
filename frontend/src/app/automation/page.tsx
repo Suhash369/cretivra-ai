@@ -58,7 +58,7 @@ export default function AutomationPage() {
         </p>
         <div className="pt-2 flex justify-center gap-4">
           <Link
-            href="/#chat-workspace"
+            href="/studio"
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition-all"

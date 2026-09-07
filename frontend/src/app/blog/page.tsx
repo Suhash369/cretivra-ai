@@ -198,7 +198,7 @@ export default function BlogHubPage() {
                 {article.serviceLabel} &rarr;
               </Link>
               <Link
-                href="/#chat-workspace"
+                href="/studio"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[11px] text-gray-400 hover:text-white transition-colors"

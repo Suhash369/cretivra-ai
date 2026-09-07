@@ -8,6 +8,7 @@ interface OpenStudioButtonProps {
   id?: string;
   target?: string;
   rel?: string;
+  href?: string;
 }
 
 export function OpenStudioButton({
@@ -16,11 +17,12 @@ export function OpenStudioButton({
   id,
   target = '_blank',
   rel = 'noopener noreferrer',
+  href = '/studio',
 }: OpenStudioButtonProps) {
   return (
     <a
       id={id}
-      href="/#chat-workspace"
+      href={href}
       target={target}
       rel={rel}
       className={className}
