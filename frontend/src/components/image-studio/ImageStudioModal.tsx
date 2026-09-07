@@ -189,7 +189,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white flex items-center gap-2">
-                Cretivra AI Image Studio
+                Asura AI by Cretivra Image Studio
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-950 text-purple-300 border border-purple-700/60 font-mono">
                   100% Free • FLUX.1 & SDXL
                 </span>

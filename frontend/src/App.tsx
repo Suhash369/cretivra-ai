@@ -55,7 +55,7 @@ const SUGGESTIONS = [
     title: 'Write something',
     sub: 'Draft a launch announcement or strategic proposal',
     icon: Search,
-    prompt: 'Draft a clean product launch email announcement for Cretivra AI platform.',
+    prompt: 'Draft a clean product launch email announcement for Asura AI by Cretivra platform.',
   },
   {
     title: 'Debug code',
@@ -257,7 +257,7 @@ export function App() {
       <div className={`cv-sidebar ${sidebarOpen ? '' : 'closed'}`}>
         <div className="cv-sb-head">
           <CretivraMark size={22} />
-          <span style={{ fontWeight: 600, fontSize: 13.5 }}>Cretivra</span>
+          <span style={{ fontWeight: 600, fontSize: 13.5 }}>Asura AI by Cretivra</span>
           <div style={{ flex: 1 }} />
           <button className="cv-icon-btn" onClick={() => setSidebarOpen(false)} title="Collapse sidebar">
             <PanelLeftClose size={15} />
@@ -302,7 +302,7 @@ export function App() {
           )}
           <div className="cv-brand">
             {!sidebarOpen && <CretivraMark size={20} />}
-            <span className="cv-gradient-text">Cretivra AI</span>
+            <span className="cv-gradient-text">Asura AI by Cretivra</span>
           </div>
 
           {/* Model Selector Pill */}
@@ -587,7 +587,7 @@ export function App() {
             </div>
           </div>
           <div className="cv-hint">
-            {isCurrentImg ? 'Cretivra FLUX.1 Art Studio generates visuals in real time at zero cost.' : 'Cretivra AI processes queries locally. Verify important output.'}
+            {isCurrentImg ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.' : 'Asura AI by Cretivra processes queries with real-time intelligence. Verify important output.'}
           </div>
         </div>
       </div>

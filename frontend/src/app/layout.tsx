@@ -5,11 +5,11 @@ import '../index.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://ai.cretivra.com'),
   title: {
-    default: 'Cretivra AI | AI Agents & Business Automation',
-    template: '%s | Cretivra AI',
+    default: 'Asura AI by Cretivra | AI Agents & Business Automation',
+    template: '%s | Asura AI by Cretivra',
   },
   description:
-    'Cretivra AI builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale. Get started today.',
+    'Asura AI by Cretivra builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale. Get started today.',
   keywords: [
     'AI automation company',
     'AI agents for business',
@@ -21,11 +21,12 @@ export const metadata: Metadata = {
     'AI agent development company',
     'business process automation with AI',
     'enterprise AI solutions provider',
-    'Cretivra AI',
+    'Asura AI by Cretivra',
+    'Cretivra',
   ],
-  authors: [{ name: 'Cretivra AI' }],
-  creator: 'Cretivra AI',
-  publisher: 'Cretivra AI',
+  authors: [{ name: 'Asura AI by Cretivra' }],
+  creator: 'Asura AI by Cretivra',
+  publisher: 'Asura AI by Cretivra',
   robots: {
     index: true,
     follow: true,
@@ -41,24 +42,24 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://ai.cretivra.com',
-    siteName: 'Cretivra AI',
-    title: 'Cretivra AI | AI Agents & Business Automation',
+    siteName: 'Asura AI by Cretivra',
+    title: 'Asura AI by Cretivra | AI Agents & Business Automation',
     description:
-      'Cretivra AI builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale.',
+      'Asura AI by Cretivra builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale.',
     images: [
       {
         url: '/logo.png',
         width: 1200,
         height: 630,
-        alt: 'Cretivra AI — Think Beyond',
+        alt: 'Asura AI by Cretivra — Think Beyond',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cretivra AI | AI Agents & Business Automation',
+    title: 'Asura AI by Cretivra | AI Agents & Business Automation',
     description:
-      'Cretivra AI builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale.',
+      'Asura AI by Cretivra builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale.',
     images: ['/logo.png'],
     creator: '@cretivra',
   },
@@ -74,11 +75,11 @@ export const metadata: Metadata = {
 const orgSchema = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  name: 'Cretivra AI',
+  name: 'Asura AI by Cretivra',
   url: 'https://ai.cretivra.com',
   logo: 'https://ai.cretivra.com/logo.png',
   description:
-    'Cretivra AI turns AI into practical products, intelligent agents, and business automation.',
+    'Asura AI by Cretivra turns AI into practical products, intelligent agents, and business automation.',
   sameAs: [
     'https://linkedin.com/company/cretivra',
     'https://twitter.com/cretivra',
@@ -119,11 +120,12 @@ export default function RootLayout({
             >
               <img
                 src="/logo.png"
-                alt="Cretivra AI Logo"
+                alt="Asura AI by Cretivra Logo"
                 className="w-7 h-7 object-contain rounded-md shadow-sm"
               />
               <span className="text-base font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-cyan-300">
-                CRETIVRA<span className="text-cyan-400 ml-1 font-black">AI</span>
+                ASURA<span className="text-cyan-400 ml-1 font-black">AI</span>
+                <span className="text-xs text-slate-400 font-normal ml-1.5 hidden sm:inline">by Cretivra</span>
               </span>
             </Link>
 
@@ -173,13 +175,13 @@ export default function RootLayout({
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <img src="/logo.png" alt="Cretivra AI" className="w-6 h-6" />
+                <img src="/logo.png" alt="Asura AI by Cretivra" className="w-6 h-6" />
                 <span className="font-extrabold text-sm tracking-wider text-white">
-                  CRETIVRA AI
+                  ASURA AI <span className="text-xs text-cyan-400 font-normal">by Cretivra</span>
                 </span>
               </div>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Cretivra AI turns AI into practical products, intelligent agents,
+                Asura AI by Cretivra turns AI into practical products, intelligent agents,
                 and business automation. Think Beyond.
               </p>
             </div>
@@ -279,7 +281,7 @@ export default function RootLayout({
           </div>
           <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-[#232d45]/60 flex flex-col sm:flex-row justify-between items-center text-[11px] text-gray-500">
             <span>
-              &copy; {new Date().getFullYear()} Cretivra AI. All rights
+              &copy; {new Date().getFullYear()} Asura AI by Cretivra. All rights
               reserved.
             </span>
             <span className="mt-2 sm:mt-0">

@@ -49,7 +49,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onSelectPrompt }) 
         What can I help with today?
       </h1>
       <p className="text-xs sm:text-sm text-gray-400 mb-6 font-medium">
-        Cretivra AI • Local-First Intelligence • Privacy Guaranteed
+        Asura AI by Cretivra • Frontier Intelligence • Privacy Guaranteed
       </p>
 
       {/* 2x2 Suggested Action Cards (ChatGPT Replica Layout) */}

@@ -5,7 +5,7 @@ import { Bot, CheckCircle, ArrowRight, Layers, Users, Zap, Shield } from 'lucide
 export const metadata: Metadata = {
   title: 'AI Agents for Business & Workflow Automation',
   description:
-    'Deploy autonomous AI agents that handle support tickets, process multi-step workflows, and take action across your internal tools. Built by Cretivra AI.',
+    'Deploy autonomous AI agents that handle support tickets, process multi-step workflows, and take action across your internal tools. Built by Asura AI by Cretivra.',
   alternates: {
     canonical: 'https://ai.cretivra.com/ai-agents',
   },
@@ -24,7 +24,7 @@ const serviceSchema = {
   name: 'AI Agent Development for Business',
   provider: {
     '@type': 'Organization',
-    name: 'Cretivra AI',
+    name: 'Asura AI by Cretivra',
     url: 'https://ai.cretivra.com',
   },
   serviceType: 'AI Agent Development & Autonomous Workflows',
@@ -78,7 +78,7 @@ export default function AiAgentsPage() {
           AI Agents for Business That Execute, Not Just Chat
         </h1>
         <p className="text-sm sm:text-base text-gray-300 max-w-3xl mx-auto leading-relaxed">
-          Standard chatbots output text. Cretivra AI agents take action. We design
+          Standard chatbots output text. Asura AI agents by Cretivra take action. We design
           and deploy intelligent agents capable of understanding context, making
           operational decisions, calling internal APIs, and resolving multi-step
           business workflows independently.
@@ -110,7 +110,7 @@ export default function AiAgentsPage() {
               <tr>
                 <th className="p-4 font-bold">Feature</th>
                 <th className="p-4 font-bold text-gray-400">Traditional Chatbot</th>
-                <th className="p-4 font-bold text-cyan-400">Cretivra AI Agent</th>
+                <th className="p-4 font-bold text-cyan-400">Asura AI Agent</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#232d45]/60 text-gray-300">
@@ -184,7 +184,7 @@ export default function AiAgentsPage() {
           Engineered for Enterprise Reliability &amp; Data Privacy
         </h2>
         <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-          Every Cretivra AI agent is built on deterministic tool-use standards,
+          Every Asura AI agent by Cretivra is built on deterministic tool-use standards,
           guardrailed system prompts, and rigorous telemetry. Your corporate data
           remains strictly isolated — deployable on your private cloud, on-premises
           clusters, or secure hybrid infrastructure.
@@ -194,7 +194,7 @@ export default function AiAgentsPage() {
             href="/#chat-workspace"
             className="inline-flex items-center gap-2 text-xs font-bold text-cyan-400 hover:underline"
           >
-            Launch Cretivra AI Studio to test reasoning &rarr;
+            Launch Asura AI Studio to test reasoning &rarr;
           </Link>
         </div>
       </div>

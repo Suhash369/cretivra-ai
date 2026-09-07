@@ -13,9 +13,9 @@ import {
 import App from '../App';
 
 export const metadata: Metadata = {
-  title: 'Cretivra AI | AI Agents & Business Automation',
+  title: 'Asura AI by Cretivra | AI Agents & Business Automation',
   description:
-    'Cretivra AI builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale. Get started today.',
+    'Asura AI by Cretivra builds intelligent agents, automation systems, and custom AI software that help businesses cut manual work and scale. Get started today.',
   alternates: {
     canonical: 'https://ai.cretivra.com',
   },
@@ -27,20 +27,20 @@ const FAQ_ITEMS = [
     a: 'An AI agent is a system that can independently complete tasks or workflows — like handling support tickets or processing data — without needing step-by-step human instructions for each action.',
   },
   {
-    q: 'How is Cretivra AI different from a chatbot company?',
-    a: 'Cretivra AI builds systems that take action, not just answer questions — agents that execute workflows, automation that runs processes, and software built around your specific operations.',
+    q: 'How is Asura AI by Cretivra different from a chatbot company?',
+    a: 'Asura AI by Cretivra builds systems that take action, not just answer questions — agents that execute workflows, automation that runs processes, and software built around your specific operations.',
   },
   {
-    q: 'What industries does Cretivra AI work with?',
-    a: 'Cretivra AI works with businesses across recruitment, customer support, productivity, and analytics, building AI solutions tailored to each company\'s workflows.',
+    q: 'What industries does Asura AI by Cretivra work with?',
+    a: 'Asura AI by Cretivra works with businesses across recruitment, customer support, productivity, and analytics, building AI solutions tailored to each company\'s workflows.',
   },
   {
     q: 'How long does it take to implement an AI automation solution?',
     a: 'Timelines vary by scope, but most engagements move from strategy to a working pilot within a few weeks, followed by iteration based on real usage.',
   },
   {
-    q: 'Do I need technical expertise to use Cretivra AI\'s solutions?',
-    a: 'No — Cretivra AI handles the strategy, development, and implementation, so your team can use the resulting tools without needing in-house AI expertise.',
+    q: 'Do I need technical expertise to use Asura AI by Cretivra\'s solutions?',
+    a: 'No — Asura AI by Cretivra handles the strategy, development, and implementation, so your team can use the resulting tools without needing in-house AI expertise.',
   },
 ];
 
@@ -81,21 +81,21 @@ export default function HomePage() {
           </h1>
 
           <p className="text-sm sm:text-base text-gray-300 max-w-3xl mx-auto leading-relaxed font-normal">
-            Cretivra AI helps businesses move past AI experimentation and into
+            Asura AI by Cretivra helps businesses move past AI experimentation and into
             real, working systems. We design and build generative AI
             applications, autonomous AI agents, and automation workflows that
             remove manual, repetitive work from day-to-day operations — freeing
             teams to focus on higher-value work. Whether you need an AI agent
             that manages customer support tickets end-to-end, a custom AI tool
             built around your internal processes, or a full automation layer
-            connecting your existing software, Cretivra AI handles the
+            connecting your existing software, Asura AI by Cretivra handles the
             strategy, development, and implementation. We work across
             recruitment, customer support, productivity, and analytics use
             cases, building solutions that fit how your business actually
             operates rather than forcing a generic template. The result: less
             manual overhead, faster execution, and AI that&apos;s actually in
             production — not stuck in a pilot. That&apos;s what &ldquo;Think
-            Beyond&rdquo; means at Cretivra AI.
+            Beyond&rdquo; means at Asura AI by Cretivra.
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -238,7 +238,7 @@ export default function HomePage() {
                 Interactive Platform
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-white">
-                Cretivra AI Intelligence Studio
+                Asura AI by Cretivra Intelligence Studio
               </h2>
             </div>
             <div className="text-xs text-gray-400 flex items-center gap-2">
@@ -261,7 +261,7 @@ export default function HomePage() {
             Frequently Asked Questions
           </span>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-            Everything You Need to Know About Cretivra AI
+            Everything You Need to Know About Asura AI by Cretivra
           </h2>
         </div>
 
@@ -290,7 +290,7 @@ export default function HomePage() {
             Ready to Automate Workflows and Scale With AI?
           </h2>
           <p className="text-xs sm:text-sm text-gray-300 max-w-xl mx-auto">
-            Partner with Cretivra AI to design, build, and deploy custom AI agents
+            Partner with Asura AI by Cretivra to design, build, and deploy custom AI agents
             and automation systems engineered for your business operations.
           </p>
           <div className="pt-2 flex justify-center gap-3">
@@ -298,7 +298,7 @@ export default function HomePage() {
               href="#chat-workspace"
               className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-[#060911] font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all"
             >
-              Try Cretivra Studio
+              Try Asura AI Studio
             </a>
             <Link
               href="/ai-agents"

@@ -24,7 +24,7 @@ const serviceSchema = {
   name: 'AI Business Process Automation',
   provider: {
     '@type': 'Organization',
-    name: 'Cretivra AI',
+    name: 'Asura AI by Cretivra',
     url: 'https://ai.cretivra.com',
   },
   serviceType: 'Business Process Automation & Systems Integration',
@@ -52,7 +52,7 @@ export default function AutomationPage() {
         </h1>
         <p className="text-sm sm:text-base text-gray-300 max-w-3xl mx-auto leading-relaxed">
           Manual copy-pasting, invoice reconciliation, and cross-tool data syncing
-          slow your best people down. Cretivra AI builds resilient, automated
+          slow your best people down. Asura AI by Cretivra builds resilient, automated
           pipelines that connect your existing software stack into seamless,
           self-running systems.
         </p>
@@ -104,7 +104,7 @@ export default function AutomationPage() {
           </div>
           <h2 className="text-lg font-bold text-white">Self-Healing Error Recovery</h2>
           <p className="text-xs text-gray-400 leading-relaxed">
-            Traditional RPA breaks whenever a UI layout shifts. Cretivra AI workflows
+            Traditional RPA breaks whenever a UI layout shifts. Asura AI by Cretivra workflows
             use semantic reasoning to detect edge cases, recover gracefully, and flag
             anomalies for human review.
           </p>

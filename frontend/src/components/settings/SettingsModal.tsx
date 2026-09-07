@@ -23,7 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     temperature: 0.7,
     max_context_messages: 30,
     max_output_tokens: 4096,
-    system_prompt: 'You are Cretivra AI, an intelligent AI assistant created by Cretivra.',
+    system_prompt: 'You are Asura AI by Cretivra, an intelligent AI assistant created by Cretivra.',
     theme: 'dark',
     max_upload_size_mb: 20,
   });

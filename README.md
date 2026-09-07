@@ -1,9 +1,9 @@
-# CRETIVRA AI
+# ASURA AI by Cretivra
 
 > **"Your AI. Your data. Your control."**  
 > *Think beyond.*
 
-Cretivra AI is a serious, local-first, privacy-respecting AI platform powered by Ollama with an abstraction layer for Cretivra model registry branding, real-time response streaming, document attachment intelligence, persistent SQLite history, and responsive ChatGPT/Perplexity/Gemini-inspired user experience.
+Asura AI by Cretivra is a serious, frontier and local-first, privacy-respecting AI platform powered by the Cretivra Engine with an abstraction layer for model registry branding, real-time response streaming, document attachment intelligence, persistent history, and responsive user experience.
 
 ---
 

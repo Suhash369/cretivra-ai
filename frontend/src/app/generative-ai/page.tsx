@@ -5,7 +5,7 @@ import { Cpu, Sparkles, Terminal, Database, Lock, ArrowRight } from 'lucide-reac
 export const metadata: Metadata = {
   title: 'Custom AI Software Development & Generative AI Solutions',
   description:
-    'Tailor-fit generative AI applications, enterprise RAG search engines, and custom AI software built by Cretivra AI for your specific business workflows.',
+    'Tailor-fit generative AI applications, enterprise RAG search engines, and custom AI software built by Asura AI by Cretivra for your specific business workflows.',
   alternates: {
     canonical: 'https://ai.cretivra.com/generative-ai',
   },
@@ -24,7 +24,7 @@ const serviceSchema = {
   name: 'Custom Generative AI Software Development',
   provider: {
     '@type': 'Organization',
-    name: 'Cretivra AI',
+    name: 'Asura AI by Cretivra',
     url: 'https://ai.cretivra.com',
   },
   serviceType: 'Generative AI Engineering & Custom Software',
@@ -52,7 +52,7 @@ export default function GenerativeAiPage() {
         </h1>
         <p className="text-sm sm:text-base text-gray-300 max-w-3xl mx-auto leading-relaxed">
           Off-the-shelf consumer chatbots don&apos;t know your products, your policies,
-          or your technical terminology. Cretivra AI engineers tailor-made AI
+          or your technical terminology. Asura AI by Cretivra engineers tailor-made AI
           software, multi-model routing architectures, and document reasoning
           platforms that fit how your company actually works.
         </p>
@@ -61,7 +61,7 @@ export default function GenerativeAiPage() {
             href="/#chat-workspace"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
           >
-            Test Cretivra AI Studio
+            Test Asura AI Studio
           </Link>
           <Link
             href="/ai-agents"
@@ -112,7 +112,7 @@ export default function GenerativeAiPage() {
         </h2>
         <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
           Generic SaaS subscriptions lock you into proprietary pricing, rigid
-          features, and potential data training risks. By partnering with Cretivra AI
+          features, and potential data training risks. By partnering with Asura AI by Cretivra
           to develop custom software, your company owns its intellectual property,
           tailors features to proprietary operations, and scales without per-seat
           penalties.

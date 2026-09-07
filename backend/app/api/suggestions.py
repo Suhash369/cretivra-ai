@@ -71,7 +71,7 @@ def submit_suggestion(
         return SuggestionResponse(
             success=True,
             id=new_suggestion.id,
-            message="Thank you! Your feedback has been saved to Supabase and reviewed by the Cretivra team.",
+            message="Thank you! Your feedback has been saved to Supabase and reviewed by the Asura AI by Cretivra team.",
             created_at=new_suggestion.created_at.isoformat() if new_suggestion.created_at else datetime.utcnow().isoformat()
         )
     except Exception as e:

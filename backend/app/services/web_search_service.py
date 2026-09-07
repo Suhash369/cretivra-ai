@@ -8,7 +8,7 @@ from app.core.logging import logger
 
 class WebSearchService:
     """
-    Production-Grade Multi-Source Search Engine Service for Cretivra AI.
+    Production-Grade Multi-Source Search Engine Service for Asura AI by Cretivra.
     
     Supports:
     1. Tavily AI Search API (Designed specifically for LLM search grounding)

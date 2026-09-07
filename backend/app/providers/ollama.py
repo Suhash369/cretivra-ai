@@ -326,7 +326,7 @@ class OllamaProvider(BaseLLMProvider):
         # 3. Hello / Greetings
         if p in ["hi", "hello", "hey", "greetings", "good morning", "good evening"]:
             return (
-                "Hello! I am **Cretivra AI**, your intelligent assistant.\n\n"
+                "Hello! I am **Asura AI by Cretivra**, your intelligent assistant.\n\n"
                 "How can I help you today? I can write code, analyze data, draft emails, brainstorm ideas, or explain technical topics."
             )
 

@@ -157,7 +157,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         </div>
       </div>
       <p className="text-[11px] text-center text-gray-500 mt-2">
-        Cretivra AI processes queries locally. Verify important output.
+        Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.
       </p>
     </div>
   );

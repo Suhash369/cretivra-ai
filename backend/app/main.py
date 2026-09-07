@@ -12,15 +12,15 @@ from app.api import health, models, conversations, chat, files, settings as sett
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing Cretivra AI Database...")
+    logger.info("Initializing Asura AI by Cretivra Database...")
     init_db()
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     yield
-    logger.info("Shutting down Cretivra AI backend...")
+    logger.info("Shutting down Asura AI by Cretivra backend...")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Cretivra AI — Multi-User Privacy-First AI Platform Architecture",
+    description="Asura AI by Cretivra — Multi-User Privacy-First AI Platform Architecture",
     version="1.0.0",
     lifespan=lifespan
 )

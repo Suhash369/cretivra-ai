@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Tuple, List
 
 class ImageService:
     """
-    State-of-the-Art Image Generation Service for Cretivra AI.
+    State-of-the-Art Image Generation Service for Asura AI by Cretivra.
     Supports FLUX.1, SDXL, Turbo, Anime, and 3D CGI rendering engines.
     100% Free, zero-cost, no API keys or local GPU overhead needed.
     """

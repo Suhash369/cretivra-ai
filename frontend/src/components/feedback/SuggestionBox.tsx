@@ -33,7 +33,7 @@ const CATEGORIES: { id: SuggestionCategory; label: string; icon: React.Component
 const QUICK_TAGS = ['⚡ AI Speed', '🎨 UI Design', '🧠 Accuracy', '🖼️ Image Studio', '📱 Mobile Experience'];
 
 const PLACEHOLDERS: Record<SuggestionCategory, string> = {
-  suggestion: 'What improvement or idea would make Cretivra AI even better for you?',
+  suggestion: 'What improvement or idea would make Asura AI by Cretivra even better for you?',
   feature: 'Describe the feature, tool, or integration you would love to see built...',
   bug: 'What happened? Describe the issue and steps to reproduce...',
   comment: 'Share your thoughts, impressions, or feedback with the Cretivra team...',

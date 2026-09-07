@@ -69,7 +69,7 @@ class CloudLLMProvider:
                         api_key=self.openrouter_api_key,
                         model=or_model,
                         messages=messages,
-                        extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Cretivra AI"}
+                        extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
                     ):
                         has_yielded = True
                         yield chunk
@@ -132,7 +132,7 @@ class CloudLLMProvider:
         u_low = user_text.lower()
         if any(w in u_low for w in ["who are you", "what are you", "who built you", "how were you built", "who created you", "what model"]):
             resp = (
-                "I am **Cretivra AI**, a next-generation frontier artificial intelligence created by **Cretivra** "
+                "I am **Asura AI by Cretivra**, a next-generation frontier artificial intelligence created by **Cretivra** "
                 "and powered by the proprietary **Cretivra Engine** architecture.\n\n"
                 "I am engineered with state-of-the-art multi-step reasoning, real-time web search grounding, "
                 "full-stack software architecture capabilities, and creative problem solving. How can I assist you today?"
@@ -152,7 +152,7 @@ class CloudLLMProvider:
                 resp = "I am processing your request using the Cretivra Neural Engine. Please provide any specific details or questions you would like to explore."
         else:
             resp = (
-                "I am **Cretivra AI**, powered by the Cretivra Neural Engine. "
+                "I am **Asura AI by Cretivra**, powered by the Cretivra Neural Engine. "
                 "I am ready to assist you with software engineering, deep analysis, real-time knowledge, or creative writing. What would you like to build?"
             )
 

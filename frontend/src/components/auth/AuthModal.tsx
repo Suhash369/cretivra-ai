@@ -67,7 +67,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
           <div className="flex items-center gap-2 mb-2">
             <CretivraMark size={36} />
             <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              Cretivra AI
+              Asura AI by Cretivra
             </span>
           </div>
           <p className="text-xs text-slate-400 text-center">

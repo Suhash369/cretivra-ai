@@ -155,7 +155,7 @@ export default function BlogHubPage() {
           Knowledge Hub &amp; Practical Guides
         </div>
         <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
-          Cretivra AI Engineering &amp; Strategy
+          Asura AI by Cretivra Engineering &amp; Strategy
         </h1>
         <p className="text-sm sm:text-base text-gray-300 max-w-2xl mx-auto">
           Insights on deploying practical AI agents, business process automation,

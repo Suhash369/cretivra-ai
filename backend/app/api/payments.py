@@ -98,7 +98,7 @@ def create_upi_order(
     
     # Official NPCI compliant UPI Intent URL
     encoded_name = upi_name.replace(" ", "%20")
-    encoded_note = f"Cretivra%20AI%20Pass%20{order_id}"
+    encoded_note = f"Asura%20AI%20Pass%20{order_id}"
     upi_intent_url = (
         f"upi://pay?pa={upi_id}&pn={encoded_name}&am={PLAN_PRICE_INR:.2f}&cu=INR&tr={order_id}&tn={encoded_note}"
     )
@@ -246,7 +246,7 @@ def verify_upi_payment(
 
     return {
         "success": True,
-        "message": "Payment verified successfully! Cretivra AI is now unlocked for 15 days.",
+        "message": "Payment verified successfully! Asura AI by Cretivra is now unlocked for 15 days.",
         "is_subscribed": True,
         "subscription_expires_at": new_expiry.isoformat(),
         "days_left": PLAN_DURATION_DAYS,
