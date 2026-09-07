@@ -100,7 +100,9 @@ export default function HomePage() {
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             <a
-              href="#chat-workspace"
+              href="/#chat-workspace"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold text-sm shadow-xl shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all"
             >
               Launch Interactive AI Studio
@@ -295,7 +297,9 @@ export default function HomePage() {
           </p>
           <div className="pt-2 flex justify-center gap-3">
             <a
-              href="#chat-workspace"
+              href="/#chat-workspace"
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-[#060911] font-bold text-xs shadow-lg shadow-cyan-500/20 transition-all"
             >
               Try Asura AI Studio

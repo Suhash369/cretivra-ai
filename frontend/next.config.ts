@@ -17,6 +17,25 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/studio',
+        destination: '/#chat-workspace',
+        permanent: false,
+      },
+      {
+        source: '/chat',
+        destination: '/#chat-workspace',
+        permanent: false,
+      },
+      {
+        source: '/chatwork',
+        destination: '/#chat-workspace',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

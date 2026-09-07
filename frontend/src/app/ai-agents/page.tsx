@@ -86,6 +86,8 @@ export default function AiAgentsPage() {
         <div className="pt-2 flex justify-center gap-4">
           <Link
             href="/#chat-workspace"
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-6 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 transition-all"
           >
             Test Live AI Models
@@ -192,6 +194,8 @@ export default function AiAgentsPage() {
         <div className="pt-2">
           <Link
             href="/#chat-workspace"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-xs font-bold text-cyan-400 hover:underline"
           >
             Launch Asura AI Studio to test reasoning &rarr;

@@ -246,6 +246,17 @@ export default function RootLayout({
                     AI Agents vs. Chatbots
                   </Link>
                 </li>
+                <li>
+                  <a
+                    href="/#chat-workspace"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-cyan-400 transition-colors flex items-center gap-1.5 text-cyan-400/90"
+                  >
+                    <span>Asura AI Studio</span>
+                    <span className="text-[10px] px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20">Live</span>
+                  </a>
+                </li>
               </ul>
             </div>
 

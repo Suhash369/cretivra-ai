@@ -59,6 +59,8 @@ export default function GenerativeAiPage() {
         <div className="pt-2 flex justify-center gap-4">
           <Link
             href="/#chat-workspace"
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 text-white font-bold text-sm shadow-lg shadow-purple-500/20 transition-all"
           >
             Test Asura AI Studio

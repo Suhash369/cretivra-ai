@@ -6,34 +6,23 @@ interface OpenStudioButtonProps {
   className?: string;
   children?: React.ReactNode;
   id?: string;
+  target?: string;
+  rel?: string;
 }
 
 export function OpenStudioButton({
   className = '',
   children = 'Open Studio',
   id,
+  target = '_blank',
+  rel = 'noopener noreferrer',
 }: OpenStudioButtonProps) {
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (typeof window === 'undefined') return;
-
-    const isHome = window.location.pathname === '/' || window.location.pathname === '';
-    const workspaceEl = document.getElementById('chat-workspace');
-
-    if (isHome && workspaceEl) {
-      e.preventDefault();
-      workspaceEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (window.history?.pushState) {
-        window.history.pushState(null, '', '#chat-workspace');
-      }
-      return;
-    }
-  };
-
   return (
     <a
       id={id}
       href="/#chat-workspace"
-      onClick={handleClick}
+      target={target}
+      rel={rel}
       className={className}
     >
       {children}
@@ -43,26 +32,32 @@ export function OpenStudioButton({
 
 /**
  * Watcher component that listens for #chat-workspace hash changes or initial loads
- * and smoothly scrolls into the studio.
+ * and smoothly scrolls into the studio workspace.
  */
 export function StudioScrollWatcher() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const checkAndScroll = () => {
-      if (window.location.hash === '#chat-workspace') {
-        setTimeout(() => {
-          const el = document.getElementById('chat-workspace');
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }, 200);
-      }
+    const scrollToWorkspace = () => {
+      if (window.location.hash !== '#chat-workspace') return;
+
+      let attempts = 0;
+      const maxAttempts = 25; // Check for ~2.5 seconds during client hydration
+      const interval = setInterval(() => {
+        attempts++;
+        const el = document.getElementById('chat-workspace');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          clearInterval(interval);
+        } else if (attempts >= maxAttempts) {
+          clearInterval(interval);
+        }
+      }, 100);
     };
 
-    checkAndScroll();
-    window.addEventListener('hashchange', checkAndScroll);
-    return () => window.removeEventListener('hashchange', checkAndScroll);
+    scrollToWorkspace();
+    window.addEventListener('hashchange', scrollToWorkspace);
+    return () => window.removeEventListener('hashchange', scrollToWorkspace);
   }, []);
 
   return null;

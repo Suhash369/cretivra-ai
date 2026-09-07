@@ -199,6 +199,8 @@ export default function BlogHubPage() {
               </Link>
               <Link
                 href="/#chat-workspace"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-[11px] text-gray-400 hover:text-white transition-colors"
               >
                 Test in Studio
