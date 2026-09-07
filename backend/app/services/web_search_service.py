@@ -20,13 +20,19 @@ class WebSearchService:
     """
 
     SEARCH_INTENT_PATTERNS = [
-        r"(?:current|currently|latest|today|now|recent|recently|breaking|live)",
+        r"(?:current|currently|latest|today|now|recent|recently|breaking|live|upcoming|new)",
         r"(?:who is|who are|what is the current|who is the current|who is currently|who iscurrent)",
-        r"(?:2024|2025|2026|2027)",
+        r"(?:202[3-9])",
         r"(?:chief minister|prime minister|president|governor|cm of|pm of|minister)",
-        r"(?:stock price|weather in|election results|who won|score|match|gold rate)",
+        r"(?:stock price|weather in|election results|who won|score|match|gold rate|cryptocurrency|crypto|bitcoin)",
         r"(?:news about|update on|what happened|current affairs)",
-        r"(?:tamilnadu|tamil nadu|india|usa|government|parliament|assembly)"
+        r"(?:tamilnadu|tamil nadu|india|usa|government|parliament|assembly)",
+        r"(?:release|released|releasing|launch|launched|launching|premiere|premiered|air date|ott|trailer|teaser)",
+        r"(?:movie|film|cinema|box office|review|cast of|actor|actress|director)",
+        r"(?:winner|won|champion|cup|tournament|vs|final)",
+        r"(?:alive|dead|age of|net worth|died|born|salary|price of)",
+        r"(?:status of|when is|when will|when was|is\s+.+\s+(?:released|out|available|alive|dead|delayed|cancelled|postponed|open|closed))",
+        r"^(?:is|was|did|has|will)\b.+\b(?:released|finished|started|happened|true|real|available|active)\b"
     ]
 
     def normalize_query(self, query: str) -> str:
@@ -49,8 +55,20 @@ class WebSearchService:
         if len(q) < 4:
             return False
 
+        # Exclude greetings and simple conversation
+        if q in [
+            "hi", "hello", "hey", "hey there", "good morning", "good evening", 
+            "good afternoon", "how are you", "what's up", "whats up", "help", 
+            "thanks", "thank you", "ok", "okay", "bye", "goodbye"
+        ]:
+            return False
+
         # Exclude pure code/math/translation/image generation prompts
-        if any(prefix in q for prefix in ["write code", "solve", "calculate", "translate", "generate image", "create image", "draw", "render"]):
+        if any(prefix in q for prefix in [
+            "write code", "solve", "calculate", "translate", 
+            "generate image", "create image", "draw", "render",
+            "debug", "fix code", "refactor", "write a python", "write a function"
+        ]) and not any(w in q for w in ["latest", "today", "news", "released", "2026"]):
             return False
 
         # Exclude self-identity, origin, and architecture queries to always assert Cretivra Engine persona

@@ -94,7 +94,11 @@ class ChatService:
         from datetime import datetime
         today_str = datetime.now().strftime("%B %d, %Y")
         base_sys = system_prompt or settings.SYSTEM_PROMPT
-        sys_content = f"{base_sys}\n\nToday's date is {today_str}."
+        sys_content = (
+            f"{base_sys}\n\n"
+            f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
+            f"You have real-time live internet grounding. Never state that your knowledge cuts off in 2023 or 2024."
+        )
 
         formatted_messages = [{"role": "system", "content": sys_content}]
 
@@ -135,6 +139,8 @@ class ChatService:
 
                 if reasoning:
                     last_reasoning_status = reasoning
+                elif content and last_reasoning_status:
+                    last_reasoning_status = None
 
                 if content:
                     full_assistant_reply += content
