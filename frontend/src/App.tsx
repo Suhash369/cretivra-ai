@@ -33,6 +33,7 @@ import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
+import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { GeneratedImageCard } from './components/chat/ChatMessage';
 import { CretivraMark } from './components/common/CretivraLogo';
 import type { Conversation, CretivraModel } from './types';
@@ -636,6 +637,9 @@ export function App() {
           sendMessage(promptText, selectedModel);
         }}
       />
+
+      {/* Floating Lower-Right Suggestion & Commenting Widget */}
+      <SuggestionBox user={user} />
     </div>
   );
 }

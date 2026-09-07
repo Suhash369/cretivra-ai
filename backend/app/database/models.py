@@ -22,6 +22,7 @@ class UserDB(Base):
 
     conversations = relationship("ConversationDB", back_populates="user", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="user", cascade="all, delete-orphan", order_by="desc(PaymentDB.created_at)")
+    suggestions = relationship("SuggestionDB", back_populates="user", cascade="all, delete-orphan")
 
 class ConversationDB(Base):
     __tablename__ = "conversations"
@@ -105,3 +106,20 @@ class PaymentDB(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("UserDB", back_populates="payments")
+
+class SuggestionDB(Base):
+    __tablename__ = "suggestions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    user_email = Column(String, nullable=True)
+    user_name = Column(String, nullable=True)
+    category = Column(String, default="suggestion")  # suggestion, feature, bug, comment
+    comment = Column(Text, nullable=False)
+    rating = Column(Integer, nullable=True)  # 1 to 5
+    page_url = Column(String, nullable=True)
+    device_info = Column(String, nullable=True)
+    status = Column(String, default="pending")  # pending, reviewed, resolved
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("UserDB", back_populates="suggestions")

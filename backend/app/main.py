@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.logging import logger
 from app.database.database import init_db
-from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images
+from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images, suggestions
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,6 +43,7 @@ app.include_router(chat.router, prefix=settings.API_V1_STR)
 app.include_router(images.router, prefix=settings.API_V1_STR)
 app.include_router(files.router, prefix=settings.API_V1_STR)
 app.include_router(settings_api.router, prefix=settings.API_V1_STR)
+app.include_router(suggestions.router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
 def root_health():
