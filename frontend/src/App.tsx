@@ -25,6 +25,7 @@ import {
   AlertCircle,
   RefreshCw,
   Palette,
+  Scale,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -400,6 +401,18 @@ export function App() {
             <Palette size={13} className="text-purple-400" />
             <span>Image Studio</span>
           </button>
+
+          {/* Test Bench / Arena Button */}
+          <a
+            href="/test-bench"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-cyan-600/30 to-blue-500/20 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white font-semibold text-xs rounded-full shadow-sm transition-all cursor-pointer"
+            title="Open Model Test Bench & Performance Arena"
+          >
+            <Scale size={13} className="text-cyan-400" />
+            <span>Test Bench</span>
+          </a>
 
           {/* Action buttons */}
           {activeConversationId && (

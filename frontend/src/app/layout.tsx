@@ -158,6 +158,15 @@ export default function RootLayout({
                   >
                     Insights & Blog
                   </Link>
+                  <Link
+                    href="/test-bench"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-cyan-400 transition-colors flex items-center gap-1"
+                  >
+                    <span>Test Bench</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">Arena</span>
+                  </Link>
                 </nav>
 
                 <div className="flex items-center gap-3">
@@ -255,6 +264,17 @@ export default function RootLayout({
                         <span>Asura AI Studio</span>
                         <span className="text-[10px] px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20">Live</span>
                       </a>
+                    </li>
+                    <li>
+                      <Link
+                        href="/test-bench"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-cyan-400 transition-colors flex items-center gap-1.5 text-gray-300"
+                      >
+                        <span>Model Test Bench & Arena</span>
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-purple-500/10 text-purple-300 font-semibold border border-purple-500/20">Benchmark</span>
+                      </Link>
                     </li>
                   </ul>
                 </div>

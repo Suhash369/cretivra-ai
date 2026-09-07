@@ -18,8 +18,10 @@ export function SiteLayoutWrapper({
   const isStudioOnly =
     pathname === '/studio' ||
     pathname === '/chat' ||
+    pathname === '/test-bench' ||
     pathname?.startsWith('/studio/') ||
-    pathname?.startsWith('/chat/');
+    pathname?.startsWith('/chat/') ||
+    pathname?.startsWith('/test-bench/');
 
   if (isStudioOnly) {
     return <main className="h-screen w-screen overflow-hidden">{children}</main>;
