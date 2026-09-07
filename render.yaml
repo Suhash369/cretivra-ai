@@ -12,14 +12,6 @@ services:
         value: backend
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GEMINI_API_KEY
-        sync: false
-      - key: TAVILY_API_KEY
-        sync: false
       - key: DEFAULT_MODEL
         value: cretivra-1
       - key: ENABLE_MOCK_OLLAMA

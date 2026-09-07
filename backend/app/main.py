@@ -44,6 +44,10 @@ app.include_router(images.router, prefix=settings.API_V1_STR)
 app.include_router(files.router, prefix=settings.API_V1_STR)
 app.include_router(settings_api.router, prefix=settings.API_V1_STR)
 
+@app.get("/health")
+def root_health():
+    return {"status": "healthy", "service": settings.PROJECT_NAME}
+
 # Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
