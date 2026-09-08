@@ -38,6 +38,26 @@ class WebSearchService:
     _CACHE: Dict[str, Any] = {}
     _CACHE_TTL: float = 600.0  # 10 minutes cache
 
+    def should_search_web(self, query: str) -> bool:
+        """
+        Determines whether the user prompt requires live real-time intelligence cache lookup.
+        """
+        q = query.strip().lower()
+        if len(q) < 3:
+            return False
+
+        # Exclude pure code/math/translation/image prompts
+        if any(prefix in q for prefix in ["write code", "solve", "calculate", "translate", "generate image", "create image"]):
+            return False
+
+        for pattern in self.SEARCH_INTENT_PATTERNS:
+            if re.search(pattern, q, re.IGNORECASE):
+                return True
+        return False
+
+    def should_search_cache(self, query: str) -> bool:
+        return self.should_search_web(query)
+
     def normalize_query(self, query: str) -> str:
         """
         Normalizes common contractions, joined words, and typos in search queries,

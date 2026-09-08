@@ -680,8 +680,29 @@ export function App() {
                       cacheItems={m.cache_items}
                       userQuery={i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : undefined}
                     />
-                    {renderMessageContent(m.content)}
-                    {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
+                    {m.content ? (
+                      renderMessageContent(m.content)
+                    ) : isGenerating && i === messages.length - 1 ? (
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-1.5 animate-pulse">
+                        <Sparkles size={13} className="animate-spin text-indigo-500 dark:text-cyan-400" />
+                        <span>Formulating response...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 py-1 text-xs text-amber-500 dark:text-amber-400">
+                        <AlertCircle size={13} />
+                        <span>No response received.</span>
+                        <button
+                          onClick={() => {
+                            const lastUser = messages.slice(0, i).reverse().find(msg => msg.role === 'user');
+                            if (lastUser) sendMessage(lastUser.content);
+                          }}
+                          className="underline font-semibold hover:text-amber-300 ml-1 cursor-pointer"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                    {isGenerating && i === messages.length - 1 && m.content && <span className="cv-cursor" />}
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 mt-1.5 text-xs text-gray-500">
                       <button
                         onClick={() => {
@@ -704,6 +725,25 @@ export function App() {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Global Chat Error Banner */}
+        {chatError && (
+          <div className="max-w-[680px] mx-auto px-4 py-2 mb-2 flex items-center justify-between gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={14} className="shrink-0" />
+              <span>{chatError}</span>
+            </div>
+            <button
+              onClick={() => {
+                const lastUser = [...messages].reverse().find(msg => msg.role === 'user');
+                if (lastUser) sendMessage(lastUser.content);
+              }}
+              className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 font-semibold cursor-pointer"
+            >
+              Retry
+            </button>
           </div>
         )}
 
