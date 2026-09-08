@@ -167,19 +167,6 @@ class WebSearchService:
                         results.append(f"• {title}: {content}")
                 return results
         return []
-            res = await client.post(url, json=payload)
-            if res.status_code == 200:
-                data = res.json()
-                results = []
-                if data.get("answer"):
-                    results.append(f"• Direct Fact: {data['answer']}")
-                for r in data.get("results", [])[:max_results]:
-                    title = r.get("title", "").strip()
-                    content = r.get("content", "").strip()[:160].replace("\n", " ")
-                    if content:
-                        results.append(f"• {title}: {content}")
-                return results
-        return []
 
     async def _search_brave(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
         url = "https://api.search.brave.com/res/v1/web/search"
