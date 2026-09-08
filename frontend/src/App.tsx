@@ -446,12 +446,16 @@ export function App() {
           {/* Model Selector Pill */}
           <div style={{ position: 'relative' }}>
             <div
-              className={`cv-model-pill ${isCurrentImg ? 'border-purple-500/50 bg-purple-950/40 text-purple-200' : ''}`}
+              className={`cv-model-pill ${isCurrentImg ? 'cv-model-pill-image' : ''}`}
               onClick={() => setModelOpen((o) => !o)}
             >
-              {isCurrentImg ? <Palette size={13} color="#c084fc" /> : <Brain size={13} color="#06b6d4" />}
+              {isCurrentImg ? (
+                <Palette size={13} className="cv-model-icon-img shrink-0" />
+              ) : (
+                <Brain size={13} className="cv-model-icon-brain shrink-0" />
+              )}
               <span>{currentModelObj.display_name}</span>
-              <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${isCurrentImg ? 'bg-purple-900 text-purple-300' : 'bg-cyan-950 text-cyan-300'}`}>
+              <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${isCurrentImg ? 'cv-badge-purple' : 'cv-badge-cyan'}`}>
                 {currentModelObj.category}
               </span>
               <ChevronDown size={12} style={{ opacity: 0.6 }} />
@@ -462,25 +466,25 @@ export function App() {
                 {/* Language Models */}
                 {languageModels.length > 0 && (
                   <div className="p-1">
-                    <div className="px-3 py-1.5 text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
+                    <div className="cv-model-menu-section-header cv-section-cyan">
                       💬 Language & Reasoning
                     </div>
                     {languageModels.map((m) => (
                       <div
                         key={m.id}
-                        className={`cv-model-opt ${m.id === selectedModel ? 'bg-cyan-950/40 border border-cyan-500/40' : ''}`}
+                        className={`cv-model-opt ${m.id === selectedModel ? 'cv-model-opt-active-cyan' : ''}`}
                         onClick={() => {
                           setSelectedModel(m.id);
                           setModelOpen(false);
                         }}
                       >
-                        <div className="cv-model-opt-icon" style={{ background: '#06b6d422' }}>
-                          <Brain size={14} color="#06b6d4" />
+                        <div className="cv-model-opt-icon cv-model-icon-box-cyan">
+                          <Brain size={14} />
                         </div>
                         <div>
                           <div className="cv-model-opt-name flex items-center gap-1.5">
                             <span>{m.display_name}</span>
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-gray-800 text-gray-400 font-mono">
+                            <span className="cv-model-badge-sub">
                               {m.category}
                             </span>
                           </div>
@@ -493,27 +497,27 @@ export function App() {
 
                 {/* Image Generation Models */}
                 {imageModels.length > 0 && (
-                  <div className="p-1 border-t border-gray-800/80 mt-1">
-                    <div className="px-3 py-1.5 text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                  <div className="p-1 border-t cv-model-divider mt-1">
+                    <div className="cv-model-menu-section-header cv-section-purple flex items-center gap-1">
                       <Palette size={12} />
                       <span>🎨 AI Image Generation Studio</span>
                     </div>
                     {imageModels.map((m) => (
                       <div
                         key={m.id}
-                        className={`cv-model-opt ${m.id === selectedModel ? 'bg-purple-950/40 border border-purple-500/40' : ''}`}
+                        className={`cv-model-opt ${m.id === selectedModel ? 'cv-model-opt-active-purple' : ''}`}
                         onClick={() => {
                           setSelectedModel(m.id);
                           setModelOpen(false);
                         }}
                       >
-                        <div className="cv-model-opt-icon" style={{ background: '#a855f722' }}>
-                          <Palette size={14} color="#c084fc" />
+                        <div className="cv-model-opt-icon cv-model-icon-box-purple">
+                          <Palette size={14} />
                         </div>
                         <div>
                           <div className="cv-model-opt-name flex items-center gap-1.5">
-                            <span className="text-purple-200">{m.display_name}</span>
-                            <span className="text-[9px] px-1 py-0.2 rounded bg-purple-950 text-purple-300 font-mono">
+                            <span className="cv-model-name-purple">{m.display_name}</span>
+                            <span className="cv-badge-purple text-[9px] px-1 py-0.2 rounded font-mono">
                               FLUX/SDXL
                             </span>
                           </div>
@@ -532,10 +536,10 @@ export function App() {
           {/* Dedicated Image Studio Button */}
           <button
             onClick={() => setImageStudioOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-600/30 to-cyan-500/20 border border-purple-500/40 hover:border-purple-400 text-purple-300 hover:text-white font-semibold text-xs rounded-full shadow-sm transition-all cursor-pointer"
+            className="cv-header-btn-studio"
             title="Open Cretivra Image Generation Studio"
           >
-            <Palette size={13} className="text-purple-400" />
+            <Palette size={13} className="shrink-0" />
             <span>Image Studio</span>
           </button>
 
@@ -544,10 +548,10 @@ export function App() {
             href="/test-bench"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-cyan-600/30 to-blue-500/20 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white font-semibold text-xs rounded-full shadow-sm transition-all cursor-pointer"
+            className="cv-header-btn-bench"
             title="Open Model Test Bench & Performance Arena"
           >
-            <Scale size={13} className="text-cyan-400" />
+            <Scale size={13} className="shrink-0" />
             <span>Test Bench</span>
           </a>
 
@@ -578,13 +582,13 @@ export function App() {
                   refreshConversations();
                 }
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-xs text-cyan-300 font-medium hover:bg-cyan-500/20 transition-all cursor-pointer"
+              className="cv-user-pill"
               title="Click to sign out"
             >
-              <div className="w-5 h-5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white uppercase">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0">
                 {user.full_name ? user.full_name[0] : user.email[0]}
               </div>
-              <span className="max-w-[100px] truncate">{user.full_name || user.email.split('@')[0]}</span>
+              <span className="cv-user-pill-name max-w-[100px] truncate">{user.full_name || user.email.split('@')[0]}</span>
             </button>
           ) : (
             <button
@@ -800,7 +804,7 @@ export function App() {
                   title="Open AI Image Studio"
                   onClick={() => setImageStudioOpen(true)}
                 >
-                  <Palette size={15} className="text-purple-400 hover:text-purple-300" />
+                  <Palette size={15} className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300" />
                 </button>
               </div>
               <button
