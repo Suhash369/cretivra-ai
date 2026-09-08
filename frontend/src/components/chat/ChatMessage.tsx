@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, RotateCw, Edit3, ThumbsUp, ThumbsDown, Brain, FileText, Download, Maximize2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { IntelligenceCacheCard } from './IntelligenceCacheCard';
 import type { Message } from '../../types';
 
 interface ChatMessageProps {
@@ -58,16 +59,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         <div className="flex-1 min-w-0 space-y-2">
           {/* Header Role Label */}
           <div className="flex items-center justify-between text-xs text-gray-400">
-            <span className="font-semibold text-gray-300">{isUser ? 'You' : 'Asura AI by Cretivra'}</span>
-
-            {/* Reasoning status indicator */}
-            {!isUser && message.reasoning_status && (
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-900/30 border border-purple-700/50 text-purple-300 text-[11px] font-medium animate-pulse">
-                <Brain className="w-3 h-3 text-purple-400" />
-                <span>{message.reasoning_status}</span>
-              </div>
-            )}
+            <span className="font-semibold text-slate-700 dark:text-gray-300">{isUser ? 'You' : 'Asura AI by Cretivra'}</span>
           </div>
+
+          {/* Claude-style Intelligence Cache Indicator */}
+          {!isUser && (
+            <IntelligenceCacheCard
+              reasoningStatus={message.reasoning_status}
+              isGenerating={isGenerating}
+              cacheItems={message.cache_items}
+            />
+          )}
 
           {/* User File Attachments if present */}
           {isUser && message.attachments && message.attachments.length > 0 && (
@@ -75,11 +77,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               {message.attachments.map((att) => (
                 <div
                   key={att.id}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-300"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-xs text-slate-700 dark:text-gray-300"
                 >
-                  <FileText className="w-3.5 h-3.5 text-indigo-400" />
+                  <FileText className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
                   <span className="font-medium truncate max-w-[150px]">{att.filename}</span>
-                  <span className="text-[10px] text-gray-500">({(att.size / 1024).toFixed(0)} KB)</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-500">({(att.size / 1024).toFixed(0)} KB)</span>
                 </div>
               ))}
             </div>
@@ -91,12 +93,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="w-full p-3 rounded-xl bg-gray-800 border border-indigo-500/50 text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none min-h-[100px]"
+                className="w-full p-3 rounded-xl bg-slate-100 dark:bg-gray-800 border border-indigo-500/50 text-slate-900 dark:text-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none min-h-[100px]"
               />
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium"
+                  className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-gray-800 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 text-xs font-medium"
                 >
                   Cancel
                 </button>
@@ -109,7 +111,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </div>
             </div>
           ) : (
-            <div className="prose prose-invert max-w-none text-sm text-gray-100 leading-relaxed font-sans">
+            <div className="prose max-w-none text-sm text-slate-800 dark:text-gray-100 dark:prose-invert leading-relaxed font-sans">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
@@ -129,7 +131,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       );
                     }
                     return (
-                      <code className="px-1.5 py-0.5 rounded bg-gray-800 text-indigo-300 font-mono text-xs" {...props}>
+                      <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 text-indigo-600 dark:text-indigo-300 font-mono text-xs border border-slate-200 dark:border-transparent" {...props}>
                         {children}
                       </code>
                     );

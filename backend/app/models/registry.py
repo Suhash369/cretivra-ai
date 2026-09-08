@@ -127,7 +127,7 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
     "cretivra-omni": CretivraModel(
         id="cretivra-omni",
         display_name="Cretivra Omni 4",
-        description="Multimodal frontier intelligence with live web grounding and reasoning",
+        description="Multimodal frontier intelligence with real-time intelligence caching and reasoning",
         provider="ollama",
         underlying_model="gpt-4o",
         capabilities=["chat", "code", "vision", "reasoning"],

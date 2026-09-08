@@ -134,10 +134,10 @@ class CloudLLMProvider:
             resp = (
                 "I am **Asura AI by Cretivra**, a next-generation frontier artificial intelligence created by **Cretivra** "
                 "and powered by the proprietary **Cretivra Engine** architecture.\n\n"
-                "I am engineered with state-of-the-art multi-step reasoning, real-time web search grounding, "
+                "I am engineered with state-of-the-art multi-step reasoning, real-time intelligence caching, "
                 "full-stack software architecture capabilities, and creative problem solving. How can I assist you today?"
             )
-        elif "[Real-Time News / Live Web Grounding" in user_text or "[LIVE REAL-TIME WEB CONTEXT" in str(messages):
+        elif "[Real-Time News" in user_text or "[Verified Real-Time" in user_text or "[LIVE REAL-TIME" in str(messages):
             lines = []
             for m in messages:
                 content = m.get("content", "")

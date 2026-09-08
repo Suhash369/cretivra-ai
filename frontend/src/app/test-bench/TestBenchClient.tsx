@@ -384,7 +384,7 @@ export function TestBenchClient() {
               {/* Streaming Output Window */}
               <div className="flex-1 p-4 overflow-y-auto select-text text-sm space-y-2 leading-relaxed bg-[#060911]/30">
                 {outputA ? (
-                  <div className="prose prose-invert max-w-none text-xs sm:text-sm">
+                  <div className="prose max-w-none text-xs sm:text-sm text-slate-800 dark:text-gray-100 dark:prose-invert">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {outputA}
                     </ReactMarkdown>
@@ -440,7 +440,7 @@ export function TestBenchClient() {
               {/* Streaming Output Window */}
               <div className="flex-1 p-4 overflow-y-auto select-text text-sm space-y-2 leading-relaxed bg-[#060911]/30">
                 {outputB ? (
-                  <div className="prose prose-invert max-w-none text-xs sm:text-sm">
+                  <div className="prose max-w-none text-xs sm:text-sm text-slate-800 dark:text-gray-100 dark:prose-invert">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {outputB}
                     </ReactMarkdown>

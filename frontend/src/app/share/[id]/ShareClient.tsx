@@ -16,6 +16,7 @@ import {
 import { fetchSharedConversation } from '../../../services/api';
 import { CretivraMark } from '../../../components/common/CretivraLogo';
 import { GeneratedImageCard } from '../../../components/chat/ChatMessage';
+import { IntelligenceCacheCard } from '../../../components/chat/IntelligenceCacheCard';
 import { initTheme } from '../../../services/theme';
 import type { Conversation, Message } from '../../../types';
 
@@ -167,14 +168,14 @@ export function ShareClient({ conversationId }: { conversationId: string }) {
                       </span>
                     </div>
 
-                    {!isUser && msg.reasoning_status && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2.5 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-[11px] font-medium">
-                        <Sparkles className="w-3 h-3 text-cyan-400" />
-                        <span>Grounded with real-time intelligence</span>
-                      </div>
+                    {!isUser && (
+                      <IntelligenceCacheCard 
+                        reasoningStatus={msg.reasoning_status} 
+                        cacheItems={msg.cache_items} 
+                      />
                     )}
 
-                    <div className="prose prose-invert max-w-none text-sm text-[var(--text)] leading-relaxed font-sans">
+                    <div className="prose max-w-none text-sm text-slate-800 dark:text-gray-100 dark:prose-invert leading-relaxed font-sans">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{

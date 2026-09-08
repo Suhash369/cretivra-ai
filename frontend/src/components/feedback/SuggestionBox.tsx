@@ -398,19 +398,19 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-[#0d121f]/95 hover:bg-[#151c2e] border border-cyan-500/40 hover:border-cyan-400 text-slate-200 hover:text-white shadow-xl shadow-cyan-950/50 backdrop-blur-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.98]"
+        className="group relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-white/95 dark:bg-[#0d121f]/95 hover:bg-slate-50 dark:hover:bg-[#151c2e] border border-slate-300 dark:border-cyan-500/40 hover:border-indigo-400 dark:hover:border-cyan-400 text-slate-800 dark:text-slate-200 shadow-xl shadow-slate-300/40 dark:shadow-cyan-950/50 backdrop-blur-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.98]"
         title="Share a suggestion or comment"
         aria-label="Open suggestion commenting box"
       >
         {/* Glow halo on trigger */}
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-purple-500 to-indigo-500 rounded-full blur-sm opacity-30 group-hover:opacity-60 transition duration-300 pointer-events-none" />
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 via-purple-500 to-indigo-500 rounded-full blur-sm opacity-20 dark:opacity-30 group-hover:opacity-50 transition duration-300 pointer-events-none" />
 
         <div className="relative flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:rotate-12 transition-transform">
+          <div className="w-5 h-5 rounded-full bg-indigo-50 dark:bg-cyan-500/20 text-indigo-600 dark:text-cyan-400 flex items-center justify-center group-hover:rotate-12 transition-transform">
             <MessageSquarePlus size={14} />
           </div>
 
-          <span className="text-xs font-semibold tracking-wide text-slate-200 group-hover:text-cyan-300 transition-colors">
+          <span className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-cyan-300 transition-colors">
             Suggestions
           </span>
 

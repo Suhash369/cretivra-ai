@@ -124,7 +124,7 @@ export default function AiAgentsPage() {
               <tr>
                 <td className="p-4 font-semibold text-white">Action &amp; Tool Execution</td>
                 <td className="p-4 text-gray-400">None — informs the user to visit an external link or portal.</td>
-                <td className="p-4 text-cyan-300 font-medium">Executes database queries, web searches, API endpoints, and CRM updates.</td>
+                <td className="p-4 text-cyan-300 font-medium">Executes database queries, intelligence cache lookups, API endpoints, and CRM updates.</td>
               </tr>
               <tr>
                 <td className="p-4 font-semibold text-white">State &amp; Context Memory</td>

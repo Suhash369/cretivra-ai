@@ -13,7 +13,7 @@ class ToolRegistry:
         self._register_default_tools()
 
     def _register_default_tools(self):
-        self.register(Tool(name="web_search", description="Search the web for up-to-date information.", enabled=False))
+        self.register(Tool(name="intelligence_cache", description="Query the real-time intelligence cache for up-to-date information.", enabled=False))
         self.register(Tool(name="file_search", description="Search local conversation files and documents.", enabled=True))
         self.register(Tool(name="calculator", description="Perform exact mathematical calculations.", enabled=True))
 

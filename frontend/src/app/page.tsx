@@ -246,7 +246,7 @@ export default function HomePage() {
             <div className="text-xs text-gray-400 flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                Direct access to frontier models, web search grounding &amp; image creation
+                Direct access to frontier models, real-time intelligence caching &amp; image creation
               </span>
               <a
                 href="/studio"

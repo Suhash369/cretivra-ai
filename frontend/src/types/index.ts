@@ -28,6 +28,7 @@ export interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   reasoning_status?: string | null;
+  cache_items?: string[];
   created_at?: string;
   attachments?: Attachment[];
 }

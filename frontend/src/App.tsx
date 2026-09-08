@@ -39,6 +39,7 @@ import { AuthModal } from './components/auth/AuthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { GeneratedImageCard } from './components/chat/ChatMessage';
+import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { CretivraMark } from './components/common/CretivraLogo';
 import type { Conversation, CretivraModel } from './types';
 
@@ -103,7 +104,7 @@ function CodeBlock({ code, lang }: { code: string; lang?: string }) {
 /* Helper to render rich markdown, images, and code blocks */
 function renderMessageContent(text: string) {
   return (
-    <div className="prose prose-invert max-w-none text-sm text-gray-100 leading-relaxed font-sans">
+    <div className="prose max-w-none text-sm text-slate-800 dark:text-gray-100 dark:prose-invert leading-relaxed font-sans">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -118,7 +119,7 @@ function renderMessageContent(text: string) {
               return <CodeBlock lang={match[1]} code={codeText} />;
             }
             return (
-              <code className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-xs" {...props}>
+              <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 text-indigo-600 dark:text-cyan-300 font-mono text-xs border border-slate-200 dark:border-transparent" {...props}>
                 {children}
               </code>
             );
@@ -673,19 +674,12 @@ export function App() {
                   </div>
                 ) : (
                   <div className="cv-msg-assistant group relative">
-                    {m.reasoning_status ? (
-                      isGenerating && i === messages.length - 1 ? (
-                        <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-indigo-950/50 border border-indigo-500/40 text-cyan-300 text-xs font-medium shadow-md animate-pulse">
-                          <Sparkles size={12} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
-                          <span>{m.reasoning_status}</span>
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-[11px] font-medium">
-                          <Sparkles size={11} className="text-cyan-400" />
-                          <span>Grounded with real-time intelligence</span>
-                        </div>
-                      )
-                    ) : null}
+                    <IntelligenceCacheCard
+                      reasoningStatus={m.reasoning_status}
+                      isGenerating={isGenerating && i === messages.length - 1}
+                      cacheItems={m.cache_items}
+                      userQuery={i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : undefined}
+                    />
                     {renderMessageContent(m.content)}
                     {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 mt-1.5 text-xs text-gray-500">

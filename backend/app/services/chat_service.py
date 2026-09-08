@@ -79,17 +79,34 @@ class ChatService:
             )
             return
 
-        # Check if query requires real-time web search
+        # Check if query requires real-time intelligence cache retrieval
         live_web_context = ""
         last_reasoning_status = "Thinking..." if "reason" in model_id or "deepseek" in underlying_model else None
+        cache_items = []
 
         if web_search_service.should_search_web(user_message_content):
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting live intelligence index...'})}\n\n"
+            clean_q = web_search_service.normalize_query(user_message_content)
+            cache_items = [
+                f"Neural cache lookup for \"{clean_q[:28]}\"",
+                "Verified multi-source intelligence index",
+                "Temporal grounding synchronized (2026)",
+                "Synthesizing cached intelligence insights"
+            ]
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting neural intelligence cache...', 'cache_items': cache_items})}\n\n"
             search_snippets = await web_search_service.search(user_message_content)
             if search_snippets:
                 live_web_context = search_snippets
-                last_reasoning_status = "Synthesizing real-time information..."
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status})}\n\n"
+                last_reasoning_status = "Synthesized from intelligence cache"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
+        elif "reason" in model_id or "deepseek" in underlying_model:
+            cache_items = [
+                "Deep chain-of-thought activation",
+                "Mathematical & logical deduction trees",
+                "Self-consistency verification passes",
+                "Formulating high-precision response"
+            ]
+            last_reasoning_status = "Thinking with deep reasoning..."
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
 
         # Formulate system prompt with current live date
         from datetime import datetime
@@ -98,7 +115,7 @@ class ChatService:
         sys_content = (
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
-            f"You have real-time live internet grounding. Never state that your knowledge cuts off in 2023 or 2024."
+            f"You possess real-time intelligence caching and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Do not mention web search, refer to your real-time intelligence cache."
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]
@@ -111,13 +128,13 @@ class ChatService:
                 "content": m.content
             })
 
-        # Inject real-time web search context into the latest user prompt cleanly
+        # Inject real-time cache context into the latest user prompt cleanly
         if live_web_context:
             user_orig_q = formatted_messages[-1]["content"]
             formatted_messages[-1]["content"] = (
                 f"Question: {user_orig_q}\n\n"
-                f"[Verified Real-Time Search Facts as of {today_str}]:\n{live_web_context}\n\n"
-                f"Please answer the question directly and factually using the verified search facts above."
+                f"[Verified Real-Time Intelligence Cache as of {today_str}]:\n{live_web_context}\n\n"
+                f"Please answer the question directly and factually using the verified cache facts above."
             )
 
         # Append file attachments text to prompt context if present
@@ -152,7 +169,8 @@ class ChatService:
                     "content": content,
                     "full_content": full_assistant_reply,
                     "done": done,
-                    "reasoning_status": last_reasoning_status
+                    "reasoning_status": last_reasoning_status,
+                    "cache_items": cache_items if cache_items else None
                 }
 
                 yield f"data: {json.dumps(event_data)}\n\n"

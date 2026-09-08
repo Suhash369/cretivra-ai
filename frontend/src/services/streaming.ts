@@ -7,6 +7,7 @@ export interface StreamChunkData {
   full_content: string;
   done: boolean;
   reasoning_status?: string | null;
+  cache_items?: string[];
   cancelled?: boolean;
 }
 

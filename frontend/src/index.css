@@ -97,14 +97,66 @@ body.light .cv-header {
 
 html.light .cv-msg-user-bubble,
 body.light .cv-msg-user-bubble {
-  background: #e0e7ff;
+  background: #eef2ff;
   border-color: #c7d2fe;
   color: #1e1b4b;
+  font-weight: 500;
 }
 
 html.light .cv-msg-assistant,
 body.light .cv-msg-assistant {
-  color: #1e293b;
+  color: #0f172a;
+}
+
+/* Light mode Markdown / Prose Typography Contrast */
+html.light .prose,
+body.light .prose {
+  color: #0f172a !important;
+  --tw-prose-body: #1e293b;
+  --tw-prose-headings: #0f172a;
+  --tw-prose-lead: #334155;
+  --tw-prose-links: #2563eb;
+  --tw-prose-bold: #0f172a;
+  --tw-prose-counters: #64748b;
+  --tw-prose-bullets: #94a3b8;
+  --tw-prose-hr: #e2e8f0;
+  --tw-prose-quotes: #0f172a;
+  --tw-prose-quote-borders: #cbd5e1;
+  --tw-prose-captions: #64748b;
+  --tw-prose-code: #0f172a;
+  --tw-prose-pre-code: #0f172a;
+  --tw-prose-pre-bg: #f8fafc;
+  --tw-prose-th-borders: #cbd5e1;
+  --tw-prose-td-borders: #e2e8f0;
+}
+
+html.light .prose p,
+html.light .prose span,
+html.light .prose li,
+html.light .prose strong,
+html.light .prose em,
+html.light .prose h1,
+html.light .prose h2,
+html.light .prose h3,
+html.light .prose h4,
+html.light .prose h5,
+html.light .prose h6 {
+  color: #0f172a !important;
+}
+
+html.light .cv-code-block {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+html.light .cv-code-head {
+  background: #f1f5f9;
+  border-bottom-color: #e2e8f0;
+  color: #475569;
+}
+
+html.light .cv-code-block pre {
+  color: #0f172a;
 }
 
 html.light .cv-composer,
@@ -304,6 +356,16 @@ body.light .cv-icon-btn:hover {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: #232d45; border-radius: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes cv-shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+@keyframes cv-pulse-subtle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor { animation: none !important; }
