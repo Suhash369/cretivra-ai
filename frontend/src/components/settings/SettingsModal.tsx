@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Settings as SettingsIcon, Sliders, Cpu, Shield, Trash2, Check } from 'lucide-react';
 import type { SystemSettings, CretivraModel } from '../../types';
 import { fetchSettings, updateSettings, clearAllConversations } from '../../services/api';
+import { applyTheme, getStoredTheme, type ThemeMode } from '../../services/theme';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -16,7 +17,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   models,
   onConversationsCleared,
 }) => {
-  const [activeTab, setActiveTab] = useState<'appearance' | 'ai' | 'ollama' | 'privacy'>('ai');
+  const [activeTab, setActiveTab] = useState<'appearance' | 'ai' | 'engine' | 'privacy'>('ai');
   const [settings, setSettingsState] = useState<SystemSettings>({
     ollama_base_url: 'http://localhost:11434',
     default_model: 'cretivra-1',
@@ -24,7 +25,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     max_context_messages: 30,
     max_output_tokens: 4096,
     system_prompt: 'You are Asura AI by Cretivra, an intelligent AI assistant created by Cretivra.',
-    theme: 'dark',
+    theme: getStoredTheme(),
     max_upload_size_mb: 20,
   });
 
@@ -34,7 +35,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchSettings()
-        .then((data) => setSettingsState(data))
+        .then((data) => {
+          const currentTheme = getStoredTheme();
+          setSettingsState({ ...data, theme: currentTheme || data.theme });
+        })
         .catch((err) => console.error('Failed to load settings:', err));
     }
   }, [isOpen]);
@@ -43,6 +47,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSave = async () => {
     try {
+      if (settings.theme) {
+        applyTheme(settings.theme as ThemeMode);
+      }
       const updated = await updateSettings(settings);
       setSettingsState(updated);
       setSavedNotice(true);
@@ -65,10 +72,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[85vh]">
+      <div className="w-full max-w-2xl bg-[var(--bg-panel)] border border-[var(--border)] text-[var(--text)] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[85vh]">
         {/* Left Settings Sidebar */}
-        <div className="w-full md:w-52 bg-gray-950 p-3 border-r border-gray-800 flex flex-row md:flex-col gap-1 overflow-x-auto shrink-0">
-          <div className="px-3 py-2 font-bold text-white text-sm hidden md:flex items-center gap-2">
+        <div className="w-full md:w-52 bg-[var(--bg-base)] p-3 border-r border-[var(--border)] flex flex-row md:flex-col gap-1 overflow-x-auto shrink-0">
+          <div className="px-3 py-2 font-bold text-[var(--text)] text-sm hidden md:flex items-center gap-2">
             <SettingsIcon className="w-4 h-4 text-indigo-400" />
             <span>Settings</span>
           </div>
@@ -76,7 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             onClick={() => setActiveTab('ai')}
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'ai' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-900'
+              activeTab === 'ai' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -84,19 +91,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('ollama')}
+            onClick={() => setActiveTab('engine')}
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'ollama' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-900'
+              activeTab === 'engine' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>Ollama Connection</span>
+            <span>Neural Engine Core</span>
           </button>
 
           <button
             onClick={() => setActiveTab('appearance')}
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'appearance' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-900'
+              activeTab === 'appearance' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
             }`}
           >
             <SettingsIcon className="w-3.5 h-3.5" />
@@ -106,7 +113,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             onClick={() => setActiveTab('privacy')}
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'privacy' ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-900'
+              activeTab === 'privacy' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
@@ -180,18 +187,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
-            {/* Ollama Tab */}
-            {activeTab === 'ollama' && (
+            {/* Neural Engine Core Tab */}
+            {activeTab === 'engine' && (
               <div className="space-y-4 text-xs text-gray-300">
                 <div>
-                  <label className="block text-gray-400 font-medium mb-1">Ollama API URL</label>
+                  <label className="block text-gray-400 font-medium mb-1">Inference Engine Endpoint</label>
                   <input
                     type="text"
                     value={settings.ollama_base_url}
                     onChange={(e) => setSettingsState({ ...settings, ollama_base_url: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-gray-100 font-mono focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2.5 rounded-xl bg-[var(--bg-base)] border border-[var(--border)] text-[var(--text)] font-mono focus:outline-none focus:border-indigo-500"
                   />
-                  <p className="text-[11px] text-gray-500 mt-1">Default local address: http://localhost:11434</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Default local acceleration endpoint: http://localhost:11434</p>
                 </div>
               </div>
             )}
@@ -202,20 +209,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div>
                   <label className="block text-gray-400 font-medium mb-2">Theme Mode</label>
                   <div className="grid grid-cols-3 gap-3">
-                    {['dark', 'light', 'system'].map((t) => (
+                    {(['dark', 'light', 'system'] as ThemeMode[]).map((t) => (
                       <button
                         key={t}
-                        onClick={() => setSettingsState({ ...settings, theme: t as any })}
-                        className={`p-3 rounded-xl border text-center capitalize font-semibold transition-all ${
+                        onClick={() => {
+                          setSettingsState({ ...settings, theme: t });
+                          applyTheme(t);
+                        }}
+                        className={`p-3 rounded-xl border text-center capitalize font-semibold transition-all cursor-pointer ${
                           settings.theme === t
-                            ? 'bg-indigo-600/20 border-indigo-500 text-white'
-                            : 'bg-gray-950 border-gray-800 text-gray-400 hover:border-gray-700'
+                            ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 font-bold'
+                            : 'bg-[var(--bg-base)] border-[var(--border)] text-gray-400 hover:border-gray-600'
                         }`}
                       >
                         {t}
                       </button>
                     ))}
                   </div>
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    {settings.theme === 'system'
+                      ? 'Automatically synchronizes with your operating system color scheme.'
+                      : `Live ${settings.theme} appearance active.`}
+                  </p>
                 </div>
               </div>
             )}

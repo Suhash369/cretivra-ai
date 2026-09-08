@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Conversation, GroupedConversations } from '../types';
-import { fetchConversations, createConversation, updateConversation, deleteConversation } from '../services/api';
+import { fetchConversations, createConversation, updateConversation, deleteConversation, bulkDeleteConversations } from '../services/api';
 
 export function useConversations() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -49,6 +49,12 @@ export function useConversations() {
     await loadConversations(searchQuery);
   };
 
+  const handleBulkDelete = async (ids: string[]) => {
+    if (!ids || ids.length === 0) return;
+    await bulkDeleteConversations(ids);
+    await loadConversations(searchQuery);
+  };
+
   return {
     conversations,
     grouped,
@@ -60,5 +66,6 @@ export function useConversations() {
     createNew: handleCreateNew,
     renameConversation: handleRename,
     deleteConversation: handleDelete,
+    bulkDeleteConversations: handleBulkDelete,
   };
 }

@@ -50,13 +50,13 @@ export const HealthModal: React.FC<HealthModalProps> = ({
             </div>
           </div>
 
-          {/* Ollama Status Card */}
+          {/* Neural Engine Status Card */}
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-gray-950 border border-gray-800">
             <div className="flex items-center gap-3">
               <Cpu className="w-4 h-4 text-purple-400" />
               <div>
-                <h4 className="text-sm font-semibold text-gray-200">Ollama AI Engine</h4>
-                <p className="text-xs text-gray-400">{health?.ollama?.url || 'http://localhost:11434'}</p>
+                <h4 className="text-sm font-semibold text-gray-200">Cretivra Neural Core</h4>
+                <p className="text-xs text-gray-400">Local Hardware Acceleration (Active)</p>
               </div>
             </div>
             {health?.ollama?.status === 'connected' ? (

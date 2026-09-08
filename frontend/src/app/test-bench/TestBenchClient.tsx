@@ -40,7 +40,7 @@ interface ModelOption {
 
 const AVAILABLE_MODELS: ModelOption[] = [
   { id: 'cretivra-1', name: 'Asura Cretivra 1', provider: 'Asura AI', badge: 'Balanced', isCretivra: true, desc: 'Everyday high-precision reasoning & conversational agent' },
-  { id: 'cretivra-reason', name: 'Asura Cretivra Reason', provider: 'DeepSeek R1 Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
+  { id: 'cretivra-reason', name: 'Asura Cretivra Reason', provider: 'Cretivra Deep C1 Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
   { id: 'cretivra-coder', name: 'Asura Cretivra Coder Pro', provider: 'Qwen 2.5 Coder', badge: 'Code Specialist', isCretivra: true, desc: 'Full-stack software engineering & algorithm architecture' },
   { id: 'cretivra-omni', name: 'Asura Cretivra Omni 4', provider: 'Frontier Omni', badge: 'Multimodal', isCretivra: true, desc: 'Frontier multimodal intelligence with tool integration' },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI Baseline', badge: 'Proprietary', isCretivra: false, desc: 'Flagship omni frontier model by OpenAI' },

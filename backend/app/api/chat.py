@@ -147,3 +147,28 @@ async def regenerate_message(
     )
 
     return StreamingResponse(generator, media_type="text/event-stream")
+
+@router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_message(
+    message_id: str,
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Deletes an individual message from a conversation with ownership verification.
+    """
+    target_msg = db.query(MessageDB).filter(MessageDB.id == message_id).first()
+    if not target_msg:
+        raise HTTPException(status_code=404, detail="Message not found.")
+
+    conv = conversation_service.get_conversation(db, target_msg.conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found.")
+
+    if conv.user_id and (not current_user or current_user.id != conv.user_id):
+        raise HTTPException(status_code=403, detail="Access denied to delete this message.")
+
+    db.delete(target_msg)
+    db.commit()
+    return None
+

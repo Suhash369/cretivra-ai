@@ -84,11 +84,12 @@ class ChatService:
         last_reasoning_status = "Thinking..." if "reason" in model_id or "deepseek" in underlying_model else None
 
         if web_search_service.should_search_web(user_message_content):
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Searching the live web for current information...'})}\n\n"
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting live intelligence index...'})}\n\n"
             search_snippets = await web_search_service.search(user_message_content)
             if search_snippets:
                 live_web_context = search_snippets
-                last_reasoning_status = "Processing live web results..."
+                last_reasoning_status = "Synthesizing real-time information..."
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status})}\n\n"
 
         # Formulate system prompt with current live date
         from datetime import datetime

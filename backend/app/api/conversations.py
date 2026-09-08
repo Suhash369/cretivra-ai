@@ -5,7 +5,7 @@ from app.database.database import get_db
 from app.database.models import UserDB
 from app.api.auth import get_optional_user
 from app.services.conversation_service import conversation_service
-from app.schemas.conversation import ConversationCreate, ConversationUpdate, ConversationSchema
+from app.schemas.conversation import ConversationCreate, ConversationUpdate, ConversationSchema, BulkDeleteRequest
 
 router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
@@ -49,6 +49,56 @@ def create_conversation(
         model_id=payload.model_id or "cretivra-1",
         user_id=user_id
     )
+
+@router.get("/share/{conversation_id}")
+def get_shared_conversation(
+    conversation_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Public read-only snapshot endpoint for shared conversations.
+    Accessible without requiring private user credentials.
+    """
+    conv = conversation_service.get_conversation(db, conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Shared conversation not found or expired.")
+    
+    return {
+        "id": conv.id,
+        "title": conv.title,
+        "model_id": conv.model_id,
+        "created_at": conv.created_at.isoformat() if conv.created_at else None,
+        "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "reasoning_status": m.reasoning_status,
+                "created_at": m.created_at.isoformat() if m.created_at else None
+            } for m in conv.messages
+        ]
+    }
+
+@router.post("/bulk-delete", status_code=status.HTTP_200_OK)
+def bulk_delete_conversations(
+    payload: BulkDeleteRequest,
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk delete selected conversations for the authenticated or guest user.
+    """
+    if not payload.conversation_ids:
+        return {"deleted": 0}
+    
+    user_id = current_user.id if current_user else None
+    count = conversation_service.bulk_delete_conversations(
+        db=db,
+        conversation_ids=payload.conversation_ids,
+        user_id=user_id
+    )
+    return {"deleted": count}
 
 @router.get("/{conversation_id}", response_model=ConversationSchema)
 def get_conversation(

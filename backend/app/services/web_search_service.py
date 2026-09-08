@@ -35,9 +35,13 @@ class WebSearchService:
         r"^(?:is|was|did|has|will)\b.+\b(?:released|finished|started|happened|true|real|available|active)\b"
     ]
 
+    _CACHE: Dict[str, Any] = {}
+    _CACHE_TTL: float = 600.0  # 10 minutes cache
+
     def normalize_query(self, query: str) -> str:
         """
-        Normalizes common contractions, joined words, and typos in search queries.
+        Normalizes common contractions, joined words, and typos in search queries,
+        and extracts key search intent keywords.
         """
         q = query.strip()
         q = re.sub(r'iscurrent', 'is current', q, flags=re.IGNORECASE)
@@ -45,57 +49,37 @@ class WebSearchService:
         q = re.sub(r'tamilandu|tamilnadu|tamilnad', 'tamil nadu', q, flags=re.IGNORECASE)
         q = re.sub(r'\bcm\b', 'chief minister', q, flags=re.IGNORECASE)
         q = re.sub(r'\bpm\b', 'prime minister', q, flags=re.IGNORECASE)
-        return q.strip()
-
-    def should_search_web(self, query: str) -> bool:
-        """
-        Determines whether the user prompt requires live real-time web search.
-        """
-        q = query.strip().lower()
-        if len(q) < 4:
-            return False
-
-        # Exclude greetings and simple conversation
-        if q in [
-            "hi", "hello", "hey", "hey there", "good morning", "good evening", 
-            "good afternoon", "how are you", "what's up", "whats up", "help", 
-            "thanks", "thank you", "ok", "okay", "bye", "goodbye"
-        ]:
-            return False
-
-        # Exclude pure code/math/translation/image generation prompts
-        if any(prefix in q for prefix in [
-            "write code", "solve", "calculate", "translate", 
-            "generate image", "create image", "draw", "render",
-            "debug", "fix code", "refactor", "write a python", "write a function"
-        ]) and not any(w in q for w in ["latest", "today", "news", "released", "2026"]):
-            return False
-
-        # Exclude self-identity, origin, and architecture queries to always assert Cretivra Engine persona
-        if any(w in q for w in ["who are you", "who built you", "how were you built", "how you built", "who created you", "what is your name", "what are you", "tell me about yourself"]):
-            return False
-
-        for pattern in self.SEARCH_INTENT_PATTERNS:
-            if re.search(pattern, q, re.IGNORECASE):
-                return True
-        return False
+        q = re.sub(r'\blinkdin\b', 'linkedin', q, flags=re.IGNORECASE)
+        
+        # Strip conversational prefix filler for faster, sharper search hits
+        clean_q = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', q, flags=re.IGNORECASE)
+        return clean_q.strip() or q
 
     async def search(self, query: str, max_results: int = 6) -> str:
         """
-        Multi-tier search pipeline.
-        Tries dedicated search APIs first (Tavily, Serper, SerpAPI), then falls back
-        to zero-cost Google News RSS, Wikipedia, and DuckDuckGo.
+        Multi-tier accelerated intelligence retrieval pipeline.
+        Utilizes in-memory caching and concurrent source querying.
         """
+        import time
         clean_q = self.normalize_query(query)
-        results: List[str] = []
+        cache_key = clean_q.lower().strip()
 
-        # 1. Tavily AI Search API (if configured)
+        # Check in-memory cache for instant 0ms response
+        now = time.time()
+        if cache_key in self._CACHE:
+            cached_time, cached_res = self._CACHE[cache_key]
+            if now - cached_time < self._CACHE_TTL:
+                return cached_res
+
+        # 1. Tavily AI Search API (if configured) - fastest & highest quality
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
         if tavily_key:
             try:
                 tavily_res = await self._search_tavily(clean_q, tavily_key, max_results=max_results)
                 if tavily_res:
-                    return "\n".join(tavily_res[:max_results])
+                    res_str = "\n".join(tavily_res[:max_results])
+                    self._CACHE[cache_key] = (now, res_str)
+                    return res_str
             except Exception as e:
                 logger.warning(f"Tavily search error: {e}")
 
@@ -105,7 +89,9 @@ class WebSearchService:
             try:
                 brave_res = await self._search_brave(clean_q, brave_key, max_results=max_results)
                 if brave_res:
-                    return "\n".join(brave_res[:max_results])
+                    res_str = "\n".join(brave_res[:max_results])
+                    self._CACHE[cache_key] = (now, res_str)
+                    return res_str
             except Exception as e:
                 logger.warning(f"Brave search error: {e}")
 
@@ -115,39 +101,28 @@ class WebSearchService:
             try:
                 serper_res = await self._search_serper(clean_q, serper_key, max_results=max_results)
                 if serper_res:
-                    return "\n".join(serper_res[:max_results])
+                    res_str = "\n".join(serper_res[:max_results])
+                    self._CACHE[cache_key] = (now, res_str)
+                    return res_str
             except Exception as e:
                 logger.warning(f"Serper search error: {e}")
 
-        # 4. SerpAPI (Google Search API, if configured)
-        serpapi_key = getattr(settings, "SERPAPI_API_KEY", "")
-        if serpapi_key:
-            try:
-                serpapi_res = await self._search_serpapi(clean_q, serpapi_key, max_results=max_results)
-                if serpapi_res:
-                    return "\n".join(serpapi_res[:max_results])
-            except Exception as e:
-                logger.warning(f"SerpAPI search error: {e}")
-
-        # 5. Google News Live RSS Search (Zero-cost, 100% reliable on Cloud/Datacenter IPs)
+        # 4. Concurrent zero-cost fallback (Google News RSS & Wikipedia concurrently)
+        results: List[str] = []
         try:
-            google_results = await self._search_google_news(clean_q, max_results=max_results)
-            if google_results:
-                results.extend(google_results)
+            tasks = [
+                self._search_wikipedia(clean_q),
+                self._search_google_news(clean_q, max_results=max_results)
+            ]
+            gathered = await asyncio.gather(*tasks, return_exceptions=True)
+            for item in gathered:
+                if isinstance(item, list):
+                    results.extend(item)
         except Exception as e:
-            logger.debug(f"Google News RSS error: {e}")
+            logger.debug(f"Concurrent search fallback error: {e}")
 
-        # 5. Wikipedia Live API (if results are sparse)
-        if len(results) < 3:
-            try:
-                wiki_results = await self._search_wikipedia(clean_q)
-                if wiki_results:
-                    results.extend(wiki_results)
-            except Exception as e:
-                logger.debug(f"Wikipedia search error: {e}")
-
-        # 6. DuckDuckGo HTML / Lite Fallback
-        if len(results) < 3:
+        # 5. DuckDuckGo HTML Fallback if still empty
+        if len(results) < 2:
             try:
                 ddg_results = await self._search_duckduckgo(clean_q, max_results=max_results)
                 if ddg_results:
@@ -163,7 +138,9 @@ class WebSearchService:
                 if clean and clean not in seen and len(clean) > 15:
                     seen.add(clean)
                     unique_results.append(f"• {clean}")
-            return "\n".join(unique_results[:max_results])
+            final_res = "\n".join(unique_results[:max_results])
+            self._CACHE[cache_key] = (now, final_res)
+            return final_res
 
         return ""
 
@@ -176,7 +153,20 @@ class WebSearchService:
             "include_answer": True,
             "max_results": max_results
         }
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=3.5) as client:
+            res = await client.post(url, json=payload)
+            if res.status_code == 200:
+                data = res.json()
+                results = []
+                if data.get("answer"):
+                    results.append(f"• Direct Fact: {data['answer']}")
+                for r in data.get("results", [])[:max_results]:
+                    title = r.get("title", "").strip()
+                    content = r.get("content", "").strip()[:160].replace("\n", " ")
+                    if content:
+                        results.append(f"• {title}: {content}")
+                return results
+        return []
             res = await client.post(url, json=payload)
             if res.status_code == 200:
                 data = res.json()

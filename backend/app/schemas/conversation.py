@@ -31,3 +31,7 @@ class ConversationSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+class BulkDeleteRequest(BaseModel):
+    conversation_ids: List[str]
+

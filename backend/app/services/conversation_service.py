@@ -127,6 +127,19 @@ class ConversationService:
         db.commit()
         return True
 
+    def bulk_delete_conversations(self, db: Session, conversation_ids: List[str], user_id: Optional[str] = None) -> int:
+        deleted_count = 0
+        for cid in conversation_ids:
+            conv = self.get_conversation(db, cid)
+            if conv:
+                if conv.user_id and user_id and conv.user_id != user_id:
+                    continue
+                db.delete(conv)
+                deleted_count += 1
+        db.commit()
+        return deleted_count
+
+
     def add_message(
         self,
         db: Session,

@@ -26,9 +26,12 @@ import {
   RefreshCw,
   Palette,
   Scale,
+  Trash2,
+  CheckSquare,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
+import { initTheme } from './services/theme';
 import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
@@ -138,6 +141,8 @@ export function App() {
     setSearchQuery,
     createNew,
     refresh: refreshConversations,
+    deleteConversation,
+    bulkDeleteConversations,
   } = useConversations();
 
   const {
@@ -155,9 +160,12 @@ export function App() {
     stopGeneration,
     handleFileUpload,
     removeAttachment,
+    deleteSingleMessage,
   } = useChat();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedChatIds, setSelectedChatIds] = useState<Set<string>>(new Set());
   const [input, setInput] = useState('');
   const [modelOpen, setModelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -177,6 +185,12 @@ export function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize theme on mount
+  useEffect(() => {
+    const cleanup = initTheme();
+    return cleanup;
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -228,6 +242,63 @@ export function App() {
     loadConversation(newConv.id);
   };
 
+  const handleDeleteActiveChat = async () => {
+    if (!activeConversationId) return;
+    if (window.confirm('Delete this chat history? All messages will be permanently removed.')) {
+      await deleteConversation(activeConversationId);
+      clearActiveChat();
+    }
+  };
+
+  const handleDeleteSingleConv = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (window.confirm('Delete this conversation?')) {
+      await deleteConversation(id);
+      if (activeConversationId === id) {
+        clearActiveChat();
+      }
+    }
+  };
+
+  const handleToggleSelectChat = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedChatIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedChatIds.size === conversations.length) {
+      setSelectedChatIds(new Set());
+    } else {
+      setSelectedChatIds(new Set(conversations.map((c) => c.id)));
+    }
+  };
+
+  const handleExecuteBulkDelete = async () => {
+    if (selectedChatIds.size === 0) return;
+    if (window.confirm(`Delete ${selectedChatIds.size} selected conversations? This cannot be undone.`)) {
+      await bulkDeleteConversations(Array.from(selectedChatIds));
+      if (activeConversationId && selectedChatIds.has(activeConversationId)) {
+        clearActiveChat();
+      }
+      setSelectedChatIds(new Set());
+      setSelectMode(false);
+    }
+  };
+
+  const handleDeleteMessage = async (msgId: string) => {
+    if (window.confirm('Delete this message from your chat history?')) {
+      await deleteSingleMessage(msgId);
+    }
+  };
+
   const isImageModel = (m: CretivraModel) => {
     return m.category === 'Image Studio' || m.capabilities?.includes('image') || m.provider === 'pollinations';
   };
@@ -247,7 +318,7 @@ export function App() {
   const isLanding = messages.length === 0;
 
   return (
-    <div className="flex h-screen w-screen bg-[#060911] text-[#e7eaf4] overflow-hidden font-sans relative">
+    <div className="flex h-screen w-screen bg-[var(--bg-base)] text-[var(--text)] overflow-hidden font-sans relative">
       {/* Background Ambient Glowing Orbs */}
       <div className="cv-ambient">
         <div className="cv-orb cv-orb-1" />
@@ -269,23 +340,88 @@ export function App() {
             <Plus size={15} /> New chat
           </button>
         </div>
-        <div className="cv-sb-search" onClick={() => setSearchOpen(true)}>
-          <Search size={13} /> Search chats <span style={{ marginLeft: 'auto', opacity: 0.6 }}>⌘K</span>
+
+        {/* Search & Select Mode Toggle Bar */}
+        <div className="flex items-center gap-1.5 px-3 py-1 mt-2">
+          <div className="cv-sb-search flex-1 m-0" onClick={() => setSearchOpen(true)}>
+            <Search size={13} /> Search chats <span style={{ marginLeft: 'auto', opacity: 0.6 }}>⌘K</span>
+          </div>
+          <button
+            className={`cv-icon-btn shrink-0 ${selectMode ? 'text-cyan-400 bg-cyan-950/50 border-cyan-500/40' : ''}`}
+            title={selectMode ? 'Done selecting' : 'Select multiple chats to delete'}
+            onClick={() => {
+              setSelectMode(!selectMode);
+              setSelectedChatIds(new Set());
+            }}
+          >
+            <CheckSquare size={14} />
+          </button>
         </div>
+
+        {/* Bulk Selection Action Bar */}
+        {selectMode && (
+          <div className="mx-3 mt-2 p-2 rounded-xl bg-gray-900/90 border border-gray-800 flex items-center justify-between text-xs animate-in fade-in">
+            <button
+              onClick={handleSelectAll}
+              className="text-[11px] text-gray-400 hover:text-white cursor-pointer"
+            >
+              {selectedChatIds.size === conversations.length && conversations.length > 0 ? 'Deselect All' : 'Select All'}
+            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-gray-400 font-mono">
+                {selectedChatIds.size} sel
+              </span>
+              <button
+                disabled={selectedChatIds.size === 0}
+                onClick={handleExecuteBulkDelete}
+                className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-medium text-[11px] disabled:opacity-40 cursor-pointer flex items-center gap-1"
+              >
+                <Trash2 size={11} />
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="cv-sb-scroll">
           {Object.entries(grouped).map(([group, items]: [string, Conversation[]]) => (
             items.length > 0 && (
               <div key={group}>
                 <div className="cv-sb-group-label">{group.replace('_', ' ')}</div>
-                {items.map((conv) => (
-                  <div
-                    key={conv.id}
-                    className={`cv-sb-item ${conv.id === activeConversationId ? 'active' : ''}`}
-                    onClick={() => loadConversation(conv.id)}
-                  >
-                    {conv.title}
-                  </div>
-                ))}
+                {items.map((conv) => {
+                  const isSelected = selectedChatIds.has(conv.id);
+                  const isActive = conv.id === activeConversationId;
+                  return (
+                    <div
+                      key={conv.id}
+                      className={`cv-sb-item group flex items-center justify-between ${isActive ? 'active' : ''} ${
+                        isSelected ? 'bg-cyan-950/40 border border-cyan-500/30' : ''
+                      }`}
+                      onClick={() => (selectMode ? handleToggleSelectChat({ stopPropagation: () => {} } as any, conv.id) : loadConversation(conv.id))}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        {selectMode && (
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => handleToggleSelectChat(e as any, conv.id)}
+                            className="rounded border-gray-700 text-cyan-500 focus:ring-0 cursor-pointer"
+                          />
+                        )}
+                        <span className="truncate">{conv.title}</span>
+                      </div>
+                      {!selectMode && (
+                        <button
+                          onClick={(e) => handleDeleteSingleConv(e, conv.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-opacity cursor-pointer shrink-0"
+                          title="Delete chat"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )
           ))}
@@ -416,9 +552,18 @@ export function App() {
 
           {/* Action buttons */}
           {activeConversationId && (
-            <button className="cv-icon-btn" title="Share" onClick={() => setShareId(activeConversationId)}>
-              <Share2 size={15} />
-            </button>
+            <>
+              <button className="cv-icon-btn" title="Share conversation" onClick={() => setShareId(activeConversationId)}>
+                <Share2 size={15} />
+              </button>
+              <button
+                className="cv-icon-btn hover:text-rose-400"
+                title="Delete this chat history"
+                onClick={handleDeleteActiveChat}
+              >
+                <Trash2 size={15} />
+              </button>
+            </>
           )}
           {/* Sign In / Account Pill */}
           {user ? (
@@ -500,7 +645,7 @@ export function App() {
             {messages.map((m, i) => (
               <div className="cv-msg-row" key={m.id || i}>
                 {m.role === 'user' ? (
-                  <div className="cv-msg-user">
+                  <div className="cv-msg-user group relative flex flex-col items-end">
                     {/* User attachments if present */}
                     {m.attachments && m.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-2 justify-end">
@@ -515,18 +660,52 @@ export function App() {
                         ))}
                       </div>
                     )}
-                    <div className="cv-msg-user-bubble">{m.content}</div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleDeleteMessage(m.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-500 hover:text-rose-400 cursor-pointer"
+                        title="Delete message from history"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <div className="cv-msg-user-bubble">{m.content}</div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="cv-msg-assistant">
-                    {m.reasoning_status && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-full bg-purple-950/60 border border-purple-800/60 text-purple-300 text-xs font-mono animate-pulse">
-                        <Sparkles size={12} className="text-purple-400" />
-                        <span>{m.reasoning_status}</span>
-                      </div>
-                    )}
+                  <div className="cv-msg-assistant group relative">
+                    {m.reasoning_status ? (
+                      isGenerating && i === messages.length - 1 ? (
+                        <div className="inline-flex items-center gap-2 px-3 py-1 mb-2 rounded-full bg-indigo-950/50 border border-indigo-500/40 text-cyan-300 text-xs font-medium shadow-md animate-pulse">
+                          <Sparkles size={12} className="text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+                          <span>{m.reasoning_status}</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 rounded-full bg-cyan-950/30 border border-cyan-500/20 text-cyan-400 text-[11px] font-medium">
+                          <Sparkles size={11} className="text-cyan-400" />
+                          <span>Grounded with real-time intelligence</span>
+                        </div>
+                      )
+                    ) : null}
                     {renderMessageContent(m.content)}
                     {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard?.writeText(m.content);
+                        }}
+                        className="hover:text-gray-300 flex items-center gap-1 cursor-pointer"
+                        title="Copy message"
+                      >
+                        <Copy size={12} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMessage(m.id)}
+                        className="hover:text-rose-400 flex items-center gap-1 cursor-pointer"
+                        title="Delete message from history"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

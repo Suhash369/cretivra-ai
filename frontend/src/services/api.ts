@@ -138,6 +138,36 @@ export async function deleteConversation(id: string): Promise<void> {
   if (!res.ok) throw new Error(`Failed to delete conversation: ${res.statusText}`);
 }
 
+export async function bulkDeleteConversations(ids: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${API_BASE}/conversations/bulk-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify({ conversation_ids: ids }),
+  });
+  if (!res.ok) throw new Error(`Failed to bulk delete conversations: ${res.statusText}`);
+  return res.json();
+}
+
+export async function deleteMessage(messageId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) throw new Error(`Failed to delete message: ${res.statusText}`);
+}
+
+export async function fetchSharedConversation(id: string): Promise<Conversation> {
+  const res = await fetch(`${API_BASE}/conversations/share/${id}`);
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error('This shared conversation does not exist or has expired.');
+    }
+    throw new Error(`Failed to load shared conversation: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+
 export async function uploadFile(file: File): Promise<Attachment> {
   const formData = new FormData();
   formData.append('file', file);

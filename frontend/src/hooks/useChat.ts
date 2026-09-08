@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Message, Attachment, CretivraModel } from '../types';
-import { getConversation, uploadFile, fetchModels, API_BASE } from '../services/api';
+import { getConversation, uploadFile, fetchModels, deleteMessage, API_BASE } from '../services/api';
 import { readSSEStream } from '../services/streaming';
 
 export function useChat() {
@@ -253,6 +253,17 @@ export function useChat() {
     setAttachments((prev) => prev.filter((att) => att.id !== id));
   }, []);
 
+  const deleteSingleMessage = useCallback(async (messageId: string) => {
+    try {
+      if (!messageId.startsWith('user-') && !messageId.startsWith('assistant-')) {
+        await deleteMessage(messageId);
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (err: any) {
+      console.error('Failed to delete message:', err);
+    }
+  }, []);
+
   return {
     activeConversationId,
     setActiveConversationId,
@@ -272,5 +283,6 @@ export function useChat() {
     stopGeneration,
     handleFileUpload,
     removeAttachment,
+    deleteSingleMessage,
   };
 }

@@ -17,6 +17,24 @@
     --text-dim: #8891a8;
   }
 
+  :root[data-theme="light"],
+  html.light,
+  body.light {
+    --bg-base: #f8fafc;
+    --bg-panel: #ffffff;
+    --bg-card: #f1f5f9;
+    --border: #e2e8f0;
+    --cyan: #0284c7;
+    --blue: #2563eb;
+    --violet: #7c3aed;
+    --purple: #9333ea;
+    --green: #059669;
+    --amber: #d97706;
+    --rose: #e11d48;
+    --text: #0f172a;
+    --text-dim: #64748b;
+  }
+
   body {
     margin: 0;
     padding: 0;
@@ -26,8 +44,130 @@
     overflow-x: hidden;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
+
+/* Light mode overrides */
+html.light .cv-glass,
+body.light .cv-glass {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: var(--border);
+}
+
+html.light .cv-orb,
+body.light .cv-orb {
+  opacity: 0.12;
+}
+
+html.light .cv-sidebar,
+body.light .cv-sidebar {
+  background: var(--bg-panel);
+  border-right-color: var(--border);
+}
+
+html.light .cv-sb-head,
+body.light .cv-sb-head {
+  border-bottom-color: var(--border);
+}
+
+html.light .cv-sb-item,
+body.light .cv-sb-item {
+  color: #475569;
+}
+
+html.light .cv-sb-item:hover,
+body.light .cv-sb-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+html.light .cv-sb-item.active,
+body.light .cv-sb-item.active {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+  border-color: rgba(2, 132, 199, 0.3);
+}
+
+html.light .cv-header,
+body.light .cv-header {
+  background: var(--bg-panel);
+  border-bottom-color: var(--border);
+}
+
+html.light .cv-msg-user-bubble,
+body.light .cv-msg-user-bubble {
+  background: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #1e1b4b;
+}
+
+html.light .cv-msg-assistant,
+body.light .cv-msg-assistant {
+  color: #1e293b;
+}
+
+html.light .cv-composer,
+body.light .cv-composer {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06);
+}
+
+html.light .cv-composer:focus-within,
+body.light .cv-composer:focus-within {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+html.light .cv-card,
+body.light .cv-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+html.light .cv-card-title,
+body.light .cv-card-title {
+  color: #0f172a;
+}
+
+html.light .cv-card-sub,
+body.light .cv-card-sub {
+  color: #64748b;
+}
+
+html.light .cv-model-pill,
+body.light .cv-model-pill {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+html.light .cv-model-menu,
+body.light .cv-model-menu {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.15);
+}
+
+html.light .cv-model-opt:hover,
+body.light .cv-model-opt:hover {
+  background: #f1f5f9;
+}
+
+html.light .cv-icon-btn,
+body.light .cv-icon-btn {
+  color: #64748b;
+}
+
+html.light .cv-icon-btn:hover,
+body.light .cv-icon-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
 
 /* Ambient glow & particle drift */
 .cv-ambient { position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }

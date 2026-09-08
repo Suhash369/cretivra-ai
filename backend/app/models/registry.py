@@ -138,13 +138,25 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
     ),
     "cretivra-deepseek": CretivraModel(
         id="cretivra-deepseek",
-        display_name="Cretivra DeepSeek R1",
-        description="Frontier open-weights deep reasoning engine with chain-of-thought tokens",
+        display_name="Cretivra Deep C1",
+        description="Frontier deep reasoning engine with chain-of-thought tokens",
         provider="ollama",
         underlying_model="deepseek-r1:70b",
         capabilities=["chat", "reasoning", "math", "code"],
         context_length=131072,
         enabled=True,
+        version="1.0",
+        category="Deep Reasoning"
+    ),
+    "cretivra-deep-c1": CretivraModel(
+        id="cretivra-deep-c1",
+        display_name="Cretivra Deep C1",
+        description="Frontier deep reasoning engine with chain-of-thought tokens",
+        provider="ollama",
+        underlying_model="deepseek-r1:70b",
+        capabilities=["chat", "reasoning", "math", "code"],
+        context_length=131072,
+        enabled=False,  # Hidden alias to prevent duplicate card
         version="1.0",
         category="Deep Reasoning"
     ),
