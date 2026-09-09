@@ -697,8 +697,8 @@ export function App() {
                         <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-cyan-500 to-indigo-600 p-0.5 flex items-center justify-center text-white shadow-sm">
                           <Sparkles size={11} />
                         </div>
-                        <span className="font-semibold text-slate-100 text-[13px]">Asura AI</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 text-cyan-300 border border-slate-700/60 font-mono">
+                        <span className="font-semibold text-slate-900 dark:text-slate-100 text-[13px]">Asura AI</span>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-cyan-800 dark:text-cyan-300 border border-slate-300 dark:border-slate-700/60 font-mono font-medium">
                           {currentModelObj?.display_name || 'Frontier Intelligence'}
                         </span>
                       </div>
@@ -717,17 +717,17 @@ export function App() {
                         {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
                       </div>
                     ) : isGenerating && i === messages.length - 1 ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-400 py-2 animate-pulse">
-                        <Sparkles size={13} className="animate-spin text-cyan-400" />
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-2 animate-pulse">
+                        <Sparkles size={13} className="animate-spin text-cyan-500 dark:text-cyan-400" />
                         <span>Formulating response...</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 py-1 text-xs text-amber-400">
+                      <div className="flex items-center gap-2 py-1 text-xs text-amber-500 dark:text-amber-400">
                         <AlertCircle size={13} />
                         <span>No response received.</span>
                         <button
                           onClick={() => handleRegenerateFrom(i)}
-                          className="underline font-semibold hover:text-amber-300 ml-1 cursor-pointer"
+                          className="underline font-semibold hover:text-amber-400 ml-1 cursor-pointer"
                         >
                           Retry
                         </button>
@@ -736,12 +736,12 @@ export function App() {
 
                     {/* Assistant Action Toolbar (ChatGPT / Claude / Gemini style) */}
                     {m.content && (
-                      <div className="flex items-center gap-1.5 pt-3 mt-1.5 text-slate-400 border-t border-slate-800/50 select-none">
+                      <div className="flex items-center gap-1.5 pt-3 mt-2 text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/50 select-none">
                         {/* Copy response */}
                         <button
                           onClick={() => handleCopyAssistantMessage(m.id || String(i), m.content)}
-                          className={`p-1.5 rounded-lg hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-1 text-xs cursor-pointer ${
-                            copiedMsgId === (m.id || String(i)) ? 'text-emerald-400 bg-slate-800' : ''
+                          className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors flex items-center gap-1 text-xs cursor-pointer ${
+                            copiedMsgId === (m.id || String(i)) ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-slate-800' : ''
                           }`}
                           title="Copy response to clipboard"
                         >
@@ -757,10 +757,10 @@ export function App() {
                               [m.id || String(i)]: prev[m.id || String(i)] === 'good' ? (undefined as any) : 'good',
                             }))
                           }
-                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
+                          className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
                             messageFeedback[m.id || String(i)] === 'good'
-                              ? 'text-emerald-400 bg-emerald-950/50 border border-emerald-500/40'
-                              : 'hover:text-slate-200'
+                              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-500/40'
+                              : 'hover:text-slate-900 dark:hover:text-slate-200'
                           }`}
                           title="Good response"
                         >
@@ -775,10 +775,10 @@ export function App() {
                               [m.id || String(i)]: prev[m.id || String(i)] === 'bad' ? (undefined as any) : 'bad',
                             }))
                           }
-                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
+                          className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
                             messageFeedback[m.id || String(i)] === 'bad'
-                              ? 'text-rose-400 bg-rose-950/50 border border-rose-500/40'
-                              : 'hover:text-slate-200'
+                              ? 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-500/40'
+                              : 'hover:text-slate-900 dark:hover:text-slate-200'
                           }`}
                           title="Bad response"
                         >
@@ -789,7 +789,7 @@ export function App() {
                         <button
                           disabled={isGenerating}
                           onClick={() => handleRegenerateFrom(i)}
-                          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-slate-200 transition-colors disabled:opacity-40 cursor-pointer"
+                          className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors disabled:opacity-40 cursor-pointer"
                           title="Regenerate response"
                         >
                           <RotateCw size={13} />
@@ -798,8 +798,10 @@ export function App() {
                         {/* Read Aloud (TTS) */}
                         <button
                           onClick={() => handleSpeakMessage(m.id || String(i), m.content)}
-                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
-                            speakingMsgId === (m.id || String(i)) ? 'text-cyan-400 bg-cyan-950/50 animate-pulse' : 'hover:text-slate-200'
+                          className={`p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer ${
+                            speakingMsgId === (m.id || String(i))
+                              ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 animate-pulse border border-cyan-300 dark:border-cyan-500/30'
+                              : 'hover:text-slate-900 dark:hover:text-slate-200'
                           }`}
                           title={speakingMsgId === (m.id || String(i)) ? 'Stop speaking' : 'Read response aloud'}
                         >
@@ -811,7 +813,7 @@ export function App() {
                         {/* Delete message */}
                         <button
                           onClick={() => handleDeleteMessage(m.id)}
-                          className="p-1.5 rounded-lg hover:bg-rose-950/40 hover:text-rose-400 text-slate-500 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-600 dark:hover:text-rose-400 text-slate-400 dark:text-slate-500 transition-colors cursor-pointer"
                           title="Delete message from history"
                         >
                           <Trash2 size={13} />

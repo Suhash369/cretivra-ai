@@ -608,16 +608,22 @@ body.light .cv-gradient-text,
 .cv-msg-user { display:flex; justify-content:flex-end; }
 .cv-msg-user-bubble { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px 16px 4px 16px;
   padding: 10px 15px; font-size: 14px; max-width: 82%; line-height: 1.6; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-.cv-msg-assistant { font-size: 14.5px; line-height: 1.7; color: #e2e8f0; }
-.cv-msg-assistant p { margin: 0 0 12px; }
+.cv-msg-assistant { font-size: 14.5px; line-height: 1.7; color: var(--text); }
+.cv-msg-assistant p { margin: 0 0 12px; color: var(--text); }
 
 /* Global Markdown & Table Typography (ChatGPT / Claude / Gemini quality) */
 .chat-markdown,
 .cv-msg-assistant {
   font-size: 14.5px;
   line-height: 1.72;
-  color: #e2e8f0;
+  color: var(--text);
   word-break: break-word;
+}
+
+.chat-markdown p,
+.cv-msg-assistant p {
+  color: var(--text);
+  margin: 0 0 12px;
 }
 
 .chat-markdown table,
@@ -636,8 +642,8 @@ body.light .cv-gradient-text,
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
-  color: #f1f5f9;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
   background: rgba(30, 41, 59, 0.75);
 }
 
@@ -646,8 +652,8 @@ body.light .cv-gradient-text,
   padding: 11px 16px;
   font-size: 13.5px;
   line-height: 1.65;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
   vertical-align: top;
 }
 
@@ -656,14 +662,15 @@ body.light .cv-gradient-text,
   background: rgba(30, 41, 59, 0.4);
 }
 
-.chat-markdown h1, .cv-msg-assistant h1 { font-size: 1.55rem; font-weight: 700; color: #ffffff; margin: 24px 0 12px; letter-spacing: -0.02em; }
-.chat-markdown h2, .cv-msg-assistant h2 { font-size: 1.28rem; font-weight: 700; color: #ffffff; margin: 20px 0 10px; letter-spacing: -0.01em; }
-.chat-markdown h3, .cv-msg-assistant h3 { font-size: 1.08rem; font-weight: 600; color: #f8fafc; margin: 16px 0 8px; }
-.chat-markdown h4, .cv-msg-assistant h4 { font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin: 14px 0 6px; }
+.chat-markdown h1, .cv-msg-assistant h1 { font-size: 1.55rem; font-weight: 700; color: var(--text); margin: 24px 0 12px; letter-spacing: -0.02em; }
+.chat-markdown h2, .cv-msg-assistant h2 { font-size: 1.28rem; font-weight: 700; color: var(--text); margin: 20px 0 10px; letter-spacing: -0.01em; }
+.chat-markdown h3, .cv-msg-assistant h3 { font-size: 1.08rem; font-weight: 600; color: var(--text); margin: 16px 0 8px; }
+.chat-markdown h4, .cv-msg-assistant h4 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 14px 0 6px; }
 
 .chat-markdown ul, .cv-msg-assistant ul { list-style-type: disc; padding-left: 24px; margin: 10px 0 14px; }
 .chat-markdown ol, .cv-msg-assistant ol { list-style-type: decimal; padding-left: 24px; margin: 10px 0 14px; }
-.chat-markdown li, .cv-msg-assistant li { margin-bottom: 6px; line-height: 1.68; color: #e2e8f0; }
+.chat-markdown li, .cv-msg-assistant li { margin-bottom: 6px; line-height: 1.68; color: var(--text); }
+.chat-markdown strong, .cv-msg-assistant strong { font-weight: 600; color: var(--text); }
 
 .chat-markdown code:not(pre code),
 .cv-msg-assistant code:not(pre code) {
@@ -685,7 +692,7 @@ body.light .cv-gradient-text,
   padding: 10px 16px;
   margin: 14px 0;
   font-style: italic;
-  color: #cbd5e1;
+  color: var(--text-dim);
 }
 
 .chat-markdown hr,
@@ -696,50 +703,98 @@ body.light .cv-gradient-text,
   margin: 22px 0;
 }
 
+/* KaTeX math formulas */
+.katex-display {
+  margin: 1.25rem 0 !important;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+}
+
+.katex {
+  color: inherit;
+  font-size: 1.08em;
+}
+
 /* Light mode overrides for markdown & tables */
 html.light .chat-markdown,
 body.light .chat-markdown,
 html.light .cv-msg-assistant,
 body.light .cv-msg-assistant {
-  color: #1e293b;
+  color: #1e293b !important;
+}
+
+html.light .chat-markdown p,
+body.light .chat-markdown p,
+html.light .cv-msg-assistant p,
+body.light .cv-msg-assistant p,
+html.light .chat-markdown li,
+body.light .chat-markdown li,
+html.light .cv-msg-assistant li,
+body.light .cv-msg-assistant li {
+  color: #1e293b !important;
+}
+
+html.light .chat-markdown strong,
+body.light .chat-markdown strong,
+html.light .cv-msg-assistant strong,
+body.light .cv-msg-assistant strong {
+  color: #0f172a !important;
+}
+
+html.light .chat-markdown table,
+body.light .chat-markdown table,
+html.light .cv-msg-assistant table,
+body.light .cv-msg-assistant table {
+  background: #ffffff;
 }
 
 html.light .chat-markdown th,
 body.light .chat-markdown th,
 html.light .cv-msg-assistant th,
 body.light .cv-msg-assistant th {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-bottom: 1px solid #cbd5e1;
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 html.light .chat-markdown td,
 body.light .chat-markdown td,
 html.light .cv-msg-assistant td,
 body.light .cv-msg-assistant td {
-  color: #334155;
-  border-bottom: 1px solid #e2e8f0;
+  color: #1e293b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 html.light .chat-markdown tr:hover td,
 body.light .chat-markdown tr:hover td,
 html.light .cv-msg-assistant tr:hover td,
 body.light .cv-msg-assistant tr:hover td {
-  background: rgba(241, 245, 249, 0.7);
+  background: #f8fafc !important;
 }
 
 html.light .chat-markdown h1, html.light .chat-markdown h2, html.light .chat-markdown h3, html.light .chat-markdown h4,
 body.light .chat-markdown h1, body.light .chat-markdown h2, body.light .chat-markdown h3, body.light .chat-markdown h4 {
-  color: #0f172a;
+  color: #0f172a !important;
 }
 
 html.light .chat-markdown code:not(pre code),
 body.light .chat-markdown code:not(pre code),
 html.light .cv-msg-assistant code:not(pre code),
 body.light .cv-msg-assistant code:not(pre code) {
-  background: #f1f5f9;
-  color: #0891b2;
-  border: 1px solid #cbd5e1;
+  background: #f1f5f9 !important;
+  color: #0e7490 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.light .katex,
+body.light .katex {
+  color: #0f172a !important;
+}
+
+html.dark .katex,
+body.dark .katex {
+  color: #f1f5f9 !important;
 }
 
 .cv-code-block { background: #0a0e18; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 8px 0 12px; }
