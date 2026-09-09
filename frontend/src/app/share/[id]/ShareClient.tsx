@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
   Share2,
   Copy,
@@ -15,8 +13,8 @@ import {
 } from 'lucide-react';
 import { fetchSharedConversation } from '../../../services/api';
 import { CretivraMark } from '../../../components/common/CretivraLogo';
-import { GeneratedImageCard } from '../../../components/chat/ChatMessage';
 import { IntelligenceCacheCard } from '../../../components/chat/IntelligenceCacheCard';
+import { MarkdownRenderer } from '../../../components/chat/MarkdownRenderer';
 import { initTheme } from '../../../services/theme';
 import type { Conversation, Message } from '../../../types';
 
@@ -175,40 +173,7 @@ export function ShareClient({ conversationId }: { conversationId: string }) {
                       />
                     )}
 
-                    <div className="prose max-w-none text-sm text-slate-800 dark:text-gray-100 dark:prose-invert leading-relaxed font-sans">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          img({ src, alt }) {
-                            const imageSrc = typeof src === 'string' ? src : undefined;
-                            return <GeneratedImageCard src={imageSrc} alt={alt} />;
-                          },
-                          code({ inline, className, children, ...props }: any) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            const codeText = String(children).replace(/\n$/, '');
-                            if (!inline && match) {
-                              return (
-                                <div className="my-2 rounded-xl overflow-hidden bg-gray-950 border border-gray-800 text-xs font-mono">
-                                  <div className="px-3 py-1.5 bg-gray-900 border-b border-gray-800 text-gray-400">
-                                    {match[1]}
-                                  </div>
-                                  <pre className="p-3 overflow-x-auto text-emerald-300">
-                                    <code>{codeText}</code>
-                                  </pre>
-                                </div>
-                              );
-                            }
-                            return (
-                              <code className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-300 font-mono text-xs" {...props}>
-                                {children}
-                              </code>
-                            );
-                          },
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
+                    <MarkdownRenderer content={msg.content} />
                   </div>
                 );
               })}

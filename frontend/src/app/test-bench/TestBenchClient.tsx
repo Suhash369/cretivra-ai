@@ -2,8 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { MarkdownRenderer } from '../../components/chat/MarkdownRenderer';
 import {
   Zap,
   Gauge,
@@ -384,11 +383,7 @@ export function TestBenchClient() {
               {/* Streaming Output Window */}
               <div className="flex-1 p-4 overflow-y-auto select-text text-sm space-y-2 leading-relaxed bg-[#060911]/30">
                 {outputA ? (
-                  <div className="prose max-w-none text-xs sm:text-sm text-slate-800 dark:text-gray-100 dark:prose-invert">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {outputA}
-                    </ReactMarkdown>
-                  </div>
+                  <MarkdownRenderer content={outputA} />
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-gray-500 text-xs text-center p-8 space-y-2 select-none">
                     <Cpu className="w-8 h-8 opacity-30 animate-pulse text-cyan-400" />
@@ -440,11 +435,7 @@ export function TestBenchClient() {
               {/* Streaming Output Window */}
               <div className="flex-1 p-4 overflow-y-auto select-text text-sm space-y-2 leading-relaxed bg-[#060911]/30">
                 {outputB ? (
-                  <div className="prose max-w-none text-xs sm:text-sm text-slate-800 dark:text-gray-100 dark:prose-invert">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {outputB}
-                    </ReactMarkdown>
-                  </div>
+                  <MarkdownRenderer content={outputB} />
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-gray-500 text-xs text-center p-8 space-y-2 select-none">
                     <Cpu className="w-8 h-8 opacity-30 animate-pulse text-purple-400" />

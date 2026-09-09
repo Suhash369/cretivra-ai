@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import {
   Search,
   Paperclip,
@@ -28,6 +26,11 @@ import {
   Scale,
   Trash2,
   CheckSquare,
+  ThumbsUp,
+  ThumbsDown,
+  RotateCw,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -38,8 +41,8 @@ import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
-import { GeneratedImageCard } from './components/chat/ChatMessage';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
+import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
 import { CretivraMark } from './components/common/CretivraLogo';
 import type { Conversation, CretivraModel } from './types';
 
@@ -76,64 +79,9 @@ const SUGGESTIONS = [
   },
 ];
 
-/* Code block component with copy action */
-function CodeBlock({ code, lang }: { code: string; lang?: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="cv-code-block">
-      <div className="cv-code-head">
-        <span>{lang || 'code'}</span>
-        <button
-          onClick={() => {
-            navigator.clipboard?.writeText(code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1400);
-          }}
-        >
-          {copied ? <Check size={13} /> : <Copy size={13} />}
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre>
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
 
-/* Helper to render rich markdown, images, and code blocks */
-function renderMessageContent(text: string) {
-  return (
-    <div className="prose max-w-none text-sm text-slate-800 dark:text-gray-100 dark:prose-invert leading-relaxed font-sans">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          img({ src, alt }) {
-            const imageSrc = typeof src === 'string' ? src : undefined;
-            return <GeneratedImageCard src={imageSrc} alt={alt} />;
-          },
-          code({ inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
-            const codeText = String(children).replace(/\n$/, '');
-            if (!inline && match) {
-              return <CodeBlock lang={match[1]} code={codeText} />;
-            }
-            return (
-              <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 text-indigo-600 dark:text-cyan-300 font-mono text-xs border border-slate-200 dark:border-transparent" {...props}>
-                {children}
-              </code>
-            );
-          },
-          p({ children }) {
-            return <p className="mb-2 leading-relaxed">{children}</p>;
-          },
-        }}
-      >
-        {text}
-      </ReactMarkdown>
-    </div>
-  );
-}
+
+
 
 export function App() {
   const [user, setUser] = useState<any>(() => {
@@ -183,6 +131,9 @@ export function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
+  const [messageFeedback, setMessageFeedback] = useState<Record<string, 'good' | 'bad'>>({});
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -298,6 +249,43 @@ export function App() {
   const handleDeleteMessage = async (msgId: string) => {
     if (window.confirm('Delete this message from your chat history?')) {
       await deleteSingleMessage(msgId);
+    }
+  };
+
+  const handleSpeakMessage = (msgId: string, text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (speakingMsgId === msgId) {
+      window.speechSynthesis.cancel();
+      setSpeakingMsgId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const cleanText = text
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/[#*_~>]/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .trim();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setSpeakingMsgId(null);
+    utterance.onerror = () => setSpeakingMsgId(null);
+    setSpeakingMsgId(msgId);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleCopyAssistantMessage = (msgId: string, text: string) => {
+    navigator.clipboard?.writeText(text);
+    setCopiedMsgId(msgId);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
+  const handleRegenerateFrom = (msgIndex: number) => {
+    const lastUser = messages.slice(0, msgIndex).reverse().find((msg) => msg.role === 'user');
+    if (lastUser) {
+      sendMessage(lastUser.content);
     }
   };
 
@@ -703,53 +691,133 @@ export function App() {
                   </div>
                 ) : (
                   <div className="cv-msg-assistant group relative">
+                    {/* Assistant Header: Model Identifier & Brand Badge */}
+                    <div className="flex items-center justify-between mb-2 text-xs select-none">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-cyan-500 to-indigo-600 p-0.5 flex items-center justify-center text-white shadow-sm">
+                          <Sparkles size={11} />
+                        </div>
+                        <span className="font-semibold text-slate-100 text-[13px]">Asura AI</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 text-cyan-300 border border-slate-700/60 font-mono">
+                          {currentModelObj?.display_name || 'Frontier Intelligence'}
+                        </span>
+                      </div>
+                    </div>
+
                     <IntelligenceCacheCard
                       reasoningStatus={m.reasoning_status}
                       isGenerating={isGenerating && i === messages.length - 1}
                       cacheItems={m.cache_items}
                       userQuery={i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : undefined}
                     />
+
                     {m.content ? (
-                      renderMessageContent(m.content)
+                      <div className="relative">
+                        <MarkdownRenderer content={m.content} />
+                        {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
+                      </div>
                     ) : isGenerating && i === messages.length - 1 ? (
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-1.5 animate-pulse">
-                        <Sparkles size={13} className="animate-spin text-indigo-500 dark:text-cyan-400" />
+                      <div className="flex items-center gap-2 text-xs text-slate-400 py-2 animate-pulse">
+                        <Sparkles size={13} className="animate-spin text-cyan-400" />
                         <span>Formulating response...</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 py-1 text-xs text-amber-500 dark:text-amber-400">
+                      <div className="flex items-center gap-2 py-1 text-xs text-amber-400">
                         <AlertCircle size={13} />
                         <span>No response received.</span>
                         <button
-                          onClick={() => {
-                            const lastUser = messages.slice(0, i).reverse().find(msg => msg.role === 'user');
-                            if (lastUser) sendMessage(lastUser.content);
-                          }}
+                          onClick={() => handleRegenerateFrom(i)}
                           className="underline font-semibold hover:text-amber-300 ml-1 cursor-pointer"
                         >
                           Retry
                         </button>
                       </div>
                     )}
-                    {isGenerating && i === messages.length - 1 && m.content && <span className="cv-cursor" />}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 mt-1.5 text-xs text-gray-500">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard?.writeText(m.content);
-                        }}
-                        className="hover:text-gray-300 flex items-center gap-1 cursor-pointer"
-                        title="Copy message"
-                      >
-                        <Copy size={12} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMessage(m.id)}
-                        className="hover:text-rose-400 flex items-center gap-1 cursor-pointer"
-                        title="Delete message from history"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
+
+                    {/* Assistant Action Toolbar (ChatGPT / Claude / Gemini style) */}
+                    {m.content && (
+                      <div className="flex items-center gap-1.5 pt-3 mt-1.5 text-slate-400 border-t border-slate-800/50 select-none">
+                        {/* Copy response */}
+                        <button
+                          onClick={() => handleCopyAssistantMessage(m.id || String(i), m.content)}
+                          className={`p-1.5 rounded-lg hover:bg-slate-800 hover:text-slate-200 transition-colors flex items-center gap-1 text-xs cursor-pointer ${
+                            copiedMsgId === (m.id || String(i)) ? 'text-emerald-400 bg-slate-800' : ''
+                          }`}
+                          title="Copy response to clipboard"
+                        >
+                          {copiedMsgId === (m.id || String(i)) ? <Check size={13} /> : <Copy size={13} />}
+                          {copiedMsgId === (m.id || String(i)) && <span className="text-[11px] font-medium">Copied!</span>}
+                        </button>
+
+                        {/* Good Response */}
+                        <button
+                          onClick={() =>
+                            setMessageFeedback((prev) => ({
+                              ...prev,
+                              [m.id || String(i)]: prev[m.id || String(i)] === 'good' ? (undefined as any) : 'good',
+                            }))
+                          }
+                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
+                            messageFeedback[m.id || String(i)] === 'good'
+                              ? 'text-emerald-400 bg-emerald-950/50 border border-emerald-500/40'
+                              : 'hover:text-slate-200'
+                          }`}
+                          title="Good response"
+                        >
+                          <ThumbsUp size={13} />
+                        </button>
+
+                        {/* Bad Response */}
+                        <button
+                          onClick={() =>
+                            setMessageFeedback((prev) => ({
+                              ...prev,
+                              [m.id || String(i)]: prev[m.id || String(i)] === 'bad' ? (undefined as any) : 'bad',
+                            }))
+                          }
+                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
+                            messageFeedback[m.id || String(i)] === 'bad'
+                              ? 'text-rose-400 bg-rose-950/50 border border-rose-500/40'
+                              : 'hover:text-slate-200'
+                          }`}
+                          title="Bad response"
+                        >
+                          <ThumbsDown size={13} />
+                        </button>
+
+                        {/* Regenerate */}
+                        <button
+                          disabled={isGenerating}
+                          onClick={() => handleRegenerateFrom(i)}
+                          className="p-1.5 rounded-lg hover:bg-slate-800 hover:text-slate-200 transition-colors disabled:opacity-40 cursor-pointer"
+                          title="Regenerate response"
+                        >
+                          <RotateCw size={13} />
+                        </button>
+
+                        {/* Read Aloud (TTS) */}
+                        <button
+                          onClick={() => handleSpeakMessage(m.id || String(i), m.content)}
+                          className={`p-1.5 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer ${
+                            speakingMsgId === (m.id || String(i)) ? 'text-cyan-400 bg-cyan-950/50 animate-pulse' : 'hover:text-slate-200'
+                          }`}
+                          title={speakingMsgId === (m.id || String(i)) ? 'Stop speaking' : 'Read response aloud'}
+                        >
+                          {speakingMsgId === (m.id || String(i)) ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                        </button>
+
+                        <div className="flex-1" />
+
+                        {/* Delete message */}
+                        <button
+                          onClick={() => handleDeleteMessage(m.id)}
+                          className="p-1.5 rounded-lg hover:bg-rose-950/40 hover:text-rose-400 text-slate-500 transition-colors cursor-pointer"
+                          title="Delete message from history"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -759,7 +827,7 @@ export function App() {
 
         {/* Global Chat Error Banner */}
         {chatError && (
-          <div className="max-w-[680px] mx-auto px-4 py-2 mb-2 flex items-center justify-between gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs animate-in fade-in">
+          <div className="max-w-[820px] mx-auto px-4 py-2 mb-2 flex items-center justify-between gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs animate-in fade-in">
             <div className="flex items-center gap-2">
               <AlertCircle size={14} className="shrink-0" />
               <span>{chatError}</span>
