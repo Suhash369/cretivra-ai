@@ -163,9 +163,6 @@ export function useChat(options?: UseChatOptions) {
               setReasoningStatus(chunk.reasoning_status);
             }
 
-            if (chunk.full_content !== undefined) {
-              fullReply = chunk.full_content;
-            }
 
             setMessages((prev) =>
               prev.map((msg) => {
