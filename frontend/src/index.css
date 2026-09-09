@@ -72,9 +72,25 @@ body.light .cv-sb-head {
   border-bottom-color: var(--border);
 }
 
+html.light .cv-sb-new-btn,
+body.light .cv-sb-new-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+html.light .cv-sb-new-btn:hover,
+body.light .cv-sb-new-btn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0284c7;
+}
+
 html.light .cv-sb-item,
 body.light .cv-sb-item {
-  color: #475569;
+  color: #1e293b;
+  font-weight: 500;
 }
 
 html.light .cv-sb-item:hover,
@@ -85,9 +101,16 @@ body.light .cv-sb-item:hover {
 
 html.light .cv-sb-item.active,
 body.light .cv-sb-item.active {
-  background: rgba(2, 132, 199, 0.12);
+  background: #e0f2fe;
   color: #0369a1;
-  border-color: rgba(2, 132, 199, 0.3);
+  border: 1px solid #7dd3fc;
+  font-weight: 600;
+}
+
+html.light .cv-sb-group-label,
+body.light .cv-sb-group-label {
+  color: #64748b;
+  font-weight: 700;
 }
 
 html.light .cv-header,

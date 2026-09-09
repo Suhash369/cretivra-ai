@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import UserDB, MessageDB
-from app.api.auth import get_optional_user
+from app.api.auth import get_optional_user, get_required_user
 from app.services.chat_service import chat_service
 from app.services.conversation_service import conversation_service
 from app.schemas.chat import ChatRequest, EditMessageRequest
@@ -16,11 +16,11 @@ router = APIRouter(prefix="", tags=["Chat"])
 @router.post("/chat/stream")
 async def chat_stream(
     payload: ChatRequest,
-    current_user: Optional[UserDB] = Depends(get_optional_user),
+    current_user: UserDB = Depends(get_required_user),
     db: Session = Depends(get_db)
 ):
     """
-    Streaming SSE chat endpoint supporting per-user conversation isolation. 100% Free for everyone.
+    Streaming SSE chat endpoint supporting per-user conversation isolation. Strictly authenticated.
     """
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
@@ -28,18 +28,17 @@ async def chat_stream(
     # Create conversation if id not provided
     conversation_id = payload.conversation_id
     if not conversation_id:
-        user_id = current_user.id if current_user else None
         conv = conversation_service.create_conversation(
             db=db,
             title="New Conversation",
             model_id=payload.model_id,
-            user_id=user_id
+            user_id=current_user.id
         )
         conversation_id = conv.id
     else:
         # Verify access if existing conversation has a user_id
         conv = conversation_service.get_conversation(db, conversation_id)
-        if conv and conv.user_id and (not current_user or current_user.id != conv.user_id):
+        if conv and conv.user_id and current_user.id != conv.user_id:
             raise HTTPException(status_code=403, detail="Access denied to this conversation.")
 
     # Save user message to database first
@@ -167,6 +166,16 @@ async def delete_message(
 
     if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to delete this message.")
+
+    # If deleting a user question, also delete the subsequent assistant response
+    if target_msg.role == "user":
+        subsequent_assistant = db.query(MessageDB).filter(
+            MessageDB.conversation_id == target_msg.conversation_id,
+            MessageDB.role == "assistant",
+            MessageDB.created_at >= target_msg.created_at
+        ).order_by(MessageDB.created_at.asc()).first()
+        if subsequent_assistant:
+            db.delete(subsequent_assistant)
 
     db.delete(target_msg)
     db.commit()

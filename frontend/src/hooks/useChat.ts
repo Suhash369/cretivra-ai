@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { Message, Attachment, CretivraModel, Conversation } from '../types';
-import { getConversation, uploadFile, fetchModels, deleteMessage, API_BASE } from '../services/api';
+import { getConversation, uploadFile, fetchModels, deleteMessage, API_BASE, getAuthToken } from '../services/api';
 import { readSSEStream } from '../services/streaming';
 
 interface UseChatOptions {
@@ -97,6 +97,11 @@ export function useChat(options?: UseChatOptions) {
   const sendMessage = useCallback(
     async (content: string, modelId = selectedModel, forceSearch = false, forceReason = false) => {
       if (!content.trim() || isGenerating) return;
+
+      if (!getAuthToken()) {
+        setError('Please sign in to access Asura AI models.');
+        return;
+      }
 
       setError(null);
       setIsGenerating(true);
@@ -383,14 +388,27 @@ export function useChat(options?: UseChatOptions) {
 
   const deleteSingleMessage = useCallback(async (messageId: string) => {
     try {
-      if (!messageId.startsWith('user-') && !messageId.startsWith('assistant-')) {
-        await deleteMessage(messageId);
+      let idsToDelete = [messageId];
+      const targetIndex = messages.findIndex((m) => m.id === messageId);
+      if (targetIndex !== -1) {
+        const targetMsg = messages[targetIndex];
+        // If deleting a user question, also delete the subsequent assistant response
+        if (targetMsg.role === 'user' && targetIndex + 1 < messages.length && messages[targetIndex + 1].role === 'assistant') {
+          idsToDelete.push(messages[targetIndex + 1].id);
+        }
       }
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      setMessages((prev) => prev.filter((m) => !idsToDelete.includes(m.id)));
+
+      for (const id of idsToDelete) {
+        if (!id.startsWith('user-') && !id.startsWith('assistant-')) {
+          await deleteMessage(id);
+        }
+      }
     } catch (err: any) {
       console.error('Failed to delete message:', err);
     }
-  }, []);
+  }, [messages]);
 
   return {
     activeConversationId,

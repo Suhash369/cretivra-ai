@@ -78,33 +78,24 @@ export function useConversations(user?: any) {
   }, []);
 
   const loadConversations = useCallback(async (query?: string) => {
+    if (!user && !getAuthToken()) {
+      setConversations([]);
+      setGrouped(EMPTY_GROUPED);
+      setLoading(false);
+      try {
+        localStorage.removeItem('cretivra_guest_conversations');
+      } catch {}
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const data = await fetchConversations(query);
       const list = data.conversations || [];
       updateConversationsList(list);
-
-      // Save locally if guest
-      if (!user && !getAuthToken()) {
-        try {
-          localStorage.setItem('cretivra_guest_conversations', JSON.stringify(list.slice(0, 50)));
-        } catch {}
-      }
     } catch (err: any) {
-      console.warn('Failed to fetch conversations from server, checking local cache:', err);
-      // If offline/server down, try loading from local storage
-      try {
-        const cached = localStorage.getItem('cretivra_guest_conversations');
-        if (cached) {
-          const list: Conversation[] = JSON.parse(cached);
-          const filtered = query
-            ? list.filter((c) => c.title.toLowerCase().includes(query.toLowerCase()))
-            : list;
-          updateConversationsList(filtered);
-          return;
-        }
-      } catch {}
+      console.warn('Failed to fetch conversations from server:', err);
       setError(err.message || 'Failed to load conversation history');
     } finally {
       setLoading(false);

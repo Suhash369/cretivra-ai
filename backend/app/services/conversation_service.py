@@ -34,11 +34,18 @@ class ConversationService:
         limit: int = 100,
         user_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        query = db.query(ConversationDB)
-        if user_id:
-            query = query.filter(ConversationDB.user_id == user_id)
-        else:
-            query = query.filter(ConversationDB.user_id.is_(None))
+        if not user_id:
+            return {
+                "conversations": [],
+                "grouped": {
+                    "today": [],
+                    "yesterday": [],
+                    "previous_7_days": [],
+                    "older": []
+                }
+            }
+
+        query = db.query(ConversationDB).filter(ConversationDB.user_id == user_id)
 
         if search_query and search_query.strip():
             sq = f"%{search_query.strip()}%"

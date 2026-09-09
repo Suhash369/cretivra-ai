@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   Paperclip,
@@ -36,9 +36,9 @@ import {
   Edit3,
   Pin,
   PinOff,
-  Activity,
   Globe,
   Menu,
+  Lock,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -47,14 +47,12 @@ import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
-import { HealthModal } from './components/settings/HealthModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
 import { CretivraMark } from './components/common/CretivraLogo';
-import { fetchHealth } from './services/api';
-import type { Conversation, CretivraModel, HealthStatus, SystemSettings } from './types';
+import type { Conversation, CretivraModel, SystemSettings } from './types';
 
 const SUGGESTIONS = [
   {
@@ -144,7 +142,6 @@ export function App() {
   const [modelOpen, setModelOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [healthOpen, setHealthOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
@@ -169,9 +166,12 @@ export function App() {
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
 
-  // Health status
-  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
-  const [healthLoading, setHealthLoading] = useState(false);
+  // User greeting name
+  const userDisplayName = useMemo(() => {
+    if (!user) return null;
+    const name = user.full_name?.trim() || user.name?.trim() || (user.email ? user.email.split('@')[0] : '');
+    return name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Friend';
+  }, [user]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -183,29 +183,6 @@ export function App() {
     const cleanup = initTheme();
     return cleanup;
   }, []);
-
-  // Fetch health status on mount
-  const refreshHealth = useCallback(async () => {
-    setHealthLoading(true);
-    try {
-      const data = await fetchHealth();
-      setHealthStatus(data);
-    } catch {
-      setHealthStatus({
-        status: 'healthy',
-        backend: { status: 'online', name: 'FastAPI Service', version: '1.0.0' },
-        ollama: { status: 'connected', url: 'http://localhost:11434', installed_models_count: 8, mock_mode: false },
-        database: { status: 'connected' },
-        models: { total_registered: 8, available_count: 8 },
-      });
-    } finally {
-      setHealthLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshHealth();
-  }, [refreshHealth]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -272,6 +249,10 @@ export function App() {
   }, []);
 
   const handleSend = (textToSend?: string) => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
     const content = (textToSend ?? input).trim();
     if ((content || attachments.length > 0) && !isGenerating) {
       sendMessage(content, selectedModel, webSearchEnabled, deepThinkEnabled);
@@ -281,6 +262,10 @@ export function App() {
   };
 
   const handleNewChat = async () => {
+    if (!user) {
+      setAuthOpen(true);
+      return;
+    }
     clearActiveChat();
     const newConv = await createNew(selectedModel);
     loadConversation(newConv.id);
@@ -439,31 +424,48 @@ export function App() {
 
       {/* Sidebar */}
       <div
-        className={`cv-sidebar ${sidebarOpen ? '' : 'closed'} z-40 fixed md:static top-0 bottom-0 left-0 transition-all duration-300 flex flex-col justify-between`}
+        className={`cv-sidebar ${sidebarOpen ? '' : 'closed'} z-40 fixed md:static top-0 bottom-0 left-0 transition-all duration-300 flex flex-col justify-between border-r border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-[#0d121f]`}
       >
         <div>
-          <div className="cv-sb-head">
+          <div className="cv-sb-head flex items-center gap-2.5 px-4 py-3 border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-950 text-slate-900 dark:text-white">
             <CretivraMark size={22} />
-            <span style={{ fontWeight: 600, fontSize: 13.5 }}>Asura AI by Cretivra</span>
-            <div style={{ flex: 1 }} />
-            <button className="cv-icon-btn cursor-pointer" onClick={() => setSidebarOpen(false)} title="Collapse sidebar">
+            <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white">Asura AI by Cretivra</span>
+            <div className="flex-1" />
+            <button
+              className="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+              onClick={() => setSidebarOpen(false)}
+              title="Collapse sidebar"
+            >
               <PanelLeftClose size={15} />
             </button>
           </div>
 
-          <div style={{ padding: '10px 12px 0' }}>
-            <button className="cv-new-chat cursor-pointer" onClick={handleNewChat}>
-              <Plus size={15} /> New chat
+          <div className="px-3 pt-3">
+            <button
+              className="cv-sb-new-btn w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white dark:bg-cyan-950/40 hover:bg-slate-100 dark:hover:bg-cyan-900/50 text-slate-900 dark:text-cyan-300 border border-slate-300 dark:border-cyan-500/40 font-semibold text-xs shadow-xs transition-all cursor-pointer"
+              onClick={handleNewChat}
+            >
+              <Plus size={15} className="text-slate-800 dark:text-cyan-400" />
+              <span>New chat</span>
             </button>
           </div>
 
           {/* Search & Select Mode Toggle Bar */}
           <div className="flex items-center gap-1.5 px-3 py-1 mt-2">
-            <div className="cv-sb-search flex-1 m-0 cursor-pointer" onClick={() => setSearchOpen(true)}>
-              <Search size={13} /> Search chats <span style={{ marginLeft: 'auto', opacity: 0.6 }}>⌘K</span>
+            <div
+              className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-gray-900/60 border border-slate-200 dark:border-gray-800 text-xs text-slate-700 dark:text-gray-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer shadow-2xs"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={13} className="text-slate-500 dark:text-gray-400" />
+              <span className="font-medium">Search chats</span>
+              <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-gray-700">⌘K</span>
             </div>
             <button
-              className={`cv-icon-btn shrink-0 cursor-pointer ${selectMode ? 'text-cyan-400 bg-cyan-950/50 border-cyan-500/40' : ''}`}
+              className={`p-2 rounded-xl border transition-colors cursor-pointer ${
+                selectMode
+                  ? 'text-blue-600 dark:text-cyan-400 bg-blue-50 dark:bg-cyan-950/50 border-blue-300 dark:border-cyan-500/40'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white bg-white dark:bg-gray-900/60 border-slate-200 dark:border-gray-800'
+              }`}
               title={selectMode ? 'Done selecting' : 'Select multiple chats to delete'}
               onClick={() => {
                 setSelectMode(!selectMode);
@@ -500,9 +502,21 @@ export function App() {
           )}
 
           {/* Conversation List Scroll Area */}
-          <div className="cv-sb-scroll flex flex-col mt-2 max-h-[calc(100vh-220px)] overflow-y-auto">
-            {conversations.length === 0 ? (
-              <div className="p-4 text-center text-xs text-slate-500 my-auto">
+          <div className="cv-sb-scroll flex flex-col mt-2 max-h-[calc(100vh-220px)] overflow-y-auto px-1">
+            {!user ? (
+              <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 my-auto space-y-2">
+                <p className="font-semibold text-slate-800 dark:text-slate-200">No saved history</p>
+                <p className="text-[11px] leading-relaxed">Sign in to save, pin, and sync your conversations.</p>
+                <button
+                  onClick={() => setAuthOpen(true)}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 dark:bg-cyan-600 dark:hover:bg-cyan-500 text-white font-semibold rounded-lg text-xs shadow-xs cursor-pointer inline-flex items-center gap-1.5 transition-transform hover:scale-105"
+                >
+                  <Lock size={12} />
+                  <span>Sign In</span>
+                </button>
+              </div>
+            ) : conversations.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400 my-auto">
                 No conversations yet. Start a new chat!
               </div>
             ) : (
@@ -513,7 +527,7 @@ export function App() {
 
                 return (
                   <div key={group} className="mb-2">
-                    <div className="cv-sb-group-label uppercase tracking-wider text-[10px] font-semibold text-gray-500 px-3 py-1">
+                    <div className="cv-sb-group-label uppercase tracking-wider text-[10px] font-bold text-slate-500 dark:text-gray-400 px-3 py-1">
                       {label}
                     </div>
                     {items.map((conv) => {
@@ -525,9 +539,11 @@ export function App() {
                       return (
                         <div
                           key={conv.id}
-                          className={`cv-sb-item group flex items-center justify-between px-3 py-1.5 rounded-xl text-xs cursor-pointer transition-all ${
-                            isActive ? 'active bg-cyan-950/40 text-cyan-300 border border-cyan-500/30' : 'text-gray-300 hover:bg-gray-800/60'
-                          } ${isSelected ? 'bg-cyan-950/50 border border-cyan-500/40' : ''}`}
+                          className={`cv-sb-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+                            isActive
+                              ? 'active bg-sky-100 dark:bg-cyan-950/40 text-sky-900 dark:text-cyan-300 border border-sky-300 dark:border-cyan-500/30 font-semibold shadow-2xs'
+                              : 'text-slate-800 dark:text-gray-200 hover:bg-slate-200/70 dark:hover:bg-gray-800/60 font-medium'
+                          } ${isSelected ? 'bg-sky-200/60 dark:bg-cyan-950/50 border border-sky-400 dark:border-cyan-500/40' : ''}`}
                           onClick={() => {
                             if (selectMode) {
                               handleToggleSelectChat({ stopPropagation: () => {} } as any, conv.id);
@@ -548,18 +564,18 @@ export function App() {
                                   if (e.key === 'Enter') handleSaveRename(conv.id);
                                   if (e.key === 'Escape') setEditingConvId(null);
                                 }}
-                                className="flex-1 bg-gray-950 border border-cyan-500/60 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none"
+                                className="flex-1 bg-white dark:bg-gray-950 border border-blue-500 dark:border-cyan-500/60 rounded px-1.5 py-0.5 text-xs text-slate-900 dark:text-white focus:outline-none"
                               />
                               <button
                                 onClick={() => handleSaveRename(conv.id)}
-                                className="p-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                                className="p-1 text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 cursor-pointer"
                                 title="Save title"
                               >
                                 <Check size={12} />
                               </button>
                               <button
                                 onClick={() => setEditingConvId(null)}
-                                className="p-1 text-gray-400 hover:text-white cursor-pointer"
+                                className="p-1 text-slate-400 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
                                 title="Cancel"
                               >
                                 <X size={12} />
@@ -573,12 +589,12 @@ export function App() {
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={(e) => handleToggleSelectChat(e as any, conv.id)}
-                                    className="rounded border-gray-700 text-cyan-500 focus:ring-0 cursor-pointer"
+                                    className="rounded border-slate-300 dark:border-gray-700 text-blue-600 dark:text-cyan-500 focus:ring-0 cursor-pointer"
                                   />
                                 ) : pinned ? (
-                                  <Pin size={11} className="text-cyan-400 shrink-0" />
+                                  <Pin size={11} className="text-blue-600 dark:text-cyan-400 shrink-0" />
                                 ) : null}
-                                <span className="truncate">{conv.title}</span>
+                                <span className="truncate font-medium text-slate-800 dark:text-gray-200">{conv.title}</span>
                               </div>
 
                               {!selectMode && (
@@ -586,7 +602,7 @@ export function App() {
                                   {/* Pin toggle */}
                                   <button
                                     onClick={(e) => handleTogglePin(e, conv.id)}
-                                    className={`p-1 hover:text-cyan-300 cursor-pointer ${pinned ? 'text-cyan-400' : 'text-gray-400'}`}
+                                    className={`p-1 hover:text-blue-600 dark:hover:text-cyan-300 cursor-pointer ${pinned ? 'text-blue-600 dark:text-cyan-400' : 'text-slate-400 dark:text-gray-400'}`}
                                     title={pinned ? 'Unpin chat' : 'Pin chat'}
                                   >
                                     {pinned ? <PinOff size={11} /> : <Pin size={11} />}
@@ -594,7 +610,7 @@ export function App() {
                                   {/* Rename button */}
                                   <button
                                     onClick={(e) => handleStartRename(e, conv)}
-                                    className="p-1 text-gray-400 hover:text-cyan-300 cursor-pointer"
+                                    className="p-1 text-slate-400 hover:text-blue-600 dark:text-gray-400 dark:hover:text-cyan-300 cursor-pointer"
                                     title="Rename chat"
                                   >
                                     <Edit2 size={11} />
@@ -602,7 +618,7 @@ export function App() {
                                   {/* Delete button */}
                                   <button
                                     onClick={(e) => handleDeleteSingleConv(e, conv.id)}
-                                    className="p-1 text-gray-400 hover:text-rose-400 cursor-pointer"
+                                    className="p-1 text-slate-400 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 cursor-pointer"
                                     title="Delete chat"
                                   >
                                     <Trash2 size={11} />
@@ -622,42 +638,23 @@ export function App() {
         </div>
 
         {/* Sidebar Footer Controls */}
-        <div className="p-3 border-t border-gray-800/80 bg-[var(--bg-panel)] space-y-1">
-          <button
-            type="button"
-            onClick={() => {
-              setHealthOpen(true);
-              refreshHealth();
-            }}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gray-900/60 hover:bg-gray-900 border border-gray-800/80 text-xs text-gray-300 cursor-pointer transition-colors"
-            title="System Health & Diagnostics"
-          >
-            <div className="flex items-center gap-2">
-              <Activity size={13} className="text-cyan-400" />
-              <span>System Health</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${healthStatus?.status === 'healthy' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span className="text-[11px] text-gray-400">{healthStatus?.status === 'healthy' ? 'Online' : 'Status'}</span>
-            </div>
-          </button>
-
+        <div className="p-3 border-t border-slate-200 dark:border-gray-800/80 bg-slate-50 dark:bg-[var(--bg-panel)]">
           <button
             type="button"
             onClick={() => setSettingsOpen(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-gray-400 hover:text-white hover:bg-gray-900 cursor-pointer transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-slate-700 hover:text-slate-950 dark:text-gray-400 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-gray-900 cursor-pointer transition-colors font-medium"
             title="Open Settings"
           >
-            <Settings2 size={14} />
+            <Settings2 size={15} className="text-slate-600 dark:text-gray-400" />
             <span>Settings</span>
           </button>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="cv-main flex-1 flex flex-col min-w-0 h-full relative">
+      <div className="cv-main flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative bg-[var(--bg-base)]">
         {/* Top Header */}
-        <div className="cv-header flex items-center gap-2 px-4 py-2 border-b border-[var(--border)] bg-[var(--bg-panel)]">
+        <div className="cv-header shrink-0 flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-gray-800 bg-white dark:bg-[var(--bg-panel)] shadow-xs">
           {!sidebarOpen && (
             <button className="cv-icon-btn cursor-pointer" onClick={() => setSidebarOpen(true)} title="Expand sidebar">
               <PanelLeftOpen size={16} />
@@ -783,19 +780,6 @@ export function App() {
             <span className="hidden sm:inline">Test Bench</span>
           </a>
 
-          {/* System Health Diagnostics Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setHealthOpen(true);
-              refreshHealth();
-            }}
-            className="cv-icon-btn cursor-pointer"
-            title="System Health Status"
-          >
-            <Activity size={15} className="text-cyan-400" />
-          </button>
-
           {/* Action buttons when conversation is active */}
           {activeConversationId && (
             <>
@@ -866,33 +850,50 @@ export function App() {
           </div>
         )}
 
-        {/* Landing or Chat View */}
-        {isLanding ? (
-          <div className="cv-landing flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <CretivraMark size={48} />
-            <div className="cv-greeting text-2xl font-bold mt-4 mb-6">What can I help with today?</div>
-            <div className="cv-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-3xl w-full">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s.title}
-                  className="cv-card p-4 rounded-2xl bg-[var(--bg-panel)] border border-[var(--border)] text-left hover:border-cyan-500/40 hover:bg-gray-900/50 transition-all cursor-pointer shadow-sm group"
-                  onClick={() => {
-                    if (s.title === 'Generate an AI Image') {
-                      setSelectedModel('cretivra-flux');
-                    }
-                    handleSend(s.prompt);
-                  }}
-                >
-                  <s.icon size={16} color={s.title === 'Generate an AI Image' ? '#c084fc' : '#06b6d4'} style={{ marginBottom: 6 }} />
-                  <div className="cv-card-title font-semibold text-xs text-white group-hover:text-cyan-300 transition-colors">{s.title}</div>
-                  <div className="cv-card-sub text-[11px] text-gray-400 mt-0.5 leading-relaxed">{s.sub}</div>
-                </button>
-              ))}
+        {/* Scrollable Center Canvas (Landing or Chat) */}
+        <div className="flex-1 min-h-0 overflow-y-auto relative flex flex-col" ref={scrollRef} onScroll={handleChatScroll}>
+          {isLanding ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto">
+              <div className="mb-4">
+                <CretivraMark size={52} />
+              </div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
+                {userDisplayName ? `What can I help with today, ${userDisplayName}?` : 'What can I help with today?'}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-8 max-w-md">
+                Frontier intelligence engineered for reasoning, deep search, and creative multimodal generation.
+              </p>
+
+              {/* Suggestion Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full text-left">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s.title}
+                    className="p-4 rounded-2xl bg-white dark:bg-gray-900/80 border border-slate-200 dark:border-gray-800 hover:border-cyan-500/60 dark:hover:border-cyan-500/40 hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-all cursor-pointer shadow-sm hover:shadow-md group"
+                    onClick={() => {
+                      if (!user) {
+                        setAuthOpen(true);
+                        return;
+                      }
+                      if (s.title === 'Generate an AI Image') {
+                        setSelectedModel('cretivra-flux');
+                      }
+                      handleSend(s.prompt);
+                    }}
+                  >
+                    <s.icon size={18} className={s.title === 'Generate an AI Image' ? 'text-purple-500 mb-2' : 'text-cyan-600 dark:text-cyan-400 mb-2'} />
+                    <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
+                      {s.title}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                      {s.sub}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="cv-chat-scroll flex-1 overflow-y-auto p-4 relative" ref={scrollRef} onScroll={handleChatScroll}>
-            <div className="max-w-3xl mx-auto space-y-6 pb-20">
+          ) : (
+            <div className="max-w-3xl w-full mx-auto p-4 space-y-6 pb-24 flex-1">
               {messages.map((m, i) => (
                 <div className="cv-msg-row" key={m.id || i}>
                   {m.role === 'user' ? (
@@ -903,9 +904,9 @@ export function App() {
                           {m.attachments.map((att) => (
                             <div
                               key={att.id}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-300"
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200"
                             >
-                              <FileText size={12} className="text-cyan-400" />
+                              <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />
                               <span className="truncate max-w-[120px]">{att.filename}</span>
                             </div>
                           ))}
@@ -914,26 +915,26 @@ export function App() {
 
                       {/* In-place edit user prompt */}
                       {editingUserMsgId === m.id ? (
-                        <div className="w-full max-w-xl bg-gray-900/90 border border-cyan-500/50 rounded-2xl p-3 shadow-xl space-y-2.5">
+                        <div className="w-full max-w-xl bg-white dark:bg-gray-900 border border-cyan-500/50 rounded-2xl p-3 shadow-xl space-y-2.5">
                           <textarea
                             autoFocus
                             rows={3}
                             value={editUserText}
                             onChange={(e) => setEditUserText(e.target.value)}
-                            className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-xs text-white focus:outline-none focus:border-cyan-400 resize-none leading-relaxed"
+                            className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 resize-none leading-relaxed"
                           />
                           <div className="flex justify-end gap-2 text-xs">
                             <button
                               type="button"
                               onClick={() => setEditingUserMsgId(null)}
-                              className="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 font-medium cursor-pointer transition-colors"
                             >
                               Cancel
                             </button>
                             <button
                               type="button"
                               onClick={() => handleSaveEditUser(m.id)}
-                              className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium cursor-pointer shadow"
+                              className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium cursor-pointer shadow transition-colors"
                             >
                               Save &amp; Submit
                             </button>
@@ -945,20 +946,20 @@ export function App() {
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 pt-1">
                             <button
                               onClick={() => handleStartEditUser(m.id, m.content)}
-                              className="p-1 text-gray-400 hover:text-cyan-300 cursor-pointer rounded"
+                              className="p-1 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 cursor-pointer rounded"
                               title="Edit message"
                             >
                               <Edit3 size={13} />
                             </button>
                             <button
                               onClick={() => handleDeleteMessage(m.id)}
-                              className="p-1 text-gray-400 hover:text-rose-400 cursor-pointer rounded"
-                              title="Delete message"
+                              className="p-1 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 cursor-pointer rounded"
+                              title="Delete message and its response"
                             >
                               <Trash2 size={13} />
                             </button>
                           </div>
-                          <div className="cv-msg-user-bubble bg-gradient-to-r from-cyan-950/60 to-indigo-950/60 border border-cyan-500/30 text-white rounded-2xl px-4 py-2.5 text-sm max-w-xl leading-relaxed shadow-sm">
+                          <div className="bg-slate-900 text-white dark:bg-gradient-to-r dark:from-cyan-950/70 dark:to-indigo-950/70 border border-slate-700 dark:border-cyan-500/30 rounded-2xl px-4 py-2.5 text-sm max-w-xl leading-relaxed shadow-sm">
                             {m.content}
                           </div>
                         </div>
@@ -989,7 +990,7 @@ export function App() {
 
                       {/* Markdown Content */}
                       {m.content ? (
-                        <div className="relative text-sm leading-relaxed">
+                        <div className="relative text-sm leading-relaxed text-slate-900 dark:text-slate-100">
                           <MarkdownRenderer content={m.content} />
                           {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
                         </div>
@@ -999,12 +1000,12 @@ export function App() {
                           <span>Formulating response...</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 py-1 text-xs text-amber-500 dark:text-amber-400">
+                        <div className="flex items-center gap-2 py-1 text-xs text-amber-600 dark:text-amber-400">
                           <AlertCircle size={13} />
                           <span>No response received.</span>
                           <button
                             onClick={() => regenerateMessage(m.id)}
-                            className="underline font-semibold hover:text-amber-400 ml-1 cursor-pointer"
+                            className="underline font-semibold hover:text-amber-500 ml-1 cursor-pointer"
                           >
                             Retry
                           </button>
@@ -1013,7 +1014,7 @@ export function App() {
 
                       {/* Assistant Action Toolbar (ChatGPT / Claude / Gemini style) */}
                       {m.content && (
-                        <div className="flex items-center gap-1.5 pt-2 text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/50 select-none">
+                        <div className="flex items-center gap-1.5 pt-2 text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/50 select-none">
                           {/* Copy response */}
                           <button
                             onClick={() => handleCopyAssistantMessage(m.id || String(i), m.content)}
@@ -1102,143 +1103,163 @@ export function App() {
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Floating Scroll to Bottom Button */}
-            {showScrollBottom && (
-              <button
-                type="button"
-                onClick={scrollToBottom}
-                className="fixed bottom-28 right-8 z-30 p-2.5 rounded-full bg-gray-900/90 hover:bg-gray-800 text-cyan-400 border border-cyan-500/40 shadow-xl backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center justify-center animate-in fade-in"
-                title="Scroll to bottom"
-              >
-                <ArrowDown size={16} />
-              </button>
-            )}
-          </div>
-        )}
+          {/* Floating Scroll to Bottom Button */}
+          {showScrollBottom && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="fixed bottom-28 right-8 z-30 p-2.5 rounded-full bg-white dark:bg-gray-900 text-cyan-600 dark:text-cyan-400 border border-slate-300 dark:border-cyan-500/40 shadow-xl backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center justify-center animate-in fade-in"
+              title="Scroll to bottom"
+            >
+              <ArrowDown size={16} />
+            </button>
+          )}
+        </div>
 
-        {/* Floating Composer */}
-        <div className="cv-composer-wrap p-4 bg-gradient-to-t from-[var(--bg-base)] via-[var(--bg-base)] to-transparent">
-          <div className={`cv-composer relative rounded-2xl bg-gray-900/95 border border-gray-800 p-3 shadow-2xl backdrop-blur-xl focus-within:border-cyan-500/50 transition-all ${isCurrentImg ? 'border-purple-500/40 focus-within:border-purple-400' : ''}`}>
-            {/* Attachment preview chips */}
-            {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-gray-800">
-                {attachments.map((att) => (
-                  <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-xs text-gray-200">
-                    {att.mime_type.startsWith('image/') ? <ImageIcon size={12} className="text-purple-400" /> : <FileText size={12} className="text-cyan-400" />}
-                    <span className="truncate max-w-[120px]">{att.filename}</span>
-                    <X size={12} className="cursor-pointer hover:text-white" onClick={() => removeAttachment(att.id)} />
-                  </div>
-                ))}
+        {/* Anchored Composer Area (Always visible, shrink-0) */}
+        <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent">
+          {!user ? (
+            <div className="p-4 rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-200 dark:border-gray-800 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Sign in to use Asura AI models</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Sign in to access models, web search, reasoning, and save your private chat history.</p>
+                </div>
               </div>
-            )}
-
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              placeholder={
-                isCurrentImg
-                  ? `Prompt visual with ${currentModelObj.display_name}...`
-                  : webSearchEnabled
-                  ? 'Ask anything with live web intelligence...'
-                  : deepThinkEnabled
-                  ? 'Message with deep reasoning activated...'
-                  : 'Message Asura AI by Cretivra...'
-              }
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              className="w-full bg-transparent text-sm text-gray-100 placeholder-gray-500 focus:outline-none resize-none max-h-52 leading-relaxed"
-            />
-
-            <div className="cv-composer-row flex items-center justify-between pt-2 mt-1 border-t border-gray-800/60">
-              <div className="cv-composer-left flex items-center gap-1.5">
-                {/* File Upload Button */}
-                <button
-                  type="button"
-                  className="cv-icon-btn cursor-pointer"
-                  title="Attach file (PDF, DOCX, TXT, CSV, Images)"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Paperclip size={15} />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files) {
-                      Array.from(e.target.files).forEach((file) => handleFileUpload(file));
-                      e.target.value = '';
-                    }
-                  }}
-                  accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
-                />
-
-                {/* Web Search Toggle (Perplexity-style) */}
-                <button
-                  type="button"
-                  onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                    webSearchEnabled
-                      ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-950/50'
-                      : 'bg-gray-800/50 hover:bg-gray-800 border-gray-700/60 text-gray-400 hover:text-gray-200'
-                  }`}
-                  title={webSearchEnabled ? 'Web search enabled' : 'Toggle real-time web intelligence'}
-                >
-                  <Globe size={12} className={webSearchEnabled ? 'text-cyan-400 animate-pulse' : ''} />
-                  <span>Search</span>
-                </button>
-
-                {/* Deep Reasoning Toggle (Claude / DeepSeek style) */}
-                <button
-                  type="button"
-                  onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                    deepThinkEnabled
-                      ? 'bg-purple-950 text-purple-300 border-purple-500/50 shadow-sm shadow-purple-950/50'
-                      : 'bg-gray-800/50 hover:bg-gray-800 border-gray-700/60 text-gray-400 hover:text-gray-200'
-                  }`}
-                  title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep step-by-step reasoning'}
-                >
-                  <Brain size={12} className={deepThinkEnabled ? 'text-purple-400' : ''} />
-                  <span>DeepThink</span>
-                </button>
-
-                {/* Image Studio Quick Opener */}
-                <button
-                  type="button"
-                  className="cv-icon-btn cursor-pointer"
-                  title="Open AI Image Studio"
-                  onClick={() => setImageStudioOpen(true)}
-                >
-                  <Palette size={15} className="text-purple-400 hover:text-purple-300" />
-                </button>
-              </div>
-
-              {/* Send or Stop Generation Button */}
               <button
-                type="button"
-                className={`cv-send-btn p-2 rounded-xl text-white transition-all cursor-pointer flex items-center justify-center ${
-                  isGenerating
-                    ? 'bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/30'
-                    : 'bg-gradient-to-r from-cyan-500 to-indigo-600 hover:opacity-95 shadow-md shadow-cyan-600/20 disabled:opacity-40 disabled:cursor-not-allowed'
-                }`}
-                disabled={!isGenerating && !input.trim() && attachments.length === 0}
-                onClick={() => (isGenerating ? stopGeneration() : handleSend())}
-                title={isGenerating ? 'Stop generating' : 'Send message'}
+                onClick={() => setAuthOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-95 text-white text-xs font-semibold shadow-sm transition-all shrink-0 cursor-pointer"
               >
-                {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={15} />}
+                Sign In to Start
               </button>
             </div>
-          </div>
-          <div className="cv-hint text-center text-[11px] text-gray-500 mt-2">
+          ) : (
+            <div className={`relative rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 p-3 shadow-lg focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 transition-all ${isCurrentImg ? 'border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500' : ''}`}>
+              {/* Attachment preview chips */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
+                  {attachments.map((att) => (
+                    <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
+                      {att.mime_type.startsWith('image/') ? <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" /> : <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />}
+                      <span className="truncate max-w-[120px]">{att.filename}</span>
+                      <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                placeholder={
+                  isCurrentImg
+                    ? `Prompt visual with ${currentModelObj.display_name}...`
+                    : webSearchEnabled
+                    ? 'Ask anything with live web intelligence...'
+                    : deepThinkEnabled
+                    ? 'Message with deep reasoning activated...'
+                    : 'Message Asura AI by Cretivra...'
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none max-h-52 leading-relaxed"
+              />
+
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
+                <div className="flex items-center gap-1.5">
+                  {/* File Upload Button */}
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                    title="Attach file (PDF, DOCX, TXT, CSV, Images)"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip size={15} />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        Array.from(e.target.files).forEach((file) => handleFileUpload(file));
+                        e.target.value = '';
+                      }
+                    }}
+                    accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
+                  />
+
+                  {/* Web Search Toggle (Perplexity-style) */}
+                  <button
+                    type="button"
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                      webSearchEnabled
+                        ? 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border-cyan-400 dark:border-cyan-500/50 shadow-sm'
+                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
+                    }`}
+                    title={webSearchEnabled ? 'Web search enabled' : 'Toggle real-time web intelligence'}
+                  >
+                    <Globe size={12} className={webSearchEnabled ? 'text-cyan-600 dark:text-cyan-400 animate-pulse' : ''} />
+                    <span>Search</span>
+                  </button>
+
+                  {/* Deep Reasoning Toggle (Claude / DeepSeek style) */}
+                  <button
+                    type="button"
+                    onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                      deepThinkEnabled
+                        ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/50 shadow-sm'
+                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
+                    }`}
+                    title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep step-by-step reasoning'}
+                  >
+                    <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
+                    <span>DeepThink</span>
+                  </button>
+
+                  {/* Image Studio Quick Opener */}
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
+                    title="Open AI Image Studio"
+                    onClick={() => setImageStudioOpen(true)}
+                  >
+                    <Palette size={15} />
+                  </button>
+                </div>
+
+                {/* Send or Stop Generation Button */}
+                <button
+                  type="button"
+                  className={`p-2 rounded-xl text-white transition-all cursor-pointer flex items-center justify-center ${
+                    isGenerating
+                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/30'
+                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
+                  }`}
+                  disabled={!isGenerating && !input.trim() && attachments.length === 0}
+                  onClick={() => (isGenerating ? stopGeneration() : handleSend())}
+                  title={isGenerating ? 'Stop generating' : 'Send message'}
+                >
+                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={15} />}
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
             {isCurrentImg
               ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
               : webSearchEnabled
@@ -1276,14 +1297,6 @@ export function App() {
             applyTheme(newSettings.theme as ThemeMode);
           }
         }}
-      />
-
-      <HealthModal
-        isOpen={healthOpen}
-        onClose={() => setHealthOpen(false)}
-        health={healthStatus}
-        onRefresh={refreshHealth}
-        loading={healthLoading}
       />
 
       <ShareModal

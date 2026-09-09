@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import UserDB
-from app.api.auth import get_optional_user
+from app.api.auth import get_optional_user, get_required_user
 from app.services.conversation_service import conversation_service
 from app.schemas.conversation import ConversationCreate, ConversationUpdate, ConversationSchema, BulkDeleteRequest
 
@@ -11,8 +11,7 @@ router = APIRouter(prefix="/conversations", tags=["Conversations"])
 
 def verify_conversation_access(conv, current_user: Optional[UserDB]):
     """
-    Ensures that a user can only access conversations belonging to their user_id
-    or unassigned guest conversations when not logged in.
+    Ensures that a user can only access conversations belonging to their user_id.
     """
     if not conv:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -24,30 +23,28 @@ def verify_conversation_access(conv, current_user: Optional[UserDB]):
 @router.get("")
 def list_conversations(
     q: Optional[str] = Query(None, description="Search query across titles and messages"),
-    current_user: Optional[UserDB] = Depends(get_optional_user),
+    current_user: UserDB = Depends(get_required_user),
     db: Session = Depends(get_db)
 ):
     """
     Fetch all conversations and search history isolated exclusively to the authenticated user.
     """
-    user_id = current_user.id if current_user else None
-    return conversation_service.list_conversations(db, search_query=q, user_id=user_id)
+    return conversation_service.list_conversations(db, search_query=q, user_id=current_user.id)
 
 @router.post("", response_model=ConversationSchema, status_code=status.HTTP_201_CREATED)
 def create_conversation(
     payload: ConversationCreate,
-    current_user: Optional[UserDB] = Depends(get_optional_user),
+    current_user: UserDB = Depends(get_required_user),
     db: Session = Depends(get_db)
 ):
     """
     Creates a new conversation associated with the authenticated user ID.
     """
-    user_id = current_user.id if current_user else None
     return conversation_service.create_conversation(
         db=db,
         title=payload.title or "New Conversation",
         model_id=payload.model_id or "cretivra-1",
-        user_id=user_id
+        user_id=current_user.id
     )
 
 @router.get("/share/{conversation_id}")

@@ -28,19 +28,26 @@ def test_patch_settings(client):
     assert get_res.json()["system_prompt"] == "You are Cretivra Advanced Quality Test System."
 
 def test_clear_conversations_endpoint(client):
+    reg = client.post("/api/auth/register", json={
+        "email": "tester_settings_conv@cretivra.ai",
+        "password": "password123",
+        "full_name": "Settings Conv Tester"
+    })
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+
     # Create conversation first
-    c_res = client.post("/api/conversations", json={"title": "To be cleared", "model_id": "cretivra-1"})
+    c_res = client.post("/api/conversations", json={"title": "To be cleared", "model_id": "cretivra-1"}, headers=headers)
     assert c_res.status_code == 201
 
     # Verify it exists
-    l_res = client.get("/api/conversations")
+    l_res = client.get("/api/conversations", headers=headers)
     assert len(l_res.json()["conversations"]) >= 1
 
     # Clear all conversations
-    del_res = client.post("/api/settings/clear-conversations")
+    del_res = client.post("/api/settings/clear-conversations", headers=headers)
     assert del_res.status_code == 200
     assert "cleared successfully" in del_res.json()["message"]
 
     # Verify empty
-    l_res_after = client.get("/api/conversations")
+    l_res_after = client.get("/api/conversations", headers=headers)
     assert len(l_res_after.json()["conversations"]) == 0
