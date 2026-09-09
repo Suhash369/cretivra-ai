@@ -15,15 +15,20 @@ class OllamaProvider(BaseLLMProvider):
 
     async def health_check(self) -> Dict[str, Any]:
         """
-        Check if Ollama service is accessible.
+        Check if Ollama service is accessible with responsive caching.
         """
         now = asyncio.get_event_loop().time()
-        if hasattr(self, "_cached_health") and (now - getattr(self, "_cached_health_time", 0)) < 2.0:
+        cached_time = getattr(self, "_cached_health_time", 0)
+        cache_duration = 30.0 if getattr(self, "_cached_health", {}).get("status") == "connected" else 15.0
+        if hasattr(self, "_cached_health") and (now - cached_time) < cache_duration:
             return self._cached_health
+
+        # Fast timeout (1.0s) if high-speed cloud fallback is available, else 3.0s
+        check_timeout = 1.0 if cloud_provider.has_keys() else 3.0
 
         try:
             headers = {"ngrok-skip-browser-warning": "true", "User-Agent": "Cretivra-AI/1.0"}
-            async with httpx.AsyncClient(timeout=5.0, headers=headers, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=check_timeout, headers=headers, follow_redirects=True) as client:
                 res = await client.get(f"{self.base_url}/api/tags")
                 if res.status_code == 200:
                     models_data = res.json().get("models", [])
@@ -244,11 +249,7 @@ class OllamaProvider(BaseLLMProvider):
             await asyncio.sleep(0.015)
 
     def _generate_intelligent_response(self, messages: List[Dict[str, Any]]) -> str:
-        res = self._raw_generate_intelligent_response(messages)
-        # Clean special markdown characters like #, ##, **, *
-        res = re.sub(r'#+\s*', '', res)
-        res = res.replace('**', '').replace('*', '')
-        return res
+        return self._raw_generate_intelligent_response(messages)
 
     def _raw_generate_intelligent_response(self, messages: List[Dict[str, Any]]) -> str:
         if not messages:

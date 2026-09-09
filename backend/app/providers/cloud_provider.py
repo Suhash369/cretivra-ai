@@ -322,20 +322,40 @@ class CloudLLMProvider:
         ]
 
         contents = []
-        for m in messages:
-            role = "user" if m.get("role") in ["user", "system"] else "model"
-            contents.append({
-                "role": role,
-                "parts": [{"text": m.get("content", "")}]
-            })
+        system_instructions = []
 
-        payload = {
+        for m in messages:
+            role = m.get("role", "user")
+            content_text = m.get("content", "")
+            if not content_text:
+                continue
+
+            if role == "system":
+                system_instructions.append(content_text)
+            else:
+                gem_role = "user" if role == "user" else "model"
+                if contents and contents[-1]["role"] == gem_role:
+                    contents[-1]["parts"][0]["text"] += f"\n\n{content_text}"
+                else:
+                    contents.append({
+                        "role": gem_role,
+                        "parts": [{"text": content_text}]
+                    })
+
+        if not contents:
+            contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+
+        payload: Dict[str, Any] = {
             "contents": contents,
             "generationConfig": {
                 "temperature": 0.2,
                 "maxOutputTokens": 4096
             }
         }
+        if system_instructions:
+            payload["system_instruction"] = {
+                "parts": [{"text": "\n\n".join(system_instructions)}]
+            }
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             for gem_model in gemini_model_candidates:

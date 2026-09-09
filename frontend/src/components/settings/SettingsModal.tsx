@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings as SettingsIcon, Sliders, Cpu, Shield, Trash2, Check } from 'lucide-react';
+import { X, Settings as SettingsIcon, Sliders, Cpu, Shield, Trash2, Check, Loader2, AlertCircle } from 'lucide-react';
 import type { SystemSettings, CretivraModel } from '../../types';
 import { fetchSettings, updateSettings, clearAllConversations } from '../../services/api';
 import { applyTheme, getStoredTheme, type ThemeMode } from '../../services/theme';
@@ -9,6 +9,7 @@ interface SettingsModalProps {
   onClose: () => void;
   models: CretivraModel[];
   onConversationsCleared: () => void;
+  onSettingsSaved?: (settings: SystemSettings) => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -16,46 +17,88 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   models,
   onConversationsCleared,
+  onSettingsSaved,
 }) => {
   const [activeTab, setActiveTab] = useState<'appearance' | 'ai' | 'engine' | 'privacy'>('ai');
-  const [settings, setSettingsState] = useState<SystemSettings>({
-    ollama_base_url: 'http://localhost:11434',
-    default_model: 'cretivra-1',
-    temperature: 0.7,
-    max_context_messages: 30,
-    max_output_tokens: 4096,
-    system_prompt: 'You are Asura AI by Cretivra, an intelligent AI assistant created by Cretivra.',
-    theme: getStoredTheme(),
-    max_upload_size_mb: 20,
+  const [settings, setSettingsState] = useState<SystemSettings>(() => {
+    try {
+      const saved = localStorage.getItem('cretivra_system_settings');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      ollama_base_url: 'http://localhost:11434',
+      default_model: 'cretivra-1',
+      temperature: 0.7,
+      max_context_messages: 30,
+      max_output_tokens: 4096,
+      system_prompt: 'You are Asura AI by Cretivra, an intelligent AI assistant created by Cretivra.',
+      theme: getStoredTheme(),
+      max_upload_size_mb: 20,
+    };
   });
 
   const [savedNotice, setSavedNotice] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
+      setSaveError(null);
       fetchSettings()
         .then((data) => {
           const currentTheme = getStoredTheme();
-          setSettingsState({ ...data, theme: currentTheme || data.theme });
+          const merged: SystemSettings = { ...data, theme: currentTheme || data.theme };
+          setSettingsState(merged);
+          try {
+            localStorage.setItem('cretivra_system_settings', JSON.stringify(merged));
+          } catch {}
         })
-        .catch((err) => console.error('Failed to load settings:', err));
+        .catch((err) => {
+          console.warn('Failed to load settings from server, using local preferences:', err);
+        });
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSavedNotice(false);
+
     try {
+      // 1. Immediately apply theme and persist locally
       if (settings.theme) {
         applyTheme(settings.theme as ThemeMode);
       }
+      try {
+        localStorage.setItem('cretivra_system_settings', JSON.stringify(settings));
+      } catch {}
+
+      // 2. Persist to backend
       const updated = await updateSettings(settings);
       setSettingsState(updated);
+      try {
+        localStorage.setItem('cretivra_system_settings', JSON.stringify(updated));
+      } catch {}
+
       setSavedNotice(true);
-      setTimeout(() => setSavedNotice(false), 2000);
-    } catch (err) {
-      console.error('Failed to save settings:', err);
+      if (onSettingsSaved) {
+        onSettingsSaved(updated);
+      }
+      setTimeout(() => setSavedNotice(false), 2500);
+    } catch (err: any) {
+      console.error('Failed to save settings to server:', err);
+      // Even if server failed, settings were saved locally and theme was applied
+      setSaveError(err.message || 'Saved locally, but could not sync with server.');
+      if (onSettingsSaved) {
+        onSettingsSaved(settings);
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -124,12 +167,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Right Settings Content Body */}
         <div className="flex-1 flex flex-col justify-between overflow-y-auto p-6 bg-gray-900">
           <div>
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-white capitalize">{activeTab} Settings</h3>
-              <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white">
+              <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Error Alert if any */}
+            {saveError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{saveError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSaveError(null)}
+                  className="text-rose-400 hover:text-white ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* AI Parameters Tab */}
             {activeTab === 'ai' && (
@@ -281,18 +341,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           {/* Modal Footer Save Controls */}
           <div className="pt-6 border-t border-gray-800 flex justify-between items-center">
             {savedNotice ? (
-              <span className="flex items-center gap-1 text-emerald-400 text-xs font-semibold">
+              <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold animate-in fade-in">
                 <Check className="w-4 h-4" /> Saved successfully
+              </span>
+            ) : saveError ? (
+              <span className="flex items-center gap-1 text-amber-400 text-xs font-medium">
+                <AlertCircle className="w-3.5 h-3.5" /> Saved locally
               </span>
             ) : (
               <span />
             )}
             <div className="flex gap-2">
-              <button onClick={onClose} className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium cursor-pointer transition-colors"
+              >
                 Close
               </button>
-              <button onClick={handleSave} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium">
-                Save Changes
+              <button
+                type="button"
+                disabled={isSaving}
+                onClick={handleSave}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/20 transition-all"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save Changes</span>
+                )}
               </button>
             </div>
           </div>

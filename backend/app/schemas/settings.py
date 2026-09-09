@@ -9,3 +9,4 @@ class SystemSettingsSchema(BaseModel):
     max_output_tokens: Optional[int] = None
     system_prompt: Optional[str] = None
     theme: Optional[str] = "dark"
+    max_upload_size_mb: Optional[int] = None

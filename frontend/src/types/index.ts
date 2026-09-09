@@ -44,6 +44,7 @@ export interface Conversation {
 }
 
 export interface GroupedConversations {
+  pinned?: Conversation[];
   today: Conversation[];
   yesterday: Conversation[];
   previous_7_days: Conversation[];

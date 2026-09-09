@@ -1,9 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { Message, Attachment, CretivraModel } from '../types';
+import type { Message, Attachment, CretivraModel, Conversation } from '../types';
 import { getConversation, uploadFile, fetchModels, deleteMessage, API_BASE } from '../services/api';
 import { readSSEStream } from '../services/streaming';
 
-export function useChat() {
+interface UseChatOptions {
+  onConversationCreated?: (conv: Partial<Conversation> & { id: string }) => void;
+}
+
+export function useChat(options?: UseChatOptions) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>('cretivra-1');
@@ -14,11 +18,19 @@ export function useChat() {
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [options]);
 
   // Load models on startup
   useEffect(() => {
     fetchModels()
-      .then((models) => setAvailableModels(models))
+      .then((models) => {
+        if (models && models.length > 0) {
+          setAvailableModels(models);
+        }
+      })
       .catch((err) => console.error('Failed to load Cretivra models:', err));
   }, []);
 
@@ -27,20 +39,39 @@ export function useChat() {
     setActiveConversationId(id);
     setError(null);
     try {
-      const conv = await getConversation(id);
-      setMessages(conv.messages || []);
-      setSelectedModel(conv.model_id || 'cretivra-1');
+      if (!id.startsWith('guest-')) {
+        const conv = await getConversation(id);
+        setMessages(conv.messages || []);
+        if (conv.model_id) {
+          setSelectedModel(conv.model_id);
+        }
+      }
     } catch (err: any) {
-      console.error('Failed to load conversation:', err);
+      console.warn('Failed to load conversation from server:', err);
+      // Fallback: check if messages exist in localStorage
+      try {
+        const cached = localStorage.getItem(`cretivra_chat_${id}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setMessages(parsed.messages || []);
+          if (parsed.model_id) setSelectedModel(parsed.model_id);
+          return;
+        }
+      } catch {}
       setError(err.message || 'Could not load conversation messages.');
     }
   }, []);
 
   const clearActiveChat = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setActiveConversationId(null);
     setMessages([]);
     setAttachments([]);
     setError(null);
+    setIsGenerating(false);
     setReasoningStatus(null);
   }, []);
 
@@ -52,16 +83,25 @@ export function useChat() {
     }
     setIsGenerating(false);
     setReasoningStatus(null);
+    setMessages((prev) =>
+      prev.map((msg, idx) => {
+        if (idx === prev.length - 1 && msg.role === 'assistant' && !msg.content.trim()) {
+          return { ...msg, content: 'Generation stopped.' };
+        }
+        return msg;
+      })
+    );
   }, []);
 
   // Send message
   const sendMessage = useCallback(
-    async (content: string, modelId = selectedModel) => {
+    async (content: string, modelId = selectedModel, forceSearch = false, forceReason = false) => {
       if (!content.trim() || isGenerating) return;
 
       setError(null);
       setIsGenerating(true);
-      setReasoningStatus(selectedModel === 'cretivra-reason' ? 'Thinking...' : null);
+      const isReasoning = forceReason || modelId === 'cretivra-reason';
+      setReasoningStatus(isReasoning ? 'Thinking...' : null);
 
       const tempUserMsgId = `user-${Date.now()}`;
       const tempAssistantMsgId = `assistant-${Date.now()}`;
@@ -79,7 +119,7 @@ export function useChat() {
         conversation_id: activeConversationId || '',
         role: 'assistant',
         content: '',
-        reasoning_status: selectedModel === 'cretivra-reason' ? 'Thinking...' : null,
+        reasoning_status: isReasoning ? 'Thinking...' : null,
       };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -89,22 +129,42 @@ export function useChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
+      let createdConvNotified = false;
+
       try {
         await readSSEStream(`${API_BASE}/chat/stream`, {
           method: 'POST',
           body: {
-            conversation_id: activeConversationId,
+            conversation_id: activeConversationId?.startsWith('guest-') ? null : activeConversationId,
             message: content.trim(),
             model_id: modelId,
             attachments: currentAttachments,
+            system_prompt: forceSearch ? '[REAL-TIME SEARCH]: Search web cache for up-to-date facts.' : undefined,
           },
           signal: controller.signal,
           onChunk: (chunk) => {
-            if (!activeConversationId && chunk.conversation_id) {
-              setActiveConversationId(chunk.conversation_id);
+            if (chunk.conversation_id) {
+              if (!activeConversationId || activeConversationId.startsWith('guest-')) {
+                setActiveConversationId(chunk.conversation_id);
+              }
+              if (!createdConvNotified) {
+                createdConvNotified = true;
+                optionsRef.current?.onConversationCreated?.({
+                  id: chunk.conversation_id,
+                  title: content.trim().slice(0, 45),
+                  model_id: modelId,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+              }
             }
+
             if (chunk.reasoning_status) {
               setReasoningStatus(chunk.reasoning_status);
+            }
+
+            if (chunk.full_content !== undefined) {
+              fullReply = chunk.full_content;
             }
 
             setMessages((prev) =>
@@ -112,8 +172,8 @@ export function useChat() {
                 if (msg.id === tempAssistantMsgId) {
                   return {
                     ...msg,
-                    conversation_id: chunk.conversation_id,
-                    content: chunk.full_content,
+                    conversation_id: chunk.conversation_id || msg.conversation_id,
+                    content: chunk.full_content !== undefined ? chunk.full_content : (msg.content + (chunk.content || '')),
                     reasoning_status: chunk.reasoning_status || msg.reasoning_status,
                     cache_items: chunk.cache_items || msg.cache_items,
                   };
@@ -138,12 +198,15 @@ export function useChat() {
       } catch (err: any) {
         setIsGenerating(false);
         setReasoningStatus(null);
+        if (err.name !== 'AbortError') {
+          setError(err.message || 'Error formulating response');
+        }
       }
     },
     [activeConversationId, selectedModel, attachments, isGenerating]
   );
 
-  // Edit message
+  // Edit message in-place
   const editMessage = useCallback(
     async (messageId: string, newContent: string) => {
       if (!newContent.trim() || isGenerating) return;
@@ -152,7 +215,6 @@ export function useChat() {
       setError(null);
       setReasoningStatus(selectedModel === 'cretivra-reason' ? 'Thinking...' : null);
 
-      // Truncate messages in local UI up to target user message
       const targetIndex = messages.findIndex((m) => m.id === messageId);
       if (targetIndex === -1) return;
 
@@ -170,30 +232,63 @@ export function useChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      await readSSEStream(`${API_BASE}/messages/${messageId}`, {
-        method: 'PATCH',
-        body: { message: newContent.trim() },
-        signal: controller.signal,
-        onChunk: (chunk) => {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === tempAssistantMsgId
-                ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
-                : msg
-            )
-          );
-        },
-        onComplete: () => {
-          setIsGenerating(false);
-          setReasoningStatus(null);
-          abortControllerRef.current = null;
-        },
-      });
+      try {
+        // If message has real server ID, use edit endpoint
+        if (!messageId.startsWith('user-')) {
+          await readSSEStream(`${API_BASE}/messages/${messageId}`, {
+            method: 'PATCH',
+            body: { message: newContent.trim() },
+            signal: controller.signal,
+            onChunk: (chunk) => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantMsgId
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    : msg
+                )
+              );
+            },
+            onComplete: () => {
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+            },
+          });
+        } else {
+          // Fallback stream via chat/stream
+          await readSSEStream(`${API_BASE}/chat/stream`, {
+            method: 'POST',
+            body: {
+              conversation_id: activeConversationId,
+              message: newContent.trim(),
+              model_id: selectedModel,
+            },
+            signal: controller.signal,
+            onChunk: (chunk) => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantMsgId
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    : msg
+                )
+              );
+            },
+            onComplete: () => {
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+            },
+          });
+        }
+      } catch (err: any) {
+        setIsGenerating(false);
+        setReasoningStatus(null);
+      }
     },
     [messages, activeConversationId, selectedModel, isGenerating]
   );
 
-  // Regenerate message
+  // In-place Regenerate message
   const regenerateMessage = useCallback(
     async (assistantMessageId: string) => {
       if (isGenerating) return;
@@ -218,24 +313,59 @@ export function useChat() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      await readSSEStream(`${API_BASE}/messages/${assistantMessageId}/regenerate`, {
-        method: 'POST',
-        signal: controller.signal,
-        onChunk: (chunk) => {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === tempAssistantMsgId
-                ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
-                : msg
-            )
-          );
-        },
-        onComplete: () => {
-          setIsGenerating(false);
-          setReasoningStatus(null);
-          abortControllerRef.current = null;
-        },
-      });
+      try {
+        if (!assistantMessageId.startsWith('assistant-')) {
+          await readSSEStream(`${API_BASE}/messages/${assistantMessageId}/regenerate`, {
+            method: 'POST',
+            signal: controller.signal,
+            onChunk: (chunk) => {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === tempAssistantMsgId
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    : msg
+                )
+              );
+            },
+            onComplete: () => {
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+            },
+          });
+        } else {
+          // Preceding user message
+          const precedingUser = messages.slice(0, targetIndex).reverse().find((m) => m.role === 'user');
+          if (precedingUser) {
+            await readSSEStream(`${API_BASE}/chat/stream`, {
+              method: 'POST',
+              body: {
+                conversation_id: activeConversationId,
+                message: precedingUser.content,
+                model_id: selectedModel,
+              },
+              signal: controller.signal,
+              onChunk: (chunk) => {
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === tempAssistantMsgId
+                      ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                      : msg
+                  )
+                );
+              },
+              onComplete: () => {
+                setIsGenerating(false);
+                setReasoningStatus(null);
+                abortControllerRef.current = null;
+              },
+            });
+          }
+        }
+      } catch (err: any) {
+        setIsGenerating(false);
+        setReasoningStatus(null);
+      }
     },
     [messages, activeConversationId, selectedModel, isGenerating]
   );
