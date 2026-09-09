@@ -52,6 +52,7 @@ import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
 import { CretivraMark } from './components/common/CretivraLogo';
+import { ConfirmModal } from './components/common/ConfirmModal';
 import type { Conversation, CretivraModel, SystemSettings } from './types';
 
 const SUGGESTIONS = [
@@ -145,6 +146,21 @@ export function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: React.ReactNode;
+    subtext?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    onConfirm: () => Promise<void> | void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   // In-place rename state
   const [editingConvId, setEditingConvId] = useState<string | null>(null);
@@ -271,22 +287,51 @@ export function App() {
     loadConversation(newConv.id);
   };
 
-  const handleDeleteActiveChat = async () => {
+  const handleDeleteActiveChat = () => {
     if (!activeConversationId) return;
-    if (window.confirm('Delete this chat history? All messages will be permanently removed.')) {
-      await deleteConversation(activeConversationId);
-      clearActiveChat();
-    }
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    const title = activeConv?.title || 'this chat';
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete chat?',
+      description: (
+        <span>
+          This will delete <strong className="font-semibold text-slate-900 dark:text-white">{title}</strong>.
+        </span>
+      ),
+      subtext: 'This action is permanent and cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteConversation(activeConversationId);
+        clearActiveChat();
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
-  const handleDeleteSingleConv = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteSingleConv = (e: React.MouseEvent, id: string, title?: string) => {
     e.stopPropagation();
-    if (window.confirm('Delete this conversation?')) {
-      await deleteConversation(id);
-      if (activeConversationId === id) {
-        clearActiveChat();
-      }
-    }
+    const convTitle = title || conversations.find((c) => c.id === id)?.title || 'this chat';
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete chat?',
+      description: (
+        <span>
+          This will delete <strong className="font-semibold text-slate-900 dark:text-white">{convTitle}</strong>.
+        </span>
+      ),
+      subtext: 'This action is permanent and cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteConversation(id);
+        if (activeConversationId === id) {
+          clearActiveChat();
+        }
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   const handleStartRename = (e: React.MouseEvent, conv: Conversation) => {
@@ -328,22 +373,70 @@ export function App() {
     }
   };
 
-  const handleExecuteBulkDelete = async () => {
+  const handleExecuteBulkDelete = () => {
     if (selectedChatIds.size === 0) return;
-    if (window.confirm(`Delete ${selectedChatIds.size} selected conversations? This cannot be undone.`)) {
-      await bulkDeleteConversations(Array.from(selectedChatIds));
-      if (activeConversationId && selectedChatIds.has(activeConversationId)) {
-        clearActiveChat();
-      }
-      setSelectedChatIds(new Set());
-      setSelectMode(false);
-    }
+    const count = selectedChatIds.size;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete selected chats?',
+      description: (
+        <span>
+          This will delete <strong className="font-semibold text-slate-900 dark:text-white">{count} selected {count === 1 ? 'chat' : 'chats'}</strong>.
+        </span>
+      ),
+      subtext: 'All messages inside these chats will be permanently removed. This cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await bulkDeleteConversations(Array.from(selectedChatIds));
+        if (activeConversationId && selectedChatIds.has(activeConversationId)) {
+          clearActiveChat();
+        }
+        setSelectedChatIds(new Set());
+        setSelectMode(false);
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
-  const handleDeleteMessage = async (msgId: string) => {
-    if (window.confirm('Delete this message from your chat history?')) {
-      await deleteSingleMessage(msgId);
-    }
+  const handleDeleteMessage = (msgId: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete message?',
+      description: 'This will delete this message and its corresponding response from your chat history.',
+      subtext: 'This action cannot be undone.',
+      confirmLabel: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteSingleMessage(msgId);
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const handleSignOut = () => {
+    if (!user) return;
+    const displayName = user.full_name || user.email;
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Log out of Asura AI?',
+      description: (
+        <span>
+          You are currently signed in as <strong className="font-semibold text-slate-900 dark:text-white">{displayName}</strong>.
+        </span>
+      ),
+      subtext: 'You will need to sign in again to access models, web search, reasoning, and your private conversations.',
+      confirmLabel: 'Log out',
+      variant: 'danger',
+      onConfirm: () => {
+        localStorage.removeItem('cretivra_auth_token');
+        localStorage.removeItem('cretivra_user');
+        setUser(null);
+        clearActiveChat();
+        refreshConversations();
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   const handleStartEditUser = (msgId: string, currentContent: string) => {
@@ -617,7 +710,7 @@ export function App() {
                                   </button>
                                   {/* Delete button */}
                                   <button
-                                    onClick={(e) => handleDeleteSingleConv(e, conv.id)}
+                                    onClick={(e) => handleDeleteSingleConv(e, conv.id, conv.title)}
                                     className="p-1 text-slate-400 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 cursor-pointer"
                                     title="Delete chat"
                                   >
@@ -799,15 +892,7 @@ export function App() {
           {/* Sign In / Account Pill */}
           {user ? (
             <button
-              onClick={() => {
-                if (confirm(`Logged in as ${user.email}. Do you want to sign out?`)) {
-                  localStorage.removeItem('cretivra_auth_token');
-                  localStorage.removeItem('cretivra_user');
-                  setUser(null);
-                  clearActiveChat();
-                  refreshConversations();
-                }
-              }}
+              onClick={handleSignOut}
               className="cv-user-pill cursor-pointer"
               title="Click to sign out"
             >
@@ -1321,6 +1406,18 @@ export function App() {
         onInsertToChat={(_imageUrl, promptText) => {
           sendMessage(promptText, selectedModel);
         }}
+      />
+
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        onClose={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        subtext={confirmDialog.subtext}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        variant={confirmDialog.variant}
       />
 
       {/* Floating Lower-Right Suggestion & Commenting Widget */}
