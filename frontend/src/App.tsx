@@ -136,6 +136,15 @@ function renderMessageContent(text: string) {
 }
 
 export function App() {
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const saved = localStorage.getItem("cretivra_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const {
     grouped,
     conversations,
@@ -144,7 +153,7 @@ export function App() {
     refresh: refreshConversations,
     deleteConversation,
     bulkDeleteConversations,
-  } = useConversations();
+  } = useConversations(user);
 
   const {
     activeConversationId,
@@ -174,14 +183,6 @@ export function App() {
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(() => {
-    try {
-      const saved = localStorage.getItem("cretivra_user");
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -384,48 +385,72 @@ export function App() {
           </div>
         )}
 
-        <div className="cv-sb-scroll">
-          {Object.entries(grouped).map(([group, items]: [string, Conversation[]]) => (
-            items.length > 0 && (
-              <div key={group}>
-                <div className="cv-sb-group-label">{group.replace('_', ' ')}</div>
-                {items.map((conv) => {
-                  const isSelected = selectedChatIds.has(conv.id);
-                  const isActive = conv.id === activeConversationId;
-                  return (
-                    <div
-                      key={conv.id}
-                      className={`cv-sb-item group flex items-center justify-between ${isActive ? 'active' : ''} ${
-                        isSelected ? 'bg-cyan-950/40 border border-cyan-500/30' : ''
-                      }`}
-                      onClick={() => (selectMode ? handleToggleSelectChat({ stopPropagation: () => {} } as any, conv.id) : loadConversation(conv.id))}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 pr-2">
-                        {selectMode && (
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={(e) => handleToggleSelectChat(e as any, conv.id)}
-                            className="rounded border-gray-700 text-cyan-500 focus:ring-0 cursor-pointer"
-                          />
-                        )}
-                        <span className="truncate">{conv.title}</span>
-                      </div>
-                      {!selectMode && (
-                        <button
-                          onClick={(e) => handleDeleteSingleConv(e, conv.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-opacity cursor-pointer shrink-0"
-                          title="Delete chat"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+        <div className="cv-sb-scroll flex flex-col">
+          {!user ? (
+            <div className="p-4 text-center flex flex-col items-center justify-center gap-2.5 my-auto text-slate-400">
+              <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-cyan-400 shadow-sm">
+                <Brain size={16} />
               </div>
-            )
-          ))}
+              <div>
+                <div className="text-xs font-medium text-slate-200">Sign in for chat history</div>
+                <div className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                  Your conversations are privately encrypted and synced to your account.
+                </div>
+              </div>
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="mt-1 px-3.5 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:opacity-90 text-white font-medium text-xs shadow transition-all cursor-pointer"
+              >
+                Sign In
+              </button>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="p-4 text-center text-xs text-slate-500 my-auto">
+              No conversations yet. Start a new chat!
+            </div>
+          ) : (
+            Object.entries(grouped).map(([group, items]: [string, Conversation[]]) => (
+              items.length > 0 && (
+                <div key={group}>
+                  <div className="cv-sb-group-label">{group.replace('_', ' ')}</div>
+                  {items.map((conv) => {
+                    const isSelected = selectedChatIds.has(conv.id);
+                    const isActive = conv.id === activeConversationId;
+                    return (
+                      <div
+                        key={conv.id}
+                        className={`cv-sb-item group flex items-center justify-between ${isActive ? 'active' : ''} ${
+                          isSelected ? 'bg-cyan-950/40 border border-cyan-500/30' : ''
+                        }`}
+                        onClick={() => (selectMode ? handleToggleSelectChat({ stopPropagation: () => {} } as any, conv.id) : loadConversation(conv.id))}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          {selectMode && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleToggleSelectChat(e as any, conv.id)}
+                              className="rounded border-gray-700 text-cyan-500 focus:ring-0 cursor-pointer"
+                            />
+                          )}
+                          <span className="truncate">{conv.title}</span>
+                        </div>
+                        {!selectMode && (
+                          <button
+                            onClick={(e) => handleDeleteSingleConv(e, conv.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400 transition-opacity cursor-pointer shrink-0"
+                            title="Delete chat"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ))
+          )}
         </div>
       </div>
 

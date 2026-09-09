@@ -59,7 +59,19 @@ class CloudLLMProvider:
             except Exception as e:
                 logger.error(f"DeepSeek stream error: {e}")
 
-        # 2. Try OpenRouter API if configured
+        # 2. Try Groq API (ultra-fast inference with active key)
+        if self.groq_api_key:
+            try:
+                has_yielded = False
+                async for chunk in self._stream_groq(model, messages):
+                    has_yielded = True
+                    yield chunk
+                if has_yielded:
+                    return
+            except Exception as e:
+                logger.error(f"Groq stream error: {e}")
+
+        # 3. Try OpenRouter API if configured
         if self.openrouter_api_key:
             for or_model in self._resolve_openrouter_models(model):
                 try:
@@ -77,18 +89,6 @@ class CloudLLMProvider:
                         return
                 except Exception as e:
                     logger.warning(f"OpenRouter ({or_model}) stream error: {e}")
-
-        # 3. Try Groq API (ultra-fast inference)
-        if self.groq_api_key:
-            try:
-                has_yielded = False
-                async for chunk in self._stream_groq(model, messages):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.error(f"Groq stream error: {e}")
 
         # 4. Try OpenAI API if configured
         if self.openai_api_key:
@@ -164,9 +164,11 @@ class CloudLLMProvider:
 
     def _resolve_groq_model(self, model: str) -> str:
         m = (model or "").lower()
-        if "fast" in m or "1.2" in m or "mini" in m:
+        if "fast" in m or "1.2" in m or "mini" in m or "phi" in m or "gemma" in m:
             return "openai/gpt-oss-20b"
-        elif "compound" in m:
+        elif "qwen" in m or "code" in m or "coder" in m:
+            return "qwen/qwen3.8-27b"
+        elif "compound" in m or "reason" in m or "deepseek" in m:
             return "groq/compound"
         return "openai/gpt-oss-120b"
 
@@ -214,26 +216,29 @@ class CloudLLMProvider:
                     logger.warning(f"{url} API error ({response.status_code}): {err.decode('utf-8', errors='ignore')}")
                     return
 
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            yield {"content": "", "done": True}
-                            break
-                        try:
-                            data = json.loads(data_str)
-                            delta = data.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content", "")
-                            # Stream reasoning status if provided by DeepSeek / o1
-                            reasoning = delta.get("reasoning_content", "")
-                            if reasoning:
-                                yield {"content": "", "reasoning_status": "Thinking...", "done": False}
-                            if content:
-                                yield {"content": content, "done": False}
-                        except Exception:
+                try:
+                    async for line in response.aiter_lines():
+                        if not line:
                             continue
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                yield {"content": "", "done": True}
+                                return
+                            try:
+                                data = json.loads(data_str)
+                                delta = data.get("choices", [{}])[0].get("delta", {})
+                                content = delta.get("content", "")
+                                # Stream reasoning status if provided by DeepSeek / o1
+                                reasoning = delta.get("reasoning_content", "")
+                                if reasoning:
+                                    yield {"content": "", "reasoning_status": "Thinking...", "done": False}
+                                if content:
+                                    yield {"content": content, "done": False}
+                            except Exception:
+                                continue
+                except GeneratorExit:
+                    return
 
     async def _stream_groq(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -282,22 +287,26 @@ class CloudLLMProvider:
                                     continue
                     return
 
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            yield {"content": "", "done": True}
-                            break
-                        try:
-                            data = json.loads(data_str)
-                            delta = data.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content", "")
-                            if content:
-                                yield {"content": content, "done": False}
-                        except Exception:
+                try:
+                    async for line in response.aiter_lines():
+                        if not line:
                             continue
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                yield {"content": "", "done": True}
+                                return
+                            try:
+                                data = json.loads(data_str)
+                                delta = data.get("choices", [{}])[0].get("delta", {})
+                                content = delta.get("content", "")
+                                if content:
+                                    yield {"content": content, "done": False}
+                            except Exception:
+                                continue
+                except GeneratorExit:
+                    return
+
 
     async def _stream_gemini(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
