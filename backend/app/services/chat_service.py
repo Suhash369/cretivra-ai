@@ -22,11 +22,13 @@ class ChatService:
         user_message_content: str,
         model_id: str = "cretivra-1",
         attachments: Optional[List[Dict[str, Any]]] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        web_search: Optional[bool] = False,
+        deep_research: Optional[bool] = False
     ) -> AsyncGenerator[str, None]:
         """
         Builds conversation context, calls model provider stream, yields SSE lines,
-        and saves completed response to DB. Supports PowerPoint generation and multimodal attachments.
+        and saves completed response to DB. Supports PowerPoint generation, deep research, web search, and multimodal attachments.
         """
         # Resolve underlying model name from CretivraModelRegistry
         underlying_model = registry.resolve_underlying_model(model_id)
@@ -173,12 +175,23 @@ class ChatService:
             )
             return
 
-        # 4. Check if query requires real-time intelligence cache retrieval
+        # 4. Check if query requires real-time intelligence cache retrieval or deep research
         live_web_context = ""
-        last_reasoning_status = "Thinking..." if "reason" in model_id or "deepseek" in underlying_model else None
+        is_search_active = bool(
+            web_search is True
+            or (system_prompt and "[REAL-TIME SEARCH]" in system_prompt)
+            or web_search_service.should_search_web(user_message_content)
+        )
+        is_deep_research_active = bool(
+            deep_research is True
+            or "reason" in model_id
+            or "deepseek" in underlying_model
+        )
+
+        last_reasoning_status = "Thinking with deep reasoning..." if is_deep_research_active else None
         cache_items = []
 
-        if web_search_service.should_search_web(user_message_content):
+        if is_search_active:
             clean_q = web_search_service.normalize_query(user_message_content)
             cache_items = [
                 f"Neural cache lookup for \"{clean_q[:28]}\"",
@@ -186,29 +199,46 @@ class ChatService:
                 "Temporal grounding synchronized (2026)",
                 "Synthesizing cached intelligence insights"
             ]
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting neural intelligence cache...', 'cache_items': cache_items})}\n\n"
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting real-time web intelligence cache...', 'cache_items': cache_items})}\n\n"
             search_snippets = await web_search_service.search(user_message_content)
             if search_snippets:
                 live_web_context = search_snippets
-                last_reasoning_status = "Synthesized from intelligence cache"
+                last_reasoning_status = "Synthesized from real-time intelligence"
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
-        elif "reason" in model_id or "deepseek" in underlying_model:
+        elif is_deep_research_active:
             cache_items = [
                 "Deep chain-of-thought activation",
                 "Mathematical & logical deduction trees",
                 "Self-consistency verification passes",
-                "Formulating high-precision response"
+                "Formulating comprehensive analytical report"
             ]
-            last_reasoning_status = "Thinking with deep reasoning..."
+            last_reasoning_status = "Deep reasoning & research in progress..."
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
 
-        # Formulate system prompt with current live date
+        # Formulate system prompt with current live date and directives
         today_str = datetime.now().strftime("%B %d, %Y")
         base_sys = system_prompt or settings.SYSTEM_PROMPT
+        
+        deep_directive = ""
+        if is_deep_research_active:
+            deep_directive = (
+                "\n\n[DEEP RESEARCH DIRECTIVE]: You are operating in Deep Research Mode. "
+                "Provide an exhaustive, highly detailed, well-structured report. "
+                "Structure your output with an Executive Summary, Detailed Analysis, Key Findings, Comparative Tables, and Actionable Strategic Recommendations."
+            )
+
+        vis_directive = ""
+        if re.search(r"\b(chart|visualize|visualization|graph|diagram|table)\b", user_message_content, re.IGNORECASE):
+            vis_directive = (
+                "\n\n[VISUALIZATION DIRECTIVE]: Format data using clean Markdown tables, comparative breakdown cards, and visual structures to make the insights immediately clear."
+            )
+
         sys_content = (
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
-            f"You possess real-time intelligence caching and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Do not mention web search, refer to your real-time intelligence cache."
+            f"You possess real-time intelligence and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Refer to your real-time verified intelligence."
+            f"{deep_directive}"
+            f"{vis_directive}"
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]

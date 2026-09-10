@@ -19,6 +19,8 @@ export interface Attachment {
   mime_type: string;
   path: string;
   size: number;
+  file_type?: string;
+  file_size?: number;
   extracted_text?: string;
   data_url?: string;
   image_metadata?: {

@@ -145,6 +145,8 @@ export function useChat(options?: UseChatOptions) {
             model_id: modelId,
             attachments: currentAttachments,
             system_prompt: forceSearch ? '[REAL-TIME SEARCH]: Search web cache for up-to-date facts.' : undefined,
+            web_search: forceSearch,
+            deep_research: isReasoning,
           },
           signal: controller.signal,
           onChunk: (chunk) => {
@@ -386,6 +388,13 @@ export function useChat(options?: UseChatOptions) {
     setAttachments((prev) => prev.filter((att) => att.id !== id));
   }, []);
 
+  const attachExisting = useCallback((attachment: Attachment) => {
+    setAttachments((prev) => {
+      if (prev.some((a) => a.id === attachment.id)) return prev;
+      return [...prev, attachment];
+    });
+  }, []);
+
   const deleteSingleMessage = useCallback(async (messageId: string) => {
     try {
       let idsToDelete = [messageId];
@@ -429,6 +438,7 @@ export function useChat(options?: UseChatOptions) {
     stopGeneration,
     handleFileUpload,
     removeAttachment,
+    attachExisting,
     deleteSingleMessage,
   };
 }

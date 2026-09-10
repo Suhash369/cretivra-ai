@@ -82,7 +82,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   key={att.id}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700/70 text-xs text-gray-200 group"
                 >
-                  {isImg ? (
+                  {isImg && att.data_url ? (
+                    <img src={att.data_url} alt="" className="w-4 h-4 rounded object-cover" />
+                  ) : isImg ? (
                     <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
                   ) : isPpt ? (
                     <Presentation className="w-3.5 h-3.5 text-orange-400" />
@@ -138,6 +140,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 onOpenLibrary={() => setLibraryModalOpen(true)}
                 onOpenImageStudio={() => {
                   setText('/image ');
+                  textareaRef.current?.focus();
+                }}
+                onCreateImage={() => {
+                  setText('Create an image of ');
                   textareaRef.current?.focus();
                 }}
                 onToggleWebSearch={() => {}}

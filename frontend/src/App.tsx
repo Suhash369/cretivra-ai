@@ -57,7 +57,7 @@ import { ConfirmModal } from './components/common/ConfirmModal';
 import { ActionMenu } from './components/chat/ActionMenu';
 import { SketchModal } from './components/chat/SketchModal';
 import { LibraryModal } from './components/chat/LibraryModal';
-import type { Conversation, CretivraModel, SystemSettings } from './types';
+import type { Conversation, CretivraModel, SystemSettings, Attachment } from './types';
 
 const SUGGESTIONS = [
   {
@@ -133,6 +133,7 @@ export function App() {
     stopGeneration,
     handleFileUpload,
     removeAttachment,
+    attachExisting,
     deleteSingleMessage,
   } = useChat({
     onConversationCreated: (newConv) => {
@@ -183,6 +184,16 @@ export function App() {
 
   // Scroll to bottom state
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  // Gather all attachments from current state and conversation messages for Library
+  const allSessionAttachments = useMemo(() => {
+    const map = new Map<string, Attachment>();
+    attachments.forEach((a) => map.set(a.id, a));
+    messages.forEach((m) => {
+      m.attachments?.forEach((a) => map.set(a.id, a));
+    });
+    return Array.from(map.values());
+  }, [attachments, messages]);
 
   // Feedback & TTS
   const [messageFeedback, setMessageFeedback] = useState<Record<string, 'good' | 'bad'>>({});
@@ -1240,7 +1251,9 @@ export function App() {
                     const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
                     return (
                       <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
-                        {isImg ? (
+                        {isImg && att.data_url ? (
+                          <img src={att.data_url} alt="" className="w-4 h-4 rounded object-cover" />
+                        ) : isImg ? (
                           <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" />
                         ) : isPpt ? (
                           <Presentation size={12} className="text-orange-500 dark:text-orange-400" />
@@ -1301,6 +1314,10 @@ export function App() {
                       onUploadFile={() => fileInputRef.current?.click()}
                       onOpenLibrary={() => setLibraryModalOpen(true)}
                       onOpenImageStudio={() => setImageStudioOpen(true)}
+                      onCreateImage={() => {
+                        setInput('Create an image of ');
+                        textareaRef.current?.focus();
+                      }}
                       onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
                       webSearchActive={webSearchEnabled}
                       onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
@@ -1480,7 +1497,10 @@ export function App() {
         onAttachFile={(libFile) => {
           handleFileUpload(libFile);
         }}
-        recentAttachments={attachments}
+        onAttachExisting={(att) => {
+          attachExisting(att);
+        }}
+        recentAttachments={allSessionAttachments}
       />
 
       <ConfirmModal

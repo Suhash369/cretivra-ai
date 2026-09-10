@@ -7,6 +7,8 @@ class ChatRequest(BaseModel):
     model_id: str = "cretivra-1"
     attachments: Optional[List[Dict[str, Any]]] = None
     system_prompt: Optional[str] = None
+    web_search: Optional[bool] = None
+    deep_research: Optional[bool] = None
 
 class EditMessageRequest(BaseModel):
     message: str

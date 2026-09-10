@@ -33,6 +33,7 @@ interface ActionMenuProps {
   onUploadFile: () => void;
   onOpenLibrary: () => void;
   onOpenImageStudio: () => void;
+  onCreateImage?: () => void;
   onToggleWebSearch: () => void;
   webSearchActive?: boolean;
   onToggleDeepThink: () => void;
@@ -49,6 +50,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   onUploadFile,
   onOpenLibrary,
   onOpenImageStudio,
+  onCreateImage,
   onToggleWebSearch,
   webSearchActive,
   onToggleDeepThink,
@@ -118,7 +120,11 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       badge: 'FLUX.1',
       onClick: () => {
         onClose();
-        onOpenImageStudio();
+        if (onCreateImage) {
+          onCreateImage();
+        } else {
+          onOpenImageStudio();
+        }
       },
     },
     {

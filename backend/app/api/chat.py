@@ -55,7 +55,9 @@ async def chat_stream(
         user_message_content=payload.message.strip(),
         model_id=payload.model_id,
         attachments=payload.attachments,
-        system_prompt=payload.system_prompt
+        system_prompt=payload.system_prompt,
+        web_search=payload.web_search,
+        deep_research=payload.deep_research
     )
 
     return StreamingResponse(generator, media_type="text/event-stream")
