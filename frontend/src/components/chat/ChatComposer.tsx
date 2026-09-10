@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Square, Paperclip, X, FileText, Image as ImageIcon, Presentation } from 'lucide-react';
+import { Send, Square, Paperclip, X, FileText, Image as ImageIcon, Presentation, Plus } from 'lucide-react';
 import { ModelSelector } from '../model-selector/ModelSelector';
+import { ActionMenu } from './ActionMenu';
+import { SketchModal } from './SketchModal';
+import { LibraryModal } from './LibraryModal';
 import type { Attachment, CretivraModel } from '../../types';
 
 interface ChatComposerProps {
@@ -27,6 +30,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onRemoveAttachment,
 }) => {
   const [text, setText] = useState('');
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [sketchModalOpen, setSketchModalOpen] = useState(false);
+  const [libraryModalOpen, setLibraryModalOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,6 +116,52 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         {/* Composer Action Toolbar */}
         <div className="flex items-center justify-between px-3 pb-3 pt-1">
           <div className="flex items-center gap-2">
+            {/* ChatGPT-style Plus Action Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setActionMenuOpen(!actionMenuOpen)}
+                className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+                  actionMenuOpen
+                    ? 'bg-cyan-600 text-white border-cyan-500 shadow-md rotate-45'
+                    : 'text-gray-400 hover:text-white bg-gray-800/80 hover:bg-gray-700 border-gray-700/60'
+                }`}
+                title="Add photos, files, presentations, sketches, or tools"
+              >
+                <Plus className="w-4 h-4 transition-transform duration-200" />
+              </button>
+
+              <ActionMenu
+                isOpen={actionMenuOpen}
+                onClose={() => setActionMenuOpen(false)}
+                onUploadFile={() => fileInputRef.current?.click()}
+                onOpenLibrary={() => setLibraryModalOpen(true)}
+                onOpenImageStudio={() => {
+                  setText('/image ');
+                  textareaRef.current?.focus();
+                }}
+                onToggleWebSearch={() => {}}
+                onToggleDeepThink={() => {}}
+                onCreatePresentation={() => {
+                  setText('Create a 5-slide presentation on ');
+                  textareaRef.current?.focus();
+                }}
+                onOpenSketch={() => setSketchModalOpen(true)}
+                onVisualizeData={() => {
+                  setText('Create an interactive chart and visualization for ');
+                  textareaRef.current?.focus();
+                }}
+                onOpenPlatformSettings={() => {
+                  setText('/settings');
+                  textareaRef.current?.focus();
+                }}
+                onOpenGitHub={() => {
+                  setText('Analyze GitHub repository code and summarize recent commit changes.');
+                  textareaRef.current?.focus();
+                }}
+              />
+            </div>
+
             {/* File Upload Button */}
             <button
               type="button"
@@ -162,6 +214,19 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       <p className="text-[11px] text-center text-gray-500 mt-2">
         Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.
       </p>
+
+      <SketchModal
+        isOpen={sketchModalOpen}
+        onClose={() => setSketchModalOpen(false)}
+        onAttachSketch={(sketchFile) => onFileUpload(sketchFile)}
+      />
+
+      <LibraryModal
+        isOpen={libraryModalOpen}
+        onClose={() => setLibraryModalOpen(false)}
+        onAttachFile={(libFile) => onFileUpload(libFile)}
+        recentAttachments={attachments}
+      />
     </div>
   );
 };

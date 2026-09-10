@@ -54,6 +54,9 @@ import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
 import { CretivraMark } from './components/common/CretivraLogo';
 import { ConfirmModal } from './components/common/ConfirmModal';
+import { ActionMenu } from './components/chat/ActionMenu';
+import { SketchModal } from './components/chat/SketchModal';
+import { LibraryModal } from './components/chat/LibraryModal';
 import type { Conversation, CretivraModel, SystemSettings } from './types';
 
 const SUGGESTIONS = [
@@ -174,6 +177,9 @@ export function App() {
   // Feature toggles for Tough Composer
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [deepThinkEnabled, setDeepThinkEnabled] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [sketchModalOpen, setSketchModalOpen] = useState(false);
+  const [libraryModalOpen, setLibraryModalOpen] = useState(false);
 
   // Scroll to bottom state
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -1274,6 +1280,48 @@ export function App() {
 
               <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
                 <div className="flex items-center gap-1.5">
+                  {/* ChatGPT-Style Action Menu (+) Button */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setActionMenuOpen(!actionMenuOpen)}
+                      className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                        actionMenuOpen
+                          ? 'bg-cyan-600 text-white border-cyan-500 shadow-md rotate-45'
+                          : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-gray-800/90 hover:bg-slate-200 dark:hover:bg-gray-700 border-slate-300 dark:border-gray-700/60'
+                      }`}
+                      title="Add photos, files, presentations, sketches, or tools"
+                    >
+                      <Plus size={16} className="transition-transform duration-200" />
+                    </button>
+
+                    <ActionMenu
+                      isOpen={actionMenuOpen}
+                      onClose={() => setActionMenuOpen(false)}
+                      onUploadFile={() => fileInputRef.current?.click()}
+                      onOpenLibrary={() => setLibraryModalOpen(true)}
+                      onOpenImageStudio={() => setImageStudioOpen(true)}
+                      onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                      webSearchActive={webSearchEnabled}
+                      onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                      deepThinkActive={deepThinkEnabled}
+                      onCreatePresentation={() => {
+                        setInput('Create a 5-slide presentation on ');
+                        textareaRef.current?.focus();
+                      }}
+                      onOpenSketch={() => setSketchModalOpen(true)}
+                      onVisualizeData={() => {
+                        setInput('Create an interactive chart and visualization for ');
+                        textareaRef.current?.focus();
+                      }}
+                      onOpenPlatformSettings={() => setSettingsOpen(true)}
+                      onOpenGitHub={() => {
+                        setInput('Analyze GitHub repository code and summarize recent commit changes.');
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                  </div>
+
                   {/* File Upload Button */}
                   <button
                     type="button"
@@ -1417,6 +1465,23 @@ export function App() {
         onInsertToChat={(_imageUrl, promptText) => {
           sendMessage(promptText, selectedModel);
         }}
+      />
+
+      <SketchModal
+        isOpen={sketchModalOpen}
+        onClose={() => setSketchModalOpen(false)}
+        onAttachSketch={(sketchFile) => {
+          handleFileUpload(sketchFile);
+        }}
+      />
+
+      <LibraryModal
+        isOpen={libraryModalOpen}
+        onClose={() => setLibraryModalOpen(false)}
+        onAttachFile={(libFile) => {
+          handleFileUpload(libFile);
+        }}
+        recentAttachments={attachments}
       />
 
       <ConfirmModal
