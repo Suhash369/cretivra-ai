@@ -69,6 +69,28 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
   );
 }
 
+// Helper to transform <br> or <br/> tags inside table cells or text into actual React <br /> elements
+function renderWithLineBreaks(children: React.ReactNode): React.ReactNode {
+  return React.Children.map(children, (child) => {
+    if (typeof child === 'string') {
+      if (/<br\s*\/?>/i.test(child)) {
+        const parts = child.split(/<br\s*\/?>/i);
+        return parts.flatMap((part, i) =>
+          i === 0 ? [part] : [<br key={i} className="my-1" />, part]
+        );
+      }
+      return child;
+    }
+    if (React.isValidElement(child) && child.props && (child.props as any).children) {
+      return React.cloneElement(child, {
+        ...(child.props as any),
+        children: renderWithLineBreaks((child.props as any).children),
+      });
+    }
+    return child;
+  });
+}
+
 // Interactive Table Block with Clean Light/Dark Theme, Horizontal Scroll, and Copy-as-TSV
 function TableBlock({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,8 +135,8 @@ function TableBlock({ children }: { children: React.ReactNode }) {
           <span>{copied ? 'Copied Table!' : 'Copy Table'}</span>
         </button>
       </div>
-      <div className="overflow-x-auto w-full">
-        <table className="w-full text-left text-sm border-collapse min-w-[520px]">
+      <div className="overflow-x-auto w-full custom-scrollbar">
+        <table className="w-full text-left text-sm border-collapse min-w-[600px] table-auto">
           {children}
         </table>
       </div>
@@ -189,7 +211,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           th({ children, ...props }) {
             return (
               <th
-                className="px-4 py-3 text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-100 text-left uppercase font-sans"
+                className="px-4 py-3 text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-100 text-left uppercase font-sans whitespace-nowrap min-w-[120px]"
                 {...props}
               >
                 {children}
@@ -199,10 +221,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           td({ children, ...props }) {
             return (
               <td
-                className="px-4 py-3 text-[13.5px] text-slate-800 dark:text-slate-300 align-top leading-relaxed whitespace-normal break-words font-sans"
+                className="px-4 py-3 text-[13.5px] text-slate-800 dark:text-slate-300 align-top leading-relaxed whitespace-normal break-normal font-sans min-w-[130px]"
                 {...props}
               >
-                {children}
+                {renderWithLineBreaks(children)}
               </td>
             );
           },

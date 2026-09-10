@@ -640,7 +640,7 @@ body.light .cv-gradient-text,
   font-size: 14.5px;
   line-height: 1.72;
   color: var(--text);
-  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .chat-markdown p,
@@ -656,6 +656,7 @@ body.light .cv-gradient-text,
   border-spacing: 0;
   margin: 14px 0;
   text-align: left;
+  table-layout: auto;
 }
 
 .chat-markdown th,
@@ -668,6 +669,9 @@ body.light .cv-gradient-text,
   border-bottom: 1px solid var(--border);
   color: var(--text);
   background: rgba(30, 41, 59, 0.75);
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .chat-markdown td,
@@ -678,6 +682,16 @@ body.light .cv-gradient-text,
   border-bottom: 1px solid var(--border);
   color: var(--text);
   vertical-align: top;
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+  min-width: 130px;
+}
+
+.chat-markdown td:first-child,
+.cv-msg-assistant td:first-child {
+  min-width: 120px;
+  font-weight: 500;
 }
 
 .chat-markdown tr:hover td,
