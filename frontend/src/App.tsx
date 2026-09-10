@@ -209,8 +209,10 @@ export function App() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const isAutoScrollLockedRef = useRef<boolean>(true);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -226,29 +228,55 @@ export function App() {
     }
   }, [input]);
 
-  // Auto-scroll on new message / token stream if near bottom
+  // Smooth auto-scroll to bottom on new message / token stream while generating or near bottom
   useEffect(() => {
-    if (scrollRef.current && !showScrollBottom) {
+    if (scrollRef.current && isAutoScrollLockedRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isGenerating, showScrollBottom]);
+  }, [messages, isGenerating]);
 
-  // Scroll listener for "Scroll to bottom" button
+  // When a new generation starts, smoothly anchor viewport to the generating stream
+  useEffect(() => {
+    if (isGenerating) {
+      isAutoScrollLockedRef.current = true;
+      setShowScrollBottom(false);
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [isGenerating]);
+
+  // Scroll listener for "Scroll to bottom" button & auto-scroll locking
   const handleChatScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const isUp = scrollHeight - scrollTop - clientHeight > 140;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    // Show floating button only if user scrolled up more than 90px
+    const isUp = distanceFromBottom > 90;
     setShowScrollBottom(isUp);
+    // If user is near bottom, re-engage auto-scroll lock
+    if (!isUp) {
+      isAutoScrollLockedRef.current = true;
+    } else {
+      isAutoScrollLockedRef.current = false;
+    }
   };
 
-  const scrollToBottom = () => {
+  const scrollToBottom = (smooth = true) => {
+    isAutoScrollLockedRef.current = true;
+    setShowScrollBottom(false);
     if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth',
-      });
-      setShowScrollBottom(false);
+      if (smooth) {
+        scrollRef.current.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      } else {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
     }
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
   };
 
   // Click outside to dismiss model selector dropdown
@@ -289,9 +317,19 @@ export function App() {
     }
     const content = (textToSend ?? input).trim();
     if ((content || attachments.length > 0) && !isGenerating) {
+      isAutoScrollLockedRef.current = true;
+      setShowScrollBottom(false);
       sendMessage(content, selectedModel, webSearchEnabled, deepThinkEnabled);
       setInput('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+      // Instantly follow the new query to bottom
+      scrollToBottom(false);
+      requestAnimationFrame(() => {
+        scrollToBottom(true);
+      });
+      setTimeout(() => scrollToBottom(true), 60);
+      setTimeout(() => scrollToBottom(true), 180);
     }
   };
 
@@ -301,6 +339,8 @@ export function App() {
       return;
     }
     clearActiveChat();
+    isAutoScrollLockedRef.current = true;
+    setShowScrollBottom(false);
     const newConv = await createNew(selectedModel);
     loadConversation(newConv.id);
   };
@@ -1169,7 +1209,12 @@ export function App() {
                           {/* In-place Regenerate */}
                           <button
                             disabled={isGenerating}
-                            onClick={() => regenerateMessage(m.id)}
+                            onClick={() => {
+                              isAutoScrollLockedRef.current = true;
+                              setShowScrollBottom(false);
+                              regenerateMessage(m.id);
+                              scrollToBottom(true);
+                            }}
                             className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors disabled:opacity-40 cursor-pointer"
                             title="Regenerate response"
                           >
@@ -1205,6 +1250,8 @@ export function App() {
                   )}
                 </div>
               ))}
+              {/* Bottom anchor for smooth auto-scroll following streaming tokens */}
+              <div ref={messagesEndRef} className="h-6 w-full shrink-0" />
             </div>
           )}
 
@@ -1212,7 +1259,7 @@ export function App() {
           {showScrollBottom && (
             <button
               type="button"
-              onClick={scrollToBottom}
+              onClick={() => scrollToBottom(true)}
               className="fixed bottom-28 right-8 z-30 p-2.5 rounded-full bg-white dark:bg-gray-900 text-cyan-600 dark:text-cyan-400 border border-slate-300 dark:border-cyan-500/40 shadow-xl backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center justify-center animate-in fade-in"
               title="Scroll to bottom"
             >
