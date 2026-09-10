@@ -207,12 +207,23 @@ export function App() {
     return name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Friend';
   }, [user]);
 
+  // Active conversation title for ChatGPT-style breadcrumb indicator
+  const activeChatTitle = useMemo(() => {
+    const activeConv = conversations.find((c) => c.id === activeConversationId);
+    if (activeConv?.title) return activeConv.title;
+    const firstUserMsg = messages.find((m) => m.role === 'user');
+    if (firstUserMsg?.content) return firstUserMsg.content.slice(0, 45);
+    return 'New Chat';
+  }, [conversations, activeConversationId, messages]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
-  const isAutoScrollLockedRef = useRef<boolean>(true);
+  const isUserScrolledUpRef = useRef<boolean>(false);
+  const isUserInteractingRef = useRef<boolean>(false);
+  const userInteractionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -228,44 +239,11 @@ export function App() {
     }
   }, [input]);
 
-  // Smooth auto-scroll to bottom on new message / token stream while generating or near bottom
-  useEffect(() => {
-    if (scrollRef.current && isAutoScrollLockedRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isGenerating]);
-
-  // When a new generation starts, smoothly anchor viewport to the generating stream
-  useEffect(() => {
-    if (isGenerating) {
-      isAutoScrollLockedRef.current = true;
-      setShowScrollBottom(false);
-      if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [isGenerating]);
-
-  // Scroll listener for "Scroll to bottom" button & auto-scroll locking
-  const handleChatScroll = () => {
-    if (!scrollRef.current) return;
-    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-    // Show floating button only if user scrolled up more than 90px
-    const isUp = distanceFromBottom > 90;
-    setShowScrollBottom(isUp);
-    // If user is near bottom, re-engage auto-scroll lock
-    if (!isUp) {
-      isAutoScrollLockedRef.current = true;
-    } else {
-      isAutoScrollLockedRef.current = false;
-    }
-  };
-
-  const scrollToBottom = (smooth = true) => {
-    isAutoScrollLockedRef.current = true;
+  // Robust scroll to bottom that actively moves both inner scrollable container and outer window screen
+  const scrollToBottom = useCallback((smooth = true) => {
+    isUserScrolledUpRef.current = false;
     setShowScrollBottom(false);
+
     if (scrollRef.current) {
       if (smooth) {
         scrollRef.current.scrollTo({
@@ -276,7 +254,97 @@ export function App() {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
     }
-    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end' });
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: smooth ? 'smooth' : 'auto',
+      block: 'end',
+    });
+
+    if (typeof window !== 'undefined' && window.scrollY > 0) {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      });
+    }
+  }, []);
+
+  // Continuous auto-scroll to follow new tokens as they stream in
+  useEffect(() => {
+    if (!isUserScrolledUpRef.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+      requestAnimationFrame(() => {
+        if (scrollRef.current && !isUserScrolledUpRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [messages, isGenerating]);
+
+  // When a new generation starts, smoothly anchor viewport to the generating stream
+  useEffect(() => {
+    if (isGenerating) {
+      isUserScrolledUpRef.current = false;
+      setShowScrollBottom(false);
+      scrollToBottom(true);
+      const t1 = setTimeout(() => scrollToBottom(false), 80);
+      const t2 = setTimeout(() => scrollToBottom(false), 240);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [isGenerating, scrollToBottom]);
+
+  // User input listeners to distinguish intentional user scroll from programmatic auto-follow
+  const handleUserWheel = (e: React.WheelEvent) => {
+    isUserInteractingRef.current = true;
+    if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
+    userInteractionTimeoutRef.current = setTimeout(() => {
+      isUserInteractingRef.current = false;
+    }, 450);
+
+    if (e.deltaY < -4) {
+      // User wheeled up
+      isUserScrolledUpRef.current = true;
+      setShowScrollBottom(true);
+    } else if (e.deltaY > 4 && scrollRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      if (scrollHeight - scrollTop - clientHeight < 60) {
+        isUserScrolledUpRef.current = false;
+        setShowScrollBottom(false);
+      }
+    }
+  };
+
+  const handleUserTouchMove = () => {
+    isUserInteractingRef.current = true;
+    if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
+    userInteractionTimeoutRef.current = setTimeout(() => {
+      isUserInteractingRef.current = false;
+    }, 450);
+  };
+
+  // Scroll listener for "Scroll to bottom" button & position tracking
+  const handleChatScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    // Re-engage auto-follow when close to the bottom
+    if (distanceFromBottom <= 50) {
+      isUserScrolledUpRef.current = false;
+      setShowScrollBottom(false);
+      return;
+    }
+
+    // Mark user scrolled up only when actively interacting or scrolled up while idle
+    if (distanceFromBottom > 80 && isUserInteractingRef.current) {
+      isUserScrolledUpRef.current = true;
+      setShowScrollBottom(true);
+    } else if (distanceFromBottom > 120 && !isGenerating) {
+      setShowScrollBottom(true);
+    }
   };
 
   // Click outside to dismiss model selector dropdown
@@ -317,19 +385,19 @@ export function App() {
     }
     const content = (textToSend ?? input).trim();
     if ((content || attachments.length > 0) && !isGenerating) {
-      isAutoScrollLockedRef.current = true;
+      isUserScrolledUpRef.current = false;
       setShowScrollBottom(false);
       sendMessage(content, selectedModel, webSearchEnabled, deepThinkEnabled);
       setInput('');
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-      // Instantly follow the new query to bottom
+      // Actively move window screen down to follow user's new query and streaming response
       scrollToBottom(false);
       requestAnimationFrame(() => {
         scrollToBottom(true);
       });
-      setTimeout(() => scrollToBottom(true), 60);
-      setTimeout(() => scrollToBottom(true), 180);
+      setTimeout(() => scrollToBottom(true), 80);
+      setTimeout(() => scrollToBottom(false), 240);
     }
   };
 
@@ -339,7 +407,7 @@ export function App() {
       return;
     }
     clearActiveChat();
-    isAutoScrollLockedRef.current = true;
+    isUserScrolledUpRef.current = false;
     setShowScrollBottom(false);
     const newConv = await createNew(selectedModel);
     loadConversation(newConv.id);
@@ -907,7 +975,26 @@ export function App() {
             )}
           </div>
 
-          <div className="cv-header-spacer flex-1" />
+          {/* Active Chat Breadcrumb & Status (ChatGPT-style location indicator) */}
+          <div className="flex-1 min-w-0 flex items-center justify-center px-2">
+            {!isLanding && (
+              <div className="flex items-center gap-2 max-w-[180px] sm:max-w-[280px] md:max-w-md truncate">
+                <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={activeChatTitle}>
+                  {activeChatTitle}
+                </span>
+                {isGenerating ? (
+                  <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping" />
+                    Generating...
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline font-mono">
+                    ({messages.length} msgs)
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Dedicated Image Studio Button */}
           <button
@@ -994,7 +1081,13 @@ export function App() {
         )}
 
         {/* Scrollable Center Canvas (Landing or Chat) */}
-        <div className="flex-1 min-h-0 overflow-y-auto relative flex flex-col" ref={scrollRef} onScroll={handleChatScroll}>
+        <div
+          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col"
+          ref={scrollRef}
+          onScroll={handleChatScroll}
+          onWheel={handleUserWheel}
+          onTouchMove={handleUserTouchMove}
+        >
           {isLanding ? (
             <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto">
               <div className="mb-4">
@@ -1135,12 +1228,17 @@ export function App() {
                       {m.content ? (
                         <div className="relative text-sm leading-relaxed text-slate-900 dark:text-slate-100">
                           <MarkdownRenderer content={m.content} />
-                          {isGenerating && i === messages.length - 1 && <span className="cv-cursor" />}
+                          {isGenerating && i === messages.length - 1 && (
+                            <span
+                              className="inline-block w-2.5 h-4 bg-cyan-500 dark:bg-cyan-400 ml-1 rounded-[2px] animate-pulse align-text-bottom shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                              title="Streaming tokens..."
+                            />
+                          )}
                         </div>
                       ) : isGenerating && i === messages.length - 1 ? (
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 py-2 animate-pulse">
-                          <Sparkles size={13} className="animate-spin text-cyan-500 dark:text-cyan-400" />
-                          <span>Formulating response...</span>
+                        <div className="flex items-center gap-2.5 text-xs text-cyan-600 dark:text-cyan-400 py-2.5 px-3 rounded-xl bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/40 animate-pulse w-fit">
+                          <Sparkles size={14} className="animate-spin text-cyan-500" />
+                          <span className="font-medium">{m.reasoning_status || 'Thinking & formulating response...'}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 py-1 text-xs text-amber-600 dark:text-amber-400">
@@ -1210,7 +1308,7 @@ export function App() {
                           <button
                             disabled={isGenerating}
                             onClick={() => {
-                              isAutoScrollLockedRef.current = true;
+                              isUserScrolledUpRef.current = false;
                               setShowScrollBottom(false);
                               regenerateMessage(m.id);
                               scrollToBottom(true);
@@ -1255,16 +1353,29 @@ export function App() {
             </div>
           )}
 
-          {/* Floating Scroll to Bottom Button */}
+          {/* Floating Scroll to Bottom Button (ChatGPT-style with live generation indicator) */}
           {showScrollBottom && (
-            <button
-              type="button"
-              onClick={() => scrollToBottom(true)}
-              className="fixed bottom-28 right-8 z-30 p-2.5 rounded-full bg-white dark:bg-gray-900 text-cyan-600 dark:text-cyan-400 border border-slate-300 dark:border-cyan-500/40 shadow-xl backdrop-blur-md cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center justify-center animate-in fade-in"
-              title="Scroll to bottom"
-            >
-              <ArrowDown size={16} />
-            </button>
+            <div className="fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 animate-in fade-in slide-in-from-bottom-3 duration-200">
+              <button
+                type="button"
+                onClick={() => scrollToBottom(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/95 dark:bg-gray-900/95 text-slate-800 dark:text-white border border-slate-300 dark:border-cyan-500/40 shadow-2xl backdrop-blur-md cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 group"
+                title="Jump to latest response"
+              >
+                <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:translate-y-0.5 transition-transform">
+                  <ArrowDown size={13} className="stroke-[2.5]" />
+                </div>
+                <span className="text-xs font-semibold">
+                  {isGenerating ? 'Generating below...' : 'Scroll to bottom'}
+                </span>
+                {isGenerating && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+                  </span>
+                )}
+              </button>
+            </div>
           )}
         </div>
 
@@ -1290,6 +1401,28 @@ export function App() {
             </div>
           ) : (
             <div className={`relative rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 p-3 shadow-lg focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 transition-all ${isCurrentImg ? 'border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500' : ''}`}>
+              {/* ChatGPT-style live response status banner */}
+              {isGenerating && (
+                <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+                    </span>
+                    <span className="font-medium text-xs">
+                      {deepThinkEnabled ? 'Asura DeepThink reasoning in progress...' : webSearchEnabled ? 'Searching real-time cache and formulating answer...' : 'Asura AI is responding...'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] border border-rose-500/30 cursor-pointer transition-colors"
+                  >
+                    <Square size={10} fill="currentColor" />
+                    <span>Stop</span>
+                  </button>
+                </div>
+              )}
               {/* Attachment preview chips */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
