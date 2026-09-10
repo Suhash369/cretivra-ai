@@ -20,6 +20,7 @@ import {
   ArrowUp,
   ArrowDown,
   FileText,
+  Presentation,
   Image as ImageIcon,
   AlertCircle,
   RefreshCw,
@@ -1228,13 +1229,23 @@ export function App() {
               {/* Attachment preview chips */}
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
-                  {attachments.map((att) => (
-                    <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
-                      {att.mime_type.startsWith('image/') ? <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" /> : <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />}
-                      <span className="truncate max-w-[120px]">{att.filename}</span>
-                      <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
-                    </div>
-                  ))}
+                  {attachments.map((att) => {
+                    const isImg = att.mime_type.startsWith('image/');
+                    const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
+                    return (
+                      <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
+                        {isImg ? (
+                          <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" />
+                        ) : isPpt ? (
+                          <Presentation size={12} className="text-orange-500 dark:text-orange-400" />
+                        ) : (
+                          <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />
+                        )}
+                        <span className="truncate max-w-[120px]">{att.filename}</span>
+                        <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -1267,7 +1278,7 @@ export function App() {
                   <button
                     type="button"
                     className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    title="Attach file (PDF, DOCX, TXT, CSV, Images)"
+                    title="Attach file (PDF, Word, PowerPoint, CSV, Text, Images)"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     <Paperclip size={15} />
@@ -1283,7 +1294,7 @@ export function App() {
                         e.target.value = '';
                       }
                     }}
-                    accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
+                    accept=".pdf,.docx,.pptx,.ppt,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
                   />
 
                   {/* Web Search Toggle (Perplexity-style) */}

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from app.services.image_service import image_service
@@ -15,6 +15,7 @@ class ImageGenerateRequest(BaseModel):
     enhance: bool = Field(True, description="Auto-enhance prompt quality")
     seed: Optional[int] = Field(None, description="Optional seed for deterministic reproducibility")
     negative_prompt: Optional[str] = Field(None, description="Keywords to avoid in generation")
+    reference_image: Optional[str] = Field(None, description="Optional URL or base64 of reference image for remixing")
 
 class EnhancePromptRequest(BaseModel):
     prompt: str = Field(..., description="Short prompt to enrich")
@@ -50,7 +51,8 @@ async def generate_image(request: ImageGenerateRequest):
         style=request.style,
         enhance=request.enhance,
         seed=request.seed,
-        negative_prompt=request.negative_prompt
+        negative_prompt=request.negative_prompt,
+        reference_image=request.reference_image
     )
     return result
 
@@ -72,3 +74,17 @@ async def enhance_prompt_endpoint(request: EnhancePromptRequest):
         "enhanced_prompt": enhanced,
         "style": request.style
     }
+
+@router.post("/describe")
+async def describe_image_endpoint(file: UploadFile = File(...)):
+    """
+    Reverse-engineers an uploaded image into a high-detail creative prompt for AI remixing.
+    """
+    filename = file.filename or "image.png"
+    file_bytes = await file.read()
+
+    if len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded image file is empty.")
+
+    description_result = image_service.describe_image_for_prompt(file_bytes, filename)
+    return description_result

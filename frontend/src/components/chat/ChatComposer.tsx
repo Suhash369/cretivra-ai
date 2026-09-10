@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Square, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Send, Square, Paperclip, X, FileText, Image as ImageIcon, Presentation } from 'lucide-react';
 import { ModelSelector } from '../model-selector/ModelSelector';
 import type { Attachment, CretivraModel } from '../../types';
 
@@ -70,6 +70,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <div className="flex flex-wrap gap-2 p-3 border-b border-gray-800/60">
             {attachments.map((att) => {
               const isImg = att.mime_type.startsWith('image/');
+              const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
               return (
                 <div
                   key={att.id}
@@ -77,6 +78,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 >
                   {isImg ? (
                     <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
+                  ) : isPpt ? (
+                    <Presentation className="w-3.5 h-3.5 text-orange-400" />
                   ) : (
                     <FileText className="w-3.5 h-3.5 text-indigo-400" />
                   )}
@@ -112,7 +115,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-              title="Attach files (PDF, DOCX, TXT, CSV, MD, PNG, JPG)"
+              title="Attach files (PDF, Word, PowerPoint, CSV, Text, Images)"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -122,7 +125,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               multiple
               onChange={handleFileChange}
               className="hidden"
-              accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
+              accept=".pdf,.docx,.pptx,.ppt,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
             />
 
             {/* Model Selector dropdown pill */}

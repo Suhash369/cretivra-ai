@@ -1,4 +1,4 @@
-import type { HealthStatus, SystemSettings, CretivraModel, Conversation, GroupedConversations, Attachment } from '../types';
+import type { HealthStatus, SystemSettings, CretivraModel, Conversation, GroupedConversations, Attachment, DescribeImageResult } from '../types';
 
 export const API_BASE = (() => {
   if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BACKEND_URL) {
@@ -250,6 +250,7 @@ export async function generateImageApi(payload: {
   enhance?: boolean;
   seed?: number;
   negative_prompt?: string;
+  reference_image?: string;
 }): Promise<{
   success: boolean;
   prompt: string;
@@ -266,7 +267,7 @@ export async function generateImageApi(payload: {
   try {
     const res = await fetch(`${API_BASE}/images/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(payload),
     });
     if (res.ok) {
@@ -289,6 +290,9 @@ export async function generateImageApi(payload: {
   }
 
   let imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${w}&height=${h}&model=${engine}&nologo=true&seed=${seed}`;
+  if (payload.reference_image && payload.reference_image.startsWith('http')) {
+    imageUrl += `&image=${encodeURIComponent(payload.reference_image)}`;
+  }
   if (payload.enhance !== false) {
     imageUrl += '&enhance=true';
   }
@@ -309,6 +313,46 @@ export async function generateImageApi(payload: {
     seed,
     style: payload.style,
   };
+}
+
+export async function describeImageApi(file: File): Promise<DescribeImageResult> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${API_BASE}/images/describe`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to describe image');
+  }
+  return res.json();
+}
+
+export async function generatePresentationApi(payload: {
+  title: string;
+  slides: Array<{ title: string; bullets: string[] }>;
+  subtitle?: string;
+  theme?: string;
+}): Promise<{
+  success: boolean;
+  title: string;
+  filename: string;
+  file_path: string;
+  slide_count: number;
+  download_url: string;
+}> {
+  const res = await fetch(`${API_BASE}/files/generate-presentation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to generate presentation');
+  }
+  return res.json();
 }
 
 export async function fetchImageCatalogApi(): Promise<{

@@ -1,7 +1,9 @@
+import io
 import re
 import random
 import urllib.parse
 from typing import Dict, Any, Optional, Tuple, List
+from PIL import Image
 
 class ImageService:
     """
@@ -66,10 +68,6 @@ class ImageService:
     ]
 
     def detect_image_intent(self, text: str) -> Optional[str]:
-        """
-        Detects if the user prompt is requesting image generation.
-        Returns the cleaned prompt string if detected, otherwise None.
-        """
         trimmed = text.strip()
         for pattern in self.IMAGE_TRIGGER_PATTERNS:
             match = re.search(pattern, trimmed, re.IGNORECASE)
@@ -85,9 +83,6 @@ class ImageService:
         width: Optional[int] = None,
         height: Optional[int] = None
     ) -> Tuple[int, int]:
-        """
-        Resolves width and height from aspect ratio or custom dimensions.
-        """
         if aspect_ratio and aspect_ratio in self.ASPECT_RATIO_MAP:
             return self.ASPECT_RATIO_MAP[aspect_ratio]
         
@@ -96,16 +91,10 @@ class ImageService:
         return (w, h)
 
     def resolve_engine(self, model_identifier: str) -> str:
-        """
-        Maps Cretivra model IDs or short names to the backend generation engine.
-        """
         key = (model_identifier or "flux").strip().lower()
         return self.MODEL_ENGINE_MAP.get(key, "flux")
 
     def enhance_prompt(self, prompt: str, style: Optional[str] = None, model: Optional[str] = None) -> str:
-        """
-        Enriches user prompt with high-detail stylistic keywords.
-        """
         clean = prompt.strip()
         additions: List[str] = []
 
@@ -134,10 +123,11 @@ class ImageService:
         style: Optional[str] = None,
         enhance: bool = True,
         seed: Optional[int] = None,
-        negative_prompt: Optional[str] = None
+        negative_prompt: Optional[str] = None,
+        reference_image: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Builds a high-definition AI image generation URL with multi-engine support.
+        Builds a high-definition AI image generation URL with multi-engine support and optional reference image.
         """
         clean_prompt = prompt.strip()
         actual_width, actual_height = self.resolve_dimensions(aspect_ratio, width, height)
@@ -148,6 +138,11 @@ class ImageService:
         if style:
             effective_prompt = self.enhance_prompt(clean_prompt, style=style, model=engine)
 
+        # If a reference image is provided, append styling or remix parameters
+        if reference_image and reference_image.strip():
+            if not any(w in effective_prompt.lower() for w in ["remix", "variation", "style of"]):
+                effective_prompt = f"{effective_prompt}, inspired by source composition, high visual fidelity"
+
         encoded_prompt = urllib.parse.quote(effective_prompt)
 
         # Base Pollinations FLUX generation URL
@@ -155,6 +150,11 @@ class ImageService:
             f"https://image.pollinations.ai/prompt/{encoded_prompt}"
             f"?width={actual_width}&height={actual_height}&model={engine}&nologo=true&seed={actual_seed}"
         )
+
+        # If a reference image URL is available (http/https), pass to the image parameter
+        if reference_image and reference_image.startswith("http"):
+            encoded_ref = urllib.parse.quote(reference_image)
+            image_url += f"&image={encoded_ref}"
 
         if enhance:
             image_url += "&enhance=true"
@@ -174,13 +174,66 @@ class ImageService:
             "width": actual_width,
             "height": actual_height,
             "seed": actual_seed,
-            "style": style
+            "style": style,
+            "reference_image": reference_image
         }
 
+    def describe_image_for_prompt(self, image_bytes: bytes, filename: str) -> Dict[str, Any]:
+        """
+        Analyzes an uploaded image to generate a rich, descriptive prompt for creative remixing.
+        """
+        try:
+            with Image.open(io.BytesIO(image_bytes)) as img:
+                w, h = img.size
+                ratio_val = w / h
+                if 0.95 <= ratio_val <= 1.05:
+                    ratio_label = "1:1"
+                elif ratio_val > 1.3:
+                    ratio_label = "16:9"
+                elif ratio_val < 0.75:
+                    ratio_label = "9:16"
+                else:
+                    ratio_label = "4:3"
+
+                # Analyze basic color/light profile
+                img_rgb = img.convert("RGB")
+                small = img_rgb.resize((32, 32))
+                raw_bytes = small.tobytes()
+                # 3 bytes per pixel (R, G, B)
+                r_vals = raw_bytes[0::3]
+                g_vals = raw_bytes[1::3]
+                b_vals = raw_bytes[2::3]
+                avg_r = sum(r_vals) / len(r_vals)
+                avg_g = sum(g_vals) / len(g_vals)
+                avg_b = sum(b_vals) / len(b_vals)
+                brightness = (avg_r + avg_g + avg_b) / 3
+
+                mood = "bright cinematic lighting" if brightness > 140 else "moody atmospheric lighting with deep shadows"
+                color_tone = "warm golden tones" if avg_r > avg_b else "cool cybernetic tones"
+
+                clean_name = re.sub(r"[-_.]+", " ", filename).strip()
+                suggested_prompt = (
+                    f"A stunning aesthetic scene of {clean_name}, {mood}, {color_tone}, "
+                    f"intricate details, 8k resolution, masterful composition, artstation trending"
+                )
+
+                return {
+                    "success": True,
+                    "prompt": suggested_prompt,
+                    "aspect_ratio": ratio_label,
+                    "width": w,
+                    "height": h,
+                    "suggested_style": "photorealistic" if brightness > 120 else "cinematic"
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "prompt": f"Artistic visual remix of {filename}, masterpiece, cinematic lighting, 8k detail",
+                "aspect_ratio": "1:1",
+                "suggested_style": "photorealistic"
+            }
+
     def get_available_models(self) -> List[Dict[str, Any]]:
-        """
-        Returns metadata on available image generation engines.
-        """
         return [
             {
                 "id": "cretivra-flux",

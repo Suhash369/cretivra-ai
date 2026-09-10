@@ -20,6 +20,13 @@ export interface Attachment {
   path: string;
   size: number;
   extracted_text?: string;
+  data_url?: string;
+  image_metadata?: {
+    width: number;
+    height: number;
+    format?: string;
+    mode?: string;
+  };
 }
 
 export interface Message {
@@ -84,6 +91,15 @@ export interface SystemSettings {
   max_upload_size_mb: number;
 }
 
+export interface AppSettings {
+  max_context_messages: number;
+  temperature: number;
+  max_output_tokens: number;
+  max_upload_size_mb: number;
+  ollama_base_url?: string;
+  default_model?: string;
+}
+
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '21:9';
 
 export interface ImageGenerationRequest {
@@ -96,6 +112,16 @@ export interface ImageGenerationRequest {
   enhance?: boolean;
   seed?: number;
   negative_prompt?: string;
+  reference_image?: string;
+}
+
+export interface DescribeImageResult {
+  success: boolean;
+  prompt: string;
+  aspect_ratio: AspectRatio;
+  width: number;
+  height: number;
+  suggested_style: string;
 }
 
 export interface ImageGenerationResult {

@@ -1,21 +1,27 @@
 import os
 import shutil
 import uuid
+import base64
 from typing import Dict, Any, Optional
 import pypdf
 import docx
+from PIL import Image
+import pptx
+
 from app.core.config import settings
 from app.core.security import sanitize_filename, validate_path_safety
 from app.core.logging import logger
 
 ALLOWED_EXTENSIONS = {
-    ".pdf", ".docx", ".txt", ".csv", ".md",
+    ".pdf", ".docx", ".pptx", ".ppt", ".txt", ".csv", ".md",
     ".png", ".jpg", ".jpeg", ".webp"
 }
 
 ALLOWED_MIME_TYPES = {
     "application/pdf": ".pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.ms-powerpoint": ".ppt",
     "text/plain": ".txt",
     "text/csv": ".csv",
     "text/markdown": ".md",
@@ -62,8 +68,28 @@ class FileService:
         with open(file_path, "wb") as f:
             f.write(file_bytes)
 
-        # Extract text content if document
-        extracted_text = self.extract_text_content(file_path, clean_name)
+        ext = os.path.splitext(clean_name)[1].lower()
+        data_url = None
+        image_metadata = None
+
+        # Process image data if image
+        if ext in [".png", ".jpg", ".jpeg", ".webp"]:
+            try:
+                with Image.open(file_path) as img:
+                    image_metadata = {
+                        "width": img.width,
+                        "height": img.height,
+                        "format": img.format,
+                        "mode": img.mode
+                    }
+                b64 = base64.b64encode(file_bytes).decode("utf-8")
+                safe_mime = mime_type if mime_type and mime_type.startswith("image/") else f"image/{ext.replace('.', '')}"
+                data_url = f"data:{safe_mime};base64,{b64}"
+            except Exception as img_err:
+                logger.warning(f"Failed to read image metadata for {clean_name}: {img_err}")
+
+        # Extract text content if document or image
+        extracted_text = self.extract_text_content(file_path, clean_name, image_metadata=image_metadata)
 
         return {
             "id": file_id,
@@ -71,10 +97,17 @@ class FileService:
             "mime_type": mime_type,
             "path": file_path,
             "size": len(file_bytes),
-            "extracted_text": extracted_text
+            "extracted_text": extracted_text,
+            "data_url": data_url,
+            "image_metadata": image_metadata
         }
 
-    def extract_text_content(self, file_path: str, filename: str) -> Optional[str]:
+    def extract_text_content(
+        self,
+        file_path: str,
+        filename: str,
+        image_metadata: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
         ext = os.path.splitext(filename)[1].lower()
         try:
             if ext in [".txt", ".md", ".csv"]:
@@ -84,15 +117,54 @@ class FileService:
             elif ext == ".pdf":
                 reader = pypdf.PdfReader(file_path)
                 text_pages = []
-                for page in reader.pages:
+                for idx, page in enumerate(reader.pages, 1):
                     t = page.extract_text()
-                    if t:
-                        text_pages.append(t)
-                return "\n\n".join(text_pages)
+                    if t and t.strip():
+                        text_pages.append(f"--- Page {idx} ---\n{t.strip()}")
+                return "\n\n".join(text_pages) if text_pages else "Empty or scanned PDF document."
 
             elif ext == ".docx":
                 doc = docx.Document(file_path)
-                return "\n".join([p.text for p in doc.paragraphs if p.text])
+                paras = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+                return "\n\n".join(paras) if paras else "Empty Word document."
+
+            elif ext in [".pptx", ".ppt"]:
+                prs = pptx.Presentation(file_path)
+                slides_output = []
+                for idx, slide in enumerate(prs.slides, 1):
+                    slide_lines = [f"=== Slide {idx} ==="]
+                    
+                    # Extract shape text and tables
+                    for shape in slide.shapes:
+                        if shape.has_text_frame and shape.text.strip():
+                            slide_lines.append(shape.text.strip())
+                        elif shape.has_table:
+                            table_rows = []
+                            for row in shape.table.rows:
+                                cells_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                                if cells_text:
+                                    table_rows.append(" | ".join(cells_text))
+                            if table_rows:
+                                slide_lines.append("\n".join(table_rows))
+                    
+                    # Extract speaker notes if present
+                    if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
+                        notes = slide.notes_slide.notes_text_frame.text.strip()
+                        if notes:
+                            slide_lines.append(f"[Speaker Notes]: {notes}")
+                    
+                    slides_output.append("\n".join(slide_lines))
+                
+                return "\n\n".join(slides_output) if slides_output else "Empty PowerPoint presentation."
+
+            elif ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                dims = f"{image_metadata['width']}x{image_metadata['height']}" if image_metadata else "Unknown"
+                fmt = image_metadata.get("format", ext.replace(".", "").upper()) if image_metadata else ext.upper()
+                return (
+                    f"[Attached Image File]: {filename}\n"
+                    f"Format: {fmt} | Resolution: {dims}\n"
+                    f"This image has been attached by the user. Please examine and answer questions about it directly."
+                )
 
         except Exception as e:
             logger.error(f"Error extracting text from {filename}: {e}")

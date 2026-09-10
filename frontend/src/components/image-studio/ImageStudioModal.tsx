@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   X,
@@ -13,8 +13,9 @@ import {
   Layers,
   Ratio,
   Palette,
+  UploadCloud,
 } from 'lucide-react';
-import { generateImageApi, enhancePromptApi } from '../../services/api';
+import { generateImageApi, enhancePromptApi, describeImageApi } from '../../services/api';
 import type { AspectRatio } from '../../types';
 
 interface ImageStudioModalProps {
@@ -124,6 +125,41 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
     }
   };
 
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [isDescribing, setIsDescribing] = useState(false);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReferenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReferenceFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setReferenceImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDescribeReference = async () => {
+    if (!referenceFile || isDescribing) return;
+    setIsDescribing(true);
+    setErrorMessage(null);
+    try {
+      const res = await describeImageApi(referenceFile);
+      if (res?.prompt) {
+        setPrompt(res.prompt);
+        if (res.aspect_ratio) setSelectedRatio(res.aspect_ratio);
+        if (res.suggested_style) setSelectedStyle(res.suggested_style);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to describe image');
+    } finally {
+      setIsDescribing(false);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
     setIsGenerating(true);
@@ -136,6 +172,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
         style: selectedStyle,
         enhance: true,
         negative_prompt: negativePrompt.trim() || undefined,
+        reference_image: referenceImage || undefined,
       });
 
       if (result && result.image_url) {
@@ -222,6 +259,78 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-y-auto">
           {/* Controls Column (Left) */}
           <div className="lg:col-span-6 p-6 space-y-5 border-b lg:border-b-0 lg:border-r border-gray-800/80">
+            {/* Reference Image / Visual Remix Uploader */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <label className="font-semibold text-gray-300 flex items-center gap-1.5">
+                  <ImageIcon size={13} className="text-cyan-400" /> Reference Image (Remix / Vision)
+                </label>
+                {referenceImage && (
+                  <button
+                    type="button"
+                    onClick={handleDescribeReference}
+                    disabled={isDescribing}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-700/60 text-cyan-300 font-medium transition-all disabled:opacity-40 cursor-pointer"
+                    title="Reverse-prompt and describe this image into the prompt box"
+                  >
+                    <Wand2 size={12} className={isDescribing ? 'animate-spin' : ''} />
+                    <span>{isDescribing ? 'Analyzing Image...' : 'Describe to Prompt'}</span>
+                  </button>
+                )}
+              </div>
+
+              {referenceImage ? (
+                <div className="relative flex items-center gap-3 p-2.5 rounded-xl bg-gray-900/90 border border-cyan-500/40">
+                  <img
+                    src={referenceImage}
+                    alt="Reference preview"
+                    className="w-14 h-14 rounded-lg object-cover border border-cyan-500/30"
+                  />
+                  <div className="flex-1 min-w-0 text-xs">
+                    <p className="font-medium text-gray-200 truncate">{referenceFile?.name || 'Reference Image'}</p>
+                    <p className="text-[11px] text-cyan-400 mt-0.5">Active as visual remix reference</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReferenceImage(null);
+                      setReferenceFile(null);
+                    }}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors cursor-pointer"
+                    title="Remove reference image"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onClick={() => referenceInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && file.type.startsWith('image/')) {
+                      setReferenceFile(file);
+                      const reader = new FileReader();
+                      reader.onload = (ev) => setReferenceImage(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-gray-700 hover:border-cyan-500/60 bg-gray-900/40 hover:bg-cyan-950/20 text-gray-400 hover:text-cyan-300 text-xs cursor-pointer transition-all group"
+                >
+                  <UploadCloud size={16} className="text-gray-500 group-hover:text-cyan-400 transition-colors" />
+                  <span>Drop reference image here, or <strong className="text-cyan-400 underline font-normal">browse</strong> to remix</span>
+                </div>
+              )}
+              <input
+                ref={referenceInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/jpg"
+                className="hidden"
+                onChange={handleReferenceFileChange}
+              />
+            </div>
+
             {/* Prompt Input Box */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
