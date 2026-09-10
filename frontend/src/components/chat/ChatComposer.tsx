@@ -151,10 +151,6 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   setText('Create an interactive chart and visualization for ');
                   textareaRef.current?.focus();
                 }}
-                onOpenPlatformSettings={() => {
-                  setText('/settings');
-                  textareaRef.current?.focus();
-                }}
                 onOpenGitHub={() => {
                   setText('Analyze GitHub repository code and summarize recent commit changes.');
                   textareaRef.current?.focus();

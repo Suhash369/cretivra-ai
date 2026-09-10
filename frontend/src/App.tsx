@@ -1314,7 +1314,6 @@ export function App() {
                         setInput('Create an interactive chart and visualization for ');
                         textareaRef.current?.focus();
                       }}
-                      onOpenPlatformSettings={() => setSettingsOpen(true)}
                       onOpenGitHub={() => {
                         setInput('Analyze GitHub repository code and summarize recent commit changes.');
                         textareaRef.current?.focus();
