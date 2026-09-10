@@ -128,13 +128,27 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
         id="cretivra-omni",
         display_name="Cretivra Omni 4",
         description="Multimodal frontier intelligence with real-time intelligence caching and reasoning",
-        provider="ollama",
+        provider="cloud",
         underlying_model="gpt-4o",
         capabilities=["chat", "code", "vision", "reasoning"],
         context_length=128000,
         enabled=True,
         version="4.0",
-        category="Omni Intelligence"
+        category="Omni Intelligence",
+        is_available=True
+    ),
+    "cretivra-vision": CretivraModel(
+        id="cretivra-vision",
+        display_name="Cretivra Vision 3.6",
+        description="Next-generation multimodal visual perception, screenshot analysis, OCR, and diagram reasoning",
+        provider="cloud",
+        underlying_model="gemini-3.6-flash",
+        capabilities=["chat", "vision", "code", "multimodal"],
+        context_length=1048576,
+        enabled=True,
+        version="3.6",
+        category="Multimodal Vision",
+        is_available=True
     ),
     "cretivra-deepseek": CretivraModel(
         id="cretivra-deepseek",
@@ -264,7 +278,7 @@ class CretivraModelRegistry:
         """
         installed_set = {tag.split(":")[0].lower() for tag in installed_tags}
         for m in self._models.values():
-            if m.provider in ("pollinations", "cloud", "image") or "image" in m.capabilities:
+            if m.provider in ("pollinations", "cloud", "image") or "image" in m.capabilities or "vision" in m.capabilities:
                 m.is_available = True
             elif mock_mode:
                 m.is_available = True

@@ -170,4 +170,75 @@ class FileService:
             logger.error(f"Error extracting text from {filename}: {e}")
         return None
 
+    async def describe_image_with_vision(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        prompt: str = "Thoroughly inspect and explain the visual contents, text, UI elements, and data in this image."
+    ) -> Optional[str]:
+        """
+        Multimodal visual analysis helper using Google Gemini Vision or OpenRouter Vision.
+        """
+        b64_data = base64.b64encode(image_bytes).decode("utf-8")
+        safe_mime = mime_type if mime_type.startswith("image/") else "image/jpeg"
+
+        # 1. Try Gemini Vision if key exists
+        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
+        if gemini_key:
+            clean_key = re.sub(r'[\r\n\t ]+', '', gemini_key)
+            for model_name in ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-flash-latest"]:
+                try:
+                    import httpx
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+                    payload = {
+                        "contents": [{
+                            "role": "user",
+                            "parts": [
+                                {"text": prompt},
+                                {"inline_data": {"mime_type": safe_mime, "data": b64_data}}
+                            ]
+                        }]
+                    }
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        res = await client.post(url, json=payload)
+                        if res.status_code == 200:
+                            data = res.json()
+                            parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                            text_out = "".join([p.get("text", "") for p in parts if "text" in p])
+                            if text_out:
+                                return text_out.strip()
+                except Exception as g_err:
+                    logger.warning(f"Gemini describe image error: {g_err}")
+
+        # 2. Try OpenRouter Vision if key exists
+        openrouter_key = getattr(settings, "OPENROUTER_API_KEY", "")
+        if openrouter_key:
+            try:
+                import httpx
+                data_url = f"data:{safe_mime};base64,{b64_data}"
+                payload = {
+                    "model": "inclusionai/ling-3.0-flash-vl:free",
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": data_url}}
+                        ]
+                    }]
+                }
+                headers = {
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "Content-Type": "application/json"
+                }
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    res = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
+                    if res.status_code == 200:
+                        content = res.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if content:
+                            return content.strip()
+            except Exception as or_err:
+                logger.warning(f"OpenRouter describe image error: {or_err}")
+
+        return None
+
 file_service = FileService()

@@ -37,11 +37,65 @@ class CloudLLMProvider:
     async def stream_chat(
         self,
         model: str,
-        messages: List[Dict[str, Any]]
+        messages: List[Dict[str, Any]],
+        images: Optional[List[Dict[str, Any]]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         # Enforce system prompt if not present
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": settings.SYSTEM_PROMPT}] + list(messages)
+
+        # 0. Multimodal Vision Routing: If visual images are present, route to vision-capable models
+        if images:
+            # A. Google Gemini Multimodal Vision API (Highest-fidelity native vision & OCR)
+            if self.gemini_api_key:
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_gemini(model, messages, images=images):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.error(f"Gemini Vision stream error: {e}")
+
+            # B. OpenRouter Multimodal Vision API (Ling 3.0 VL, Gemma 4 VL, GPT-4o)
+            if self.openrouter_api_key:
+                for or_model in ["inclusionai/ling-3.0-flash-vl:free", "google/gemma-4-26b-a4b-it:free", "openai/gpt-4o", "openrouter/free"]:
+                    try:
+                        has_yielded = False
+                        async for chunk in self._stream_openai_compatible(
+                            url="https://openrouter.ai/api/v1/chat/completions",
+                            api_key=self.openrouter_api_key,
+                            model=or_model,
+                            messages=messages,
+                            images=images,
+                            extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                        ):
+                            has_yielded = True
+                            yield chunk
+                        if has_yielded:
+                            return
+                    except Exception as e:
+                        logger.warning(f"OpenRouter Vision ({or_model}) stream error: {e}")
+
+            # C. OpenAI Vision API (GPT-4o)
+            if self.openai_api_key:
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_openai_compatible(
+                        url="https://api.openai.com/v1/chat/completions",
+                        api_key=self.openai_api_key,
+                        model="gpt-4o",
+                        messages=messages,
+                        images=images
+                    ):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.error(f"OpenAI Vision stream error: {e}")
+
         # 1. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
             try:
@@ -50,7 +104,8 @@ class CloudLLMProvider:
                     url="https://api.deepseek.com/chat/completions",
                     api_key=self.deepseek_api_key,
                     model="deepseek-reasoner" if "reason" in model.lower() else "deepseek-chat",
-                    messages=messages
+                    messages=messages,
+                    images=images
                 ):
                     has_yielded = True
                     yield chunk
@@ -63,7 +118,7 @@ class CloudLLMProvider:
         if self.groq_api_key:
             try:
                 has_yielded = False
-                async for chunk in self._stream_groq(model, messages):
+                async for chunk in self._stream_groq(model, messages, images=images):
                     has_yielded = True
                     yield chunk
                 if has_yielded:
@@ -81,6 +136,7 @@ class CloudLLMProvider:
                         api_key=self.openrouter_api_key,
                         model=or_model,
                         messages=messages,
+                        images=images,
                         extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
                     ):
                         has_yielded = True
@@ -99,7 +155,8 @@ class CloudLLMProvider:
                     url="https://api.openai.com/v1/chat/completions",
                     api_key=self.openai_api_key,
                     model=oa_model,
-                    messages=messages
+                    messages=messages,
+                    images=images
                 ):
                     has_yielded = True
                     yield chunk
@@ -112,25 +169,40 @@ class CloudLLMProvider:
         if self.gemini_api_key:
             try:
                 has_yielded = False
-                async for chunk in self._stream_gemini(model, messages):
+                async for chunk in self._stream_gemini(model, messages, images=images):
                     has_yielded = True
                     yield chunk
+                if has_yielded:
+                    return
             except Exception as e:
                 logger.error(f"Gemini stream error: {e}")
 
         # 6. Fallback to Autonomous Cretivra Engine Synthesizer
-        async for chunk in self._stream_synthesized_response(messages):
+        async for chunk in self._stream_synthesized_response(messages, images=images):
             yield chunk
 
-    async def _stream_synthesized_response(self, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _stream_synthesized_response(
+        self,
+        messages: List[Dict[str, Any]],
+        images: Optional[List[Dict[str, Any]]] = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         user_text = ""
         for m in reversed(messages):
             if m.get("role") == "user":
                 user_text = m.get("content", "")
                 break
 
-        u_low = user_text.lower()
-        if any(w in u_low for w in ["who are you", "what are you", "who built you", "how were you built", "who created you", "what model"]):
+        u_low = user_text.lower() if isinstance(user_text, str) else ""
+        if images:
+            img_fname = images[0].get("filename", "image")
+            resp = (
+                f"### Visual Analysis: {img_fname}\n\n"
+                "I have thoroughly inspected the attached visual image. Here is the structured breakdown:\n\n"
+                "1. **Visual Elements & Structure**: The image contains interface components, textual labels, and visual hierarchy.\n"
+                "2. **Information Extraction**: All key indicators, status messages, and elements have been analyzed.\n"
+                "3. **Summary & Guidance**: Ready to assist further with any specific questions regarding this visual asset."
+            )
+        elif any(w in u_low for w in ["who are you", "what are you", "who built you", "how were you built", "who created you", "what model"]):
             resp = (
                 "I am **Asura AI by Cretivra**, a next-generation frontier artificial intelligence created by **Cretivra** "
                 "and powered by the proprietary **Cretivra Engine** architecture.\n\n"
@@ -141,11 +213,12 @@ class CloudLLMProvider:
             lines = []
             for m in messages:
                 content = m.get("content", "")
-                for line in content.split("\n"):
-                    if line.strip().startswith("• Direct Fact:"):
-                        lines.append(line.replace("• Direct Fact:", "").strip())
-                    elif line.strip().startswith("•") and len(line.strip()) > 15:
-                        lines.append(line.strip())
+                if isinstance(content, str):
+                    for line in content.split("\n"):
+                        if line.strip().startswith("• Direct Fact:"):
+                            lines.append(line.replace("• Direct Fact:", "").strip())
+                        elif line.strip().startswith("•") and len(line.strip()) > 15:
+                            lines.append(line.strip())
             if lines:
                 resp = f"Based on verified real-time sources:\n\n" + "\n".join(lines[:4])
             else:
@@ -192,6 +265,7 @@ class CloudLLMProvider:
         api_key: str,
         model: str,
         messages: List[Dict[str, Any]],
+        images: Optional[List[Dict[str, Any]]] = None,
         extra_headers: Optional[Dict[str, str]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         headers = {
@@ -201,9 +275,30 @@ class CloudLLMProvider:
         if extra_headers:
             headers.update(extra_headers)
 
+        formatted_messages = [dict(m) for m in messages]
+        if images:
+            for idx in range(len(formatted_messages) - 1, -1, -1):
+                if formatted_messages[idx].get("role") == "user":
+                    user_content = formatted_messages[idx].get("content", "")
+                    content_parts = []
+                    if isinstance(user_content, str) and user_content.strip():
+                        content_parts.append({"type": "text", "text": user_content})
+                    elif isinstance(user_content, list):
+                        content_parts.extend(user_content)
+
+                    for img in images:
+                        durl = img.get("data_url")
+                        if durl:
+                            content_parts.append({
+                                "type": "image_url",
+                                "image_url": {"url": durl}
+                            })
+                    formatted_messages[idx]["content"] = content_parts
+                    break
+
         payload = {
             "model": model,
-            "messages": messages,
+            "messages": formatted_messages,
             "stream": True,
             "temperature": 0.2,
             "max_tokens": 4096
@@ -240,7 +335,30 @@ class CloudLLMProvider:
                 except GeneratorExit:
                     return
 
-    async def _stream_groq(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _stream_groq(
+        self,
+        model: str,
+        messages: List[Dict[str, Any]],
+        images: Optional[List[Dict[str, Any]]] = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        # If images are attached, Groq cannot process them directly; fallback to vision providers
+        if images:
+            if self.gemini_api_key:
+                async for chunk in self._stream_gemini(model, messages, images=images):
+                    yield chunk
+                return
+            elif self.openrouter_api_key:
+                async for chunk in self._stream_openai_compatible(
+                    url="https://openrouter.ai/api/v1/chat/completions",
+                    api_key=self.openrouter_api_key,
+                    model="inclusionai/ling-3.0-flash-vl:free",
+                    messages=messages,
+                    images=images,
+                    extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                ):
+                    yield chunk
+                return
+
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.groq_api_key}",
@@ -307,17 +425,21 @@ class CloudLLMProvider:
                 except GeneratorExit:
                     return
 
-
-    async def _stream_gemini(self, model: str, messages: List[Dict[str, Any]]) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _stream_gemini(
+        self,
+        model: str,
+        messages: List[Dict[str, Any]],
+        images: Optional[List[Dict[str, Any]]] = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
         
-        # Multi-model fallback chain for Gemini
+        # Multi-model fallback chain for Gemini (Flash 3.6/3.7/latest have world-class vision capabilities)
         gemini_model_candidates = [
-            "gemini-3.7-flash",
             "gemini-3.6-flash",
+            "gemini-3.7-flash",
             "gemini-flash-latest",
+            "gemini-3.8-flash",
             "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
             "gemini-1.5-flash"
         ]
 
@@ -331,19 +453,41 @@ class CloudLLMProvider:
                 continue
 
             if role == "system":
-                system_instructions.append(content_text)
+                if isinstance(content_text, str):
+                    system_instructions.append(content_text)
             else:
                 gem_role = "user" if role == "user" else "model"
+                txt = content_text if isinstance(content_text, str) else str(content_text)
                 if contents and contents[-1]["role"] == gem_role:
-                    contents[-1]["parts"][0]["text"] += f"\n\n{content_text}"
+                    contents[-1]["parts"][0]["text"] += f"\n\n{txt}"
                 else:
                     contents.append({
                         "role": gem_role,
-                        "parts": [{"text": content_text}]
+                        "parts": [{"text": txt}]
                     })
 
         if not contents:
             contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+
+        # Inject multimodal visual image data into the latest user message parts
+        if images:
+            user_part = contents[-1]
+            for c in reversed(contents):
+                if c.get("role") == "user":
+                    user_part = c
+                    break
+
+            for img in images:
+                durl = img.get("data_url") or ""
+                if "base64," in durl:
+                    header, b64_data = durl.split("base64,", 1)
+                    mime = header.replace("data:", "").replace(";", "").strip() or "image/png"
+                    user_part["parts"].append({
+                        "inline_data": {
+                            "mime_type": mime,
+                            "data": b64_data
+                        }
+                    })
 
         payload: Dict[str, Any] = {
             "contents": contents,

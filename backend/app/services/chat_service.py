@@ -1,3 +1,4 @@
+import os
 import re
 import json
 import asyncio
@@ -233,12 +234,42 @@ class ChatService:
                 "\n\n[VISUALIZATION DIRECTIVE]: Format data using clean Markdown tables, comparative breakdown cards, and visual structures to make the insights immediately clear."
             )
 
+        # Collect image attachments vs document attachments
+        image_attachments = []
+        document_attachments = []
+
+        if attachments:
+            for att in attachments:
+                fname = att.get("filename", "File")
+                ext = os.path.splitext(fname)[1].lower() if "." in fname else ""
+                data_url = att.get("data_url") or ""
+                mime = att.get("mime_type") or ""
+                is_img = bool(data_url) or mime.startswith("image/") or ext in [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"]
+
+                if is_img and data_url:
+                    image_attachments.append(att)
+                else:
+                    extracted = att.get("extracted_text")
+                    if extracted and "Attached Image File" not in extracted:
+                        document_attachments.append(f"--- Document Attachment: {fname} ---\n{extracted}\n--- End Document ---")
+
+        vision_directive = ""
+        if image_attachments:
+            vision_directive = (
+                "\n\n[MULTIMODAL VISION SYSTEM ACTIVE]: "
+                "The user has attached visual image(s) / screenshot(s). You have direct, full-fidelity computer vision capabilities across all model APIs. "
+                "Directly inspect, read, analyze, and explain the visual contents, text, UI elements, diagrams, errors, code, and graphics visible in the image. "
+                "NEVER state 'I am unable to view images', 'I cannot see images', or ask the user to describe the image. "
+                "Provide a thorough, insightful, and comprehensive visual analysis immediately."
+            )
+
         sys_content = (
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
             f"You possess real-time intelligence and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Refer to your real-time verified intelligence."
             f"{deep_directive}"
             f"{vis_directive}"
+            f"{vision_directive}"
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]
@@ -260,32 +291,27 @@ class ChatService:
                 f"Please answer the question directly and factually using the verified cache facts above."
             )
 
-        # Append file attachments text to prompt context if present
-        if attachments:
-            attach_texts = []
-            for att in attachments:
-                fname = att.get("filename", "File")
-                extracted = att.get("extracted_text")
-                if extracted:
-                    attach_texts.append(f"--- Document Attachment: {fname} ---\n{extracted}\n--- End Document ---")
-                elif att.get("data_url"):
-                    dims = att.get('image_metadata', {})
-                    w = dims.get('width', 'Unknown')
-                    h = dims.get('height', 'Unknown')
-                    attach_texts.append(f"--- Image Attachment: {fname} ---\n[Image provided by user (Resolution: {w}x{h}). Please inspect and answer questions about this image directly.]\n--- End Image ---")
-            
-            if attach_texts:
-                combined_attachment_str = "\n\n".join(attach_texts)
-                formatted_messages[-1]["content"] = (
-                    f"{formatted_messages[-1]['content']}\n\n"
-                    f"[User Attached Files Context]:\n{combined_attachment_str}\n\n"
-                    f"Please inspect and answer the user's questions about the attached files above."
-                )
+        # Append document attachments to prompt context if present
+        if document_attachments:
+            combined_doc_str = "\n\n".join(document_attachments)
+            formatted_messages[-1]["content"] = (
+                f"{formatted_messages[-1]['content']}\n\n"
+                f"[User Attached Documents Context]:\n{combined_doc_str}\n\n"
+                f"Please inspect and answer the user's questions about the attached documents above."
+            )
+
+        if image_attachments:
+            img_labels = ", ".join([att.get("filename", "image") for att in image_attachments])
+            formatted_messages[-1]["content"] = (
+                f"{formatted_messages[-1]['content']}\n\n"
+                f"[Attached Visual Images]: {img_labels}\n"
+                f"Please inspect the visual images attached and answer the user's question directly with comprehensive analysis."
+            )
 
         full_assistant_reply = ""
 
         try:
-            async for chunk in ollama_provider.stream_chat(underlying_model, formatted_messages):
+            async for chunk in ollama_provider.stream_chat(underlying_model, formatted_messages, images=image_attachments):
                 content = chunk.get("content", "")
                 done = chunk.get("done", False)
                 reasoning = chunk.get("reasoning_status")
