@@ -244,34 +244,6 @@ body.light .cv-icon-btn:hover {
   border-color: #e2e8f0;
 }
 
-/* Light mode header buttons & pills */
-html.light .cv-header-btn-studio,
-body.light .cv-header-btn-studio,
-:root[data-theme="light"] .cv-header-btn-studio {
-  background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-  border-color: #d8b4fe;
-  color: #6b21a8;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(107, 33, 168, 0.08);
-}
-html.light .cv-header-btn-studio:hover,
-body.light .cv-header-btn-studio:hover,
-:root[data-theme="light"] .cv-header-btn-studio:hover {
-  background: linear-gradient(135deg, #f3e8ff 0%, #ede9fe 100%);
-  border-color: #a855f7;
-  color: #581c87;
-  box-shadow: 0 2px 8px rgba(147, 51, 234, 0.18);
-}
-html.light .cv-header-btn-studio svg,
-body.light .cv-header-btn-studio svg,
-:root[data-theme="light"] .cv-header-btn-studio svg {
-  color: #7e22ce !important;
-}
-html.light .cv-header-btn-studio:hover svg,
-body.light .cv-header-btn-studio:hover svg,
-:root[data-theme="light"] .cv-header-btn-studio:hover svg {
-  color: #581c87 !important;
-}
 
 html.light .cv-header-btn-bench,
 body.light .cv-header-btn-bench,
@@ -476,34 +448,6 @@ body.light .cv-gradient-text,
 .cv-model-pill:hover { border-color: #33405f; }
 .cv-header-spacer { flex: 1; }
 
-/* Header Action Buttons */
-.cv-header-btn-studio {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.25), rgba(6, 182, 212, 0.15));
-  border: 1px solid rgba(168, 85, 247, 0.45);
-  border-radius: 9999px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-}
-.cv-header-btn-studio:hover {
-  border-color: #c084fc;
-  background: linear-gradient(135deg, rgba(147, 51, 234, 0.38), rgba(6, 182, 212, 0.25));
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
-  transform: scale(1.05);
-}
-.cv-header-btn-studio svg {
-  color: #c084fc;
-  transition: color 0.15s ease;
-}
-.cv-header-btn-studio:hover svg {
-  color: #f3e8ff;
-}
 
 .cv-header-btn-bench {
   display: inline-flex;

@@ -1318,16 +1318,6 @@ export function App() {
             )}
           </div>
 
-          {/* Dedicated Image Studio Button (Icon Only) */}
-          <button
-            onClick={() => setImageStudioOpen(true)}
-            className="cv-header-btn-studio cursor-pointer"
-            title="Image Studio"
-            aria-label="Image Studio"
-          >
-            <Palette size={14} className="shrink-0 text-purple-400" />
-          </button>
-
           {/* Test Bench / Arena Button */}
           <a
             href="/test-bench"
