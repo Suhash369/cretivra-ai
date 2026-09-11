@@ -24,7 +24,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
   RefreshCw,
-  Palette,
+  Lightbulb,
   Scale,
   Trash2,
   CheckSquare,
@@ -63,10 +63,10 @@ import type { Conversation, CretivraModel, SystemSettings, Attachment } from './
 
 const SUGGESTIONS = [
   {
-    title: 'Generate an AI Image',
-    sub: 'FLUX.1 cyberpunk art, photorealistic portraits, or 3D CGI',
-    icon: Palette,
-    prompt: 'Generate an image of a futuristic cyberpunk city with neon reflections and glowing flying cars, ultra-detailed 8k',
+    title: 'Brainstorm ideas',
+    sub: 'Innovative product features, strategic plans, or creative campaigns',
+    icon: Lightbulb,
+    prompt: 'Brainstorm 5 innovative, high-impact product features for a modern AI intelligence workstation platform.',
   },
   {
     title: 'Explain a concept',
@@ -906,16 +906,6 @@ export function App() {
                     <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
                     <span>DeepThink</span>
                   </button>
-
-                  {/* Image Studio Quick Opener */}
-                  <button
-                    type="button"
-                    className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
-                    title="Open AI Image Studio"
-                    onClick={() => setImageStudioOpen(true)}
-                  >
-                    <Palette size={15} />
-                  </button>
                 </div>
 
                 {/* Send or Stop Generation Button */}
@@ -1214,7 +1204,7 @@ export function App() {
               onClick={() => setModelOpen((o) => !o)}
             >
               {isCurrentImg ? (
-                <Palette size={13} className="cv-model-icon-img shrink-0 text-purple-400" />
+                <ImageIcon size={13} className="cv-model-icon-img shrink-0 text-purple-400" />
               ) : (
                 <Brain size={13} className="cv-model-icon-brain shrink-0 text-cyan-400" />
               )}
@@ -1264,8 +1254,8 @@ export function App() {
                 {imageModels.length > 0 && (
                   <div className="p-1 border-t border-gray-800/80 mt-1 pt-1">
                     <div className="cv-model-menu-section-header cv-section-purple flex items-center gap-1 text-xs font-semibold text-purple-400 px-2 py-1 mb-1">
-                      <Palette size={12} />
-                      <span>🎨 AI Image Generation Studio</span>
+                      <ImageIcon size={12} />
+                      <span>✨ AI Image Generation Studio</span>
                     </div>
                     {imageModels.map((m) => (
                       <div
@@ -1277,7 +1267,7 @@ export function App() {
                         }}
                       >
                         <div className="cv-model-opt-icon cv-model-icon-box-purple text-purple-400">
-                          <Palette size={14} />
+                          <ImageIcon size={14} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="cv-model-opt-name flex items-center gap-1.5">
@@ -1435,20 +1425,13 @@ export function App() {
                           setAuthOpen(true);
                           return;
                         }
-                        if (s.title === 'Generate an AI Image') {
-                          setSelectedModel('cretivra-flux');
-                        }
                         handleSend(s.prompt);
                       }}
                       title={s.sub}
                     >
                       <s.icon
                         size={14}
-                        className={
-                          s.title === 'Generate an AI Image'
-                            ? 'text-purple-500 group-hover:scale-110 transition-transform'
-                            : 'text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform'
-                        }
+                        className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform"
                       />
                       <span>{s.title}</span>
                     </button>

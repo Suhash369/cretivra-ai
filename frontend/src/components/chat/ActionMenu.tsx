@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Paperclip,
   Library,
-  Palette,
+  Image as ImageIcon,
   Globe,
   Megaphone,
   Presentation,
@@ -115,7 +115,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       id: 'image',
       icon: (
         <div className="w-[18px] h-[18px] rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-cyan-400 flex items-center justify-center p-[2px]">
-          <Palette className="w-3 h-3 text-white" />
+          <ImageIcon className="w-3 h-3 text-white" />
         </div>
       ),
       title: 'Create image',
