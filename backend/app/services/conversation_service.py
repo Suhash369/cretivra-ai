@@ -27,6 +27,10 @@ class ConversationService:
     def get_conversation(self, db: Session, conversation_id: str) -> Optional[ConversationDB]:
         return db.query(ConversationDB).filter(ConversationDB.id == conversation_id).first()
 
+    def get_messages(self, db: Session, conversation_id: str) -> List[MessageDB]:
+        conv = self.get_conversation(db, conversation_id)
+        return list(conv.messages) if conv and conv.messages else []
+
     def list_conversations(
         self,
         db: Session,

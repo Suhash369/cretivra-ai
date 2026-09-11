@@ -11,6 +11,7 @@ import {
   Check,
   Table as TableIcon,
   FileCode,
+  FileDown,
   ExternalLink,
 } from 'lucide-react';
 import { GeneratedImageCard } from './GeneratedImageCard';
@@ -339,8 +340,31 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
           },
 
-          // Links
+          // Links (with rich styling for PDF & PPTX file downloads)
           a({ href, children, ...props }) {
+            const isDownload = Boolean(
+              href?.includes('/files/download/') ||
+              href?.endsWith('.pdf') ||
+              href?.endsWith('.pptx') ||
+              href?.endsWith('.docx')
+            );
+
+            if (isDownload) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 my-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold text-xs no-underline shadow-md shadow-cyan-600/25 hover:shadow-cyan-600/40 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
+                  {...props}
+                >
+                  <FileDown className="w-4 h-4 text-cyan-200" />
+                  <span>{children}</span>
+                </a>
+              );
+            }
+
             return (
               <a
                 href={href}

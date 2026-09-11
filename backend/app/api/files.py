@@ -6,11 +6,17 @@ from typing import List, Optional, Dict, Any
 
 from app.services.file_service import file_service
 from app.services.presentation_service import presentation_service
+from app.services.pdf_service import pdf_service
 from app.core.config import settings
 from app.core.security import sanitize_filename, validate_path_safety
 from app.core.logging import logger
 
 router = APIRouter(prefix="/files", tags=["Files"])
+
+class ExportPdfRequest(BaseModel):
+    title: str = Field(..., description="Document title")
+    content: str = Field(..., description="Markdown or text content to render")
+    subtitle: Optional[str] = Field(None, description="Optional document subtitle")
 
 class GeneratePresentationRequest(BaseModel):
     title: str = Field(..., description="Presentation title")
@@ -95,3 +101,24 @@ async def generate_presentation_endpoint(request: GeneratePresentationRequest):
     except Exception as e:
         logger.error(f"Error generating PowerPoint deck: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to generate presentation: {str(e)}")
+
+@router.post("/export-pdf")
+async def export_pdf_endpoint(request: ExportPdfRequest):
+    """
+    Generates a publication-grade, professionally formatted PDF document (.pdf).
+    """
+    if not request.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty.")
+    if not request.content.strip():
+        raise HTTPException(status_code=400, detail="Content cannot be empty.")
+
+    try:
+        res = pdf_service.generate_pdf(
+            title=request.title,
+            content=request.content,
+            subtitle=request.subtitle
+        )
+        return res
+    except Exception as e:
+        logger.error(f"Error generating PDF document: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")

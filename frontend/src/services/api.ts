@@ -411,4 +411,23 @@ export async function enhancePromptApi(prompt: string, style?: string, model?: s
   };
 }
 
+export async function exportPdf(
+  title: string,
+  content: string,
+  subtitle?: string
+): Promise<{ success: boolean; filename: string; download_url: string }> {
+  const res = await fetch(`${API_BASE}/files/export-pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ title, content, subtitle }),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to generate PDF document.');
+  }
+  return res.json();
+}
+
 

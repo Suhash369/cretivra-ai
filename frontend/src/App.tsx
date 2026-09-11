@@ -20,6 +20,7 @@ import {
   ArrowUp,
   ArrowDown,
   FileText,
+  FileDown,
   Presentation,
   Image as ImageIcon,
   AlertCircle,
@@ -43,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
+import { exportPdf } from './services/api';
 import { initTheme, applyTheme, type ThemeMode } from './services/theme';
 import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -1332,6 +1334,31 @@ export function App() {
                             {speakingMsgId === (m.id || String(i)) ? <VolumeX size={13} /> : <Volume2 size={13} />}
                           </button>
 
+                          {/* Export Message as PDF */}
+                          <button
+                            onClick={async () => {
+                              try {
+                                const title = activeChatTitle || 'Asura AI Intelligence Report';
+                                const res = await exportPdf(title, m.content);
+                                if (res.download_url) {
+                                  const link = document.createElement('a');
+                                  link.href = res.download_url;
+                                  link.download = res.filename;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }
+                              } catch (err) {
+                                console.error('Failed to export PDF:', err);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-cyan-600 dark:hover:text-cyan-400 text-slate-500 dark:text-slate-400 transition-colors flex items-center gap-1 text-xs cursor-pointer"
+                            title="Export this response as a PDF document"
+                          >
+                            <FileDown size={13} />
+                            <span className="text-[11px] hidden sm:inline">PDF</span>
+                          </button>
+
                           <div className="flex-1" />
 
                           {/* Delete assistant message */}
@@ -1504,6 +1531,10 @@ export function App() {
                       deepThinkActive={deepThinkEnabled}
                       onCreatePresentation={() => {
                         setInput('Create a 5-slide presentation on ');
+                        textareaRef.current?.focus();
+                      }}
+                      onCreatePdf={() => {
+                        setInput('Generate a comprehensive PDF document for ');
                         textareaRef.current?.focus();
                       }}
                       onOpenSketch={() => setSketchModalOpen(true)}

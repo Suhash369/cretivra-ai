@@ -6,6 +6,7 @@ import {
   Globe,
   Megaphone,
   Presentation,
+  FileText,
   PenTool,
   BarChart3,
   Check,
@@ -39,6 +40,7 @@ interface ActionMenuProps {
   onToggleDeepThink: () => void;
   deepThinkActive?: boolean;
   onCreatePresentation: () => void;
+  onCreatePdf?: () => void;
   onOpenSketch: () => void;
   onVisualizeData: () => void;
   onOpenGitHub?: () => void;
@@ -56,6 +58,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   onToggleDeepThink,
   deepThinkActive,
   onCreatePresentation,
+  onCreatePdf,
   onOpenSketch,
   onVisualizeData,
   onOpenGitHub,
@@ -158,6 +161,17 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       onClick: () => {
         onClose();
         onCreatePresentation();
+      },
+    },
+    {
+      id: 'pdf',
+      icon: <FileText className="w-[18px] h-[18px] text-rose-400" />,
+      title: 'Create PDF document',
+      description: 'Generate executive PDF report',
+      badge: 'PDF',
+      onClick: () => {
+        onClose();
+        onCreatePdf?.();
       },
     },
     {

@@ -74,3 +74,45 @@ def test_image_file_metadata_and_data_url(tmp_path):
     assert data["image_metadata"]["width"] == 200
     assert data["image_metadata"]["height"] == 200
     assert "Attached Image File" in data["extracted_text"]
+
+def test_pdf_generation_service_and_export_endpoint(tmp_path):
+    from app.services.pdf_service import pdf_service
+
+    # 1. Test intent detection
+    assert pdf_service.detect_pdf_request("generate pdf for this content") is True
+    assert pdf_service.detect_pdf_request("Can you export this to a pdf report?") is True
+    assert pdf_service.detect_pdf_request("Tell me a joke") is False
+
+    # 2. Test title extraction
+    title = pdf_service.extract_title_from_prompt("generate a pdf for 2026 Tamil Nadu Election Report")
+    assert "Tamil Nadu" in title
+
+    # 3. Test generate_pdf service directly
+    res = pdf_service.generate_pdf(
+        title="Automated Test PDF",
+        content="## Section 1\n- High throughput\n- Zero latency",
+        subtitle="Test Verification"
+    )
+    assert res["success"] is True
+    assert os.path.exists(res["file_path"])
+    assert res["filename"].endswith(".pdf")
+
+    # 4. Test API endpoint /api/files/export-pdf
+    api_res = client.post(
+        "/api/files/export-pdf",
+        json={
+            "title": "API Test Document",
+            "content": "# Executive Summary\nVerified API PDF generation.",
+            "subtitle": "FastAPI Integration"
+        }
+    )
+    assert api_res.status_code == 200
+    data = api_res.json()
+    assert data["success"] is True
+    assert data["download_url"].startswith("/api/files/download/")
+
+    # 5. Test download of generated PDF
+    dl_res = client.get(data["download_url"])
+    assert dl_res.status_code == 200
+    assert dl_res.headers.get("content-type") == "application/pdf"
+    assert len(dl_res.content) > 500
