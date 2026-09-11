@@ -9,6 +9,7 @@ interface OpenStudioButtonProps {
   target?: string;
   rel?: string;
   href?: string;
+  openImageStudio?: boolean;
 }
 
 export function OpenStudioButton({
@@ -18,14 +19,30 @@ export function OpenStudioButton({
   target = '_blank',
   rel = 'noopener noreferrer',
   href = '/studio',
+  openImageStudio = false,
 }: OpenStudioButtonProps) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (openImageStudio) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('open-image-studio'));
+      }
+    }
+  };
+
+  const finalHref = openImageStudio
+    ? href.includes('?')
+      ? `${href}&studio=image`
+      : `${href}?studio=image`
+    : href;
+
   return (
     <a
       id={id}
-      href={href}
+      href={finalHref}
       target={target}
       rel={rel}
       className={className}
+      onClick={handleClick}
     >
       {children}
     </a>

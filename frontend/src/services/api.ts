@@ -268,6 +268,21 @@ const MODEL_ENGINE_MAP: Record<string, string> = {
   'flux-3d': 'flux-3d',
 };
 
+export function getImageProxyUrl(url: string, filename?: string, download = false): string {
+  if (!url) return '';
+  if (url.startsWith(`${API_BASE}/images/proxy`) || url.startsWith('/api/images/proxy')) {
+    if (download && !url.includes('download=true')) {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}download=true${filename ? `&filename=${encodeURIComponent(filename)}` : ''}`;
+    }
+    return url;
+  }
+  const params = new URLSearchParams({ url });
+  if (download) params.append('download', 'true');
+  if (filename) params.append('filename', filename);
+  return `${API_BASE}/images/proxy?${params.toString()}`;
+}
+
 export async function generateImageApi(payload: {
   prompt: string;
   aspect_ratio?: string;
@@ -282,6 +297,7 @@ export async function generateImageApi(payload: {
   prompt: string;
   enhanced_prompt: string;
   image_url: string;
+  proxy_url: string;
   model: string;
   model_id: string;
   aspect_ratio: string;
@@ -297,7 +313,11 @@ export async function generateImageApi(payload: {
       body: JSON.stringify(payload),
     });
     if (res.ok) {
-      return await res.json();
+      const data = await res.json();
+      if (!data.proxy_url && data.image_url) {
+        data.proxy_url = getImageProxyUrl(data.image_url);
+      }
+      return data;
     }
   } catch (e) {
     console.warn('Backend image API unreachable, generating direct visual client-side...', e);
@@ -326,11 +346,14 @@ export async function generateImageApi(payload: {
     imageUrl += `&negative=${encodeURIComponent(payload.negative_prompt.trim())}`;
   }
 
+  const proxyUrl = getImageProxyUrl(imageUrl);
+
   return {
     success: true,
     prompt: cleanPrompt,
     enhanced_prompt: enhancedPrompt,
     image_url: imageUrl,
+    proxy_url: proxyUrl,
     model: engine,
     model_id: payload.model || 'cretivra-flux',
     aspect_ratio: ratio,

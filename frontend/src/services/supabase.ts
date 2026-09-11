@@ -96,18 +96,18 @@ export async function submitSuggestion(payload: SuggestionPayload): Promise<Sugg
         return {
           success: true,
           id: data[0].id,
-          message: 'Suggestion submitted directly to Supabase!',
+          message: 'Suggestion submitted successfully!',
           source: 'supabase_direct',
         };
       } else if (error) {
-        console.warn('Direct Supabase insert failed, falling back to backend bridge:', error.message);
+        console.warn('Direct insert failed, falling back to backend bridge:', error.message);
       }
     } catch (err: any) {
-      console.warn('Direct Supabase insert error, falling back to backend bridge:', err);
+      console.warn('Direct insert error, falling back to backend bridge:', err);
     }
   }
 
-  // 2. Fallback to Cretivra API backend (which writes directly to Supabase PostgreSQL)
+  // 2. Fallback to Cretivra API backend
   try {
     const res = await fetch(`${API_BASE}/suggestions`, {
       method: 'POST',
@@ -127,7 +127,7 @@ export async function submitSuggestion(payload: SuggestionPayload): Promise<Sugg
     return {
       success: true,
       id: data.id,
-      message: data.message || 'Suggestion saved to Supabase successfully!',
+      message: data.message || 'Suggestion saved successfully!',
       source: 'supabase_backend',
     };
   } catch (err: any) {

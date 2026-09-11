@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+import re
+from fastapi import APIRouter, HTTPException, UploadFile, File, Response, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from app.services.image_service import image_service
@@ -32,6 +33,34 @@ async def get_image_models():
         "aspect_ratios": list(image_service.ASPECT_RATIO_MAP.keys()),
         "styles": list(image_service.STYLE_PROMPT_MODIFIERS.keys())
     }
+
+@router.get("/proxy")
+async def proxy_image(
+    url: str = Query(..., description="Remote synthesis image URL to proxy safely"),
+    download: Optional[bool] = Query(False, description="Whether to trigger file download attachment"),
+    filename: Optional[str] = Query(None, description="Optional download filename")
+):
+    """
+    Proxies visual media from synthesis engines to avoid client-side CORS,
+    Cloudflare Turnstile token rejections on localhost, and adblocker issues.
+    """
+    if not url or not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Invalid image URL.")
+
+    data, content_type = await image_service.fetch_image_bytes(url)
+    if not data:
+        raise HTTPException(status_code=502, detail="Failed to fetch synthesized image.")
+
+    headers = {
+        "Cache-Control": "public, max-age=86400, immutable",
+        "Access-Control-Allow-Origin": "*",
+    }
+    if download:
+        clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', filename or "cretivra-art")[:40]
+        ext = "png" if "png" in content_type else "jpg"
+        headers["Content-Disposition"] = f'attachment; filename="{clean_name}.{ext}"'
+
+    return Response(content=data, media_type=content_type, headers=headers)
 
 @router.post("/generate")
 async def generate_image(request: ImageGenerateRequest):
@@ -86,5 +115,5 @@ async def describe_image_endpoint(file: UploadFile = File(...)):
     if len(file_bytes) == 0:
         raise HTTPException(status_code=400, detail="Uploaded image file is empty.")
 
-    description_result = image_service.describe_image_for_prompt(file_bytes, filename)
+    description_result = await image_service.describe_image_for_prompt(file_bytes, filename)
     return description_result

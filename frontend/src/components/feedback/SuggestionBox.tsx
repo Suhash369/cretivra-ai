@@ -151,8 +151,8 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
                 </h3>
                 <div className="flex items-center gap-1.5 text-[10.5px] text-emerald-400 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <Database size={11} className="text-emerald-400/90" />
-                  <span>Connected to Supabase</span>
+                  <Sparkles size={11} className="text-emerald-400/90" />
+                  <span>Direct Feedback Channel</span>
                 </div>
               </div>
             </div>
@@ -190,7 +190,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
                     Suggestion Received!
                   </h4>
                   <p className="text-xs text-slate-300 max-w-xs mx-auto leading-relaxed">
-                    Thank you! Your feedback has been saved to Supabase and shared with the Cretivra development team.
+                    Thank you! Your feedback has been received and shared directly with the Cretivra development team.
                   </p>
                 </div>
                 <div className="pt-2 flex items-center justify-center gap-3">
@@ -379,7 +379,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
                   {isSubmitting ? (
                     <>
                       <Loader2 size={14} className="animate-spin" />
-                      <span>Saving to Supabase...</span>
+                      <span>Submitting feedback...</span>
                     </>
                   ) : (
                     <>

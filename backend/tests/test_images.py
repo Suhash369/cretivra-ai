@@ -39,10 +39,24 @@ def test_image_generate_api(client):
     data = res.json()
     assert data["success"] is True
     assert "https://image.pollinations.ai" in data["image_url"]
+    assert "proxy_url" in data
+    assert "/api/images/proxy?url=" in data["proxy_url"]
     assert data["width"] == 1280
     assert data["height"] == 720
     assert data["seed"] == 42
     assert data["model"] == "flux"
+
+def test_image_proxy_api(client):
+    # Test valid image proxy request (fallback svg or image)
+    test_url = "https://image.pollinations.ai/prompt/test_art?width=100&height=100&model=turbo"
+    res = client.get(f"/api/images/proxy?url={test_url}")
+    assert res.status_code == 200
+    assert len(res.content) > 100
+    assert ("image/" in res.headers.get("content-type", ""))
+
+    # Test invalid URL rejected
+    bad_res = client.get("/api/images/proxy?url=ftp://invalid.com")
+    assert bad_res.status_code == 400
 
 def test_image_models_catalog_api(client):
     res = client.get("/api/images/models")

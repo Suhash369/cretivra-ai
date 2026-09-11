@@ -246,6 +246,30 @@ export function App() {
     }
   }, []);
 
+  // Listen for direct URL requests to open Image Studio (?studio=image or #image-studio)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkUrlForStudio = () => {
+      const search = window.location.search || '';
+      const hash = window.location.hash || '';
+      if (search.includes('studio=image') || hash === '#image-studio') {
+        setImageStudioOpen(true);
+      }
+    };
+
+    checkUrlForStudio();
+    window.addEventListener('hashchange', checkUrlForStudio);
+
+    const handleOpenStudioEvent = () => setImageStudioOpen(true);
+    window.addEventListener('open-image-studio', handleOpenStudioEvent);
+
+    return () => {
+      window.removeEventListener('hashchange', checkUrlForStudio);
+      window.removeEventListener('open-image-studio', handleOpenStudioEvent);
+    };
+  }, []);
+
   // Validate authentication session with backend on mount
   useEffect(() => {
     const token = getAuthToken();

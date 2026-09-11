@@ -177,7 +177,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         </form>
 
         <p className="text-[10px] text-slate-500 text-center mt-4">
-          All passwords are encrypted with bcrypt and stored in Supabase PostgreSQL.
+          All passwords are encrypted with bcrypt and stored securely in PostgreSQL.
         </p>
       </div>
     </div>

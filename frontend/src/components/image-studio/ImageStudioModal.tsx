@@ -15,7 +15,7 @@ import {
   Palette,
   UploadCloud,
 } from 'lucide-react';
-import { generateImageApi, enhancePromptApi, describeImageApi } from '../../services/api';
+import { generateImageApi, enhancePromptApi, describeImageApi, getImageProxyUrl } from '../../services/api';
 import type { AspectRatio } from '../../types';
 
 interface ImageStudioModalProps {
@@ -67,6 +67,8 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
+  const [currentProxy, setCurrentProxy] = useState<string | null>(null);
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
   const [gallery, setGallery] = useState<Array<{ url: string; prompt: string; model: string; date: string }>>(() => {
     try {
       const saved = localStorage.getItem('cretivra_image_gallery');
@@ -163,6 +165,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
   const handleGenerate = async () => {
     if (!prompt.trim() || isGenerating) return;
     setIsGenerating(true);
+    setImageLoadFailed(false);
     setErrorMessage(null);
     try {
       const result = await generateImageApi({
@@ -175,38 +178,77 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
         reference_image: referenceImage || undefined,
       });
 
-      if (result && result.image_url) {
-        setCurrentImage(result.image_url);
-        setGallery((prev) => [
-          {
-            url: result.image_url,
-            prompt: result.prompt,
-            model: result.model || selectedModel,
-            date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          },
-          ...prev.filter((item) => item.url !== result.image_url),
-        ]);
+      if (result && (result.proxy_url || result.image_url)) {
+        const directUrl = result.image_url;
+        const proxyUrl = result.proxy_url || getImageProxyUrl(directUrl);
+        setCurrentProxy(proxyUrl);
+
+        // Preload visual so loading animation stays active until image is completely ready
+        const targetUrl = proxyUrl || directUrl;
+        const img = new Image();
+        img.onload = () => {
+          setCurrentImage(targetUrl);
+          setIsGenerating(false);
+          setImageLoadFailed(false);
+          setGallery((prev) => [
+            {
+              url: targetUrl,
+              prompt: result.prompt,
+              model: result.model || selectedModel,
+              date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+            ...prev.filter((item) => item.url !== targetUrl && item.url !== directUrl),
+          ]);
+        };
+        img.onerror = () => {
+          // If proxy had an issue, attempt direct URL
+          if (targetUrl !== directUrl) {
+            const fallbackImg = new Image();
+            fallbackImg.onload = () => {
+              setCurrentImage(directUrl);
+              setIsGenerating(false);
+              setImageLoadFailed(false);
+              setGallery((prev) => [
+                {
+                  url: directUrl,
+                  prompt: result.prompt,
+                  model: result.model || selectedModel,
+                  date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                },
+                ...prev.filter((item) => item.url !== directUrl),
+              ]);
+            };
+            fallbackImg.onerror = () => {
+              setIsGenerating(false);
+              setImageLoadFailed(true);
+              setErrorMessage('Visual synthesis took too long or was blocked. Click Retry to re-generate.');
+            };
+            fallbackImg.src = directUrl;
+          } else {
+            setIsGenerating(false);
+            setImageLoadFailed(true);
+            setErrorMessage('Visual synthesis took too long or was blocked. Click Retry to re-generate.');
+          }
+        };
+        img.src = targetUrl;
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Visual generation failed. Please try again.');
-    } finally {
       setIsGenerating(false);
+      setImageLoadFailed(true);
+      setErrorMessage(err.message || 'Visual generation failed. Please try again.');
     }
   };
 
-  const handleDownloadImage = async (url: string, imgPrompt: string) => {
+  const handleDownloadImage = (url: string, imgPrompt: string) => {
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
       const cleanName = (imgPrompt || 'cretivra-art').slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
+      const downloadUrl = getImageProxyUrl(url, cleanName, true);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
       a.download = `${cleanName}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
     } catch {
       window.open(url, '_blank');
     }
@@ -496,7 +538,28 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-purple-200">Synthesizing High-Res Visual...</p>
                     <p className="text-xs text-gray-400 font-mono">Applying {selectedStyle} aesthetics</p>
+                    <p className="text-[11px] text-purple-400/80 font-mono">Processing neural diffusion layers...</p>
                   </div>
+                </div>
+              ) : imageLoadFailed ? (
+                <div className="flex flex-col items-center justify-center gap-3 p-6 text-center text-gray-400 animate-in fade-in">
+                  <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800/60 text-rose-400">
+                    <ImageIcon size={32} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-rose-200">Visual Synthesis Timed Out</p>
+                    <p className="text-xs text-gray-400 max-w-xs">
+                      The image server was slow or unreachable. Click Retry to generate with instant fallback.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="mt-1 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Retry Generation</span>
+                  </button>
                 </div>
               ) : currentImage ? (
                 <>
@@ -505,19 +568,26 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
                     alt={prompt}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02] cursor-pointer"
                     onClick={() => setFullscreenImage(currentImage)}
+                    onError={() => {
+                      if (currentProxy && currentImage !== currentProxy) {
+                        setCurrentImage(currentProxy);
+                      } else {
+                        setImageLoadFailed(true);
+                      }
+                    }}
                   />
                   {/* Floating Action Bar */}
                   <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-gray-700/80">
                     <button
                       onClick={() => setFullscreenImage(currentImage)}
-                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors cursor-pointer"
                       title="Fullscreen Zoom"
                     >
                       <Maximize2 size={14} />
                     </button>
                     <button
                       onClick={() => handleDownloadImage(currentImage, prompt)}
-                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-cyan-400 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-cyan-400 transition-colors cursor-pointer"
                       title="Download HD Image"
                     >
                       <Download size={14} />
@@ -528,7 +598,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}
-                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-300 hover:text-white transition-colors cursor-pointer"
                       title="Copy Image Link"
                     >
                       {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
@@ -543,7 +613,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
                           onInsertToChat(currentImage, prompt);
                           onClose();
                         }}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg shadow-md transition-all"
+                        className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold rounded-lg shadow-md transition-all cursor-pointer"
                       >
                         Insert into Chat
                       </button>

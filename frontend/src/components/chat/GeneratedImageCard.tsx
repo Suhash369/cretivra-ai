@@ -1,13 +1,22 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
-import { Copy, Check, Download, Maximize2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Copy, Check, Download, Maximize2, Sparkles, Image as ImageIcon, RefreshCw } from 'lucide-react';
+import { getImageProxyUrl } from '../../services/api';
 
 export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ src, alt }) => {
+  const [activeSrc, setActiveSrc] = useState<string>(src || '');
   const [loaded, setLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    if (src) {
+      setActiveSrc(src);
+      setLoaded(false);
+      setHasError(false);
+    }
+  }, [src]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,47 +28,63 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fullscreen]);
 
-  if (!src) return null;
+  if (!src && !activeSrc) return null;
 
   // Determine model engine badge
   let badgeLabel = 'FLUX.1 Art';
-  if (src.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
+  const checkUrl = activeSrc || src || '';
+  if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
     badgeLabel = 'Anime Studio';
-  } else if (src.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
+  } else if (checkUrl.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
     badgeLabel = '3D Octane';
-  } else if (src.includes('model=flux-realism') || (alt && alt.toLowerCase().includes('photo'))) {
+  } else if (checkUrl.includes('model=flux-realism') || (alt && alt.toLowerCase().includes('photo'))) {
     badgeLabel = 'SDXL Realism';
-  } else if (src.includes('model=turbo')) {
+  } else if (checkUrl.includes('model=turbo')) {
     badgeLabel = 'Turbo Speed';
   }
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard?.writeText(src);
+    navigator.clipboard?.writeText(activeSrc || src || '');
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  const handleDownload = async (e: React.MouseEvent) => {
+  const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setDownloading(true);
     try {
-      const res = await fetch(src);
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
       const cleanName = (alt || 'cretivra-image').slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_');
+      const downloadUrl = getImageProxyUrl(activeSrc || src || '', cleanName, true);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
       a.download = `${cleanName}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      window.URL.revokeObjectURL(blobUrl);
     } catch {
-      window.open(src, '_blank');
-    } finally {
-      setDownloading(false);
+      window.open(activeSrc || src, '_blank');
     }
+  };
+
+  const handleImageError = () => {
+    const originalSrc = src || '';
+    const proxyUrl = getImageProxyUrl(originalSrc);
+    if (activeSrc !== proxyUrl && proxyUrl) {
+      // Fallback from direct pollinations URL to backend proxy
+      setActiveSrc(proxyUrl);
+    } else {
+      setHasError(true);
+      setLoaded(false);
+    }
+  };
+
+  const handleRetry = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHasError(false);
+    setLoaded(false);
+    const originalSrc = src || '';
+    const proxyUrl = getImageProxyUrl(originalSrc);
+    setActiveSrc(proxyUrl);
   };
 
   return (
@@ -103,22 +128,40 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
 
       <div
         className="relative aspect-square w-full bg-gray-900/70 flex items-center justify-center overflow-hidden cursor-pointer"
-        onClick={() => setFullscreen(true)}
+        onClick={() => (!hasError && loaded ? setFullscreen(true) : undefined)}
       >
-        {!loaded && (
+        {!loaded && !hasError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/95 animate-pulse text-gray-400 gap-2.5 p-4">
             <ImageIcon className="w-8 h-8 text-purple-400/70 animate-bounce" />
-            <span className="text-xs text-purple-300 font-mono">Synthesizing high-res visual with {badgeLabel}...</span>
+            <span className="text-xs text-purple-300 font-mono text-center">Synthesizing high-res visual with {badgeLabel}...</span>
           </div>
         )}
-        <img
-          src={src}
-          alt={alt || 'Generated AI Art'}
-          onLoad={() => setLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.02] ${
-            loaded ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
+        {hasError ? (
+          <div className="flex flex-col items-center justify-center gap-2 p-6 text-center text-gray-400">
+            <div className="p-3 rounded-2xl bg-rose-950/50 border border-rose-800/50 text-rose-400">
+              <ImageIcon className="w-6 h-6" />
+            </div>
+            <p className="text-xs text-rose-300 font-medium">Image generation timed out</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="mt-1 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md cursor-pointer transition-all"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Retry</span>
+            </button>
+          </div>
+        ) : (
+          <img
+            src={activeSrc || src}
+            alt={alt || 'Generated AI Art'}
+            onLoad={() => setLoaded(true)}
+            onError={handleImageError}
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-[1.02] ${
+              loaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+        )}
       </div>
 
       {fullscreen && (
