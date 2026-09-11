@@ -237,6 +237,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div>
                   <label className="block text-gray-400 font-medium mb-1">System Prompt</label>
+                  <p className="text-[11px] text-gray-500 mb-1.5">The master behind-the-scenes instruction that defines Asura AI's identity, temporal grounding (Year 2026), and behavior.</p>
                   <textarea
                     rows={3}
                     value={settings.system_prompt}

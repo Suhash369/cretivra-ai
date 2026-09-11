@@ -140,8 +140,41 @@ class CloudLLMProvider:
         )
 
         if is_news_or_search:
-            logger.info("Current affairs / world news query detected — prioritizing OpenAI and Google Gemini APIs for high-precision results")
-            # A. Direct OpenAI API (if configured)
+            logger.info("Current affairs / world news query detected — prioritizing OpenRouter OpenAI and Google Gemini APIs for state-of-the-art results")
+
+            # A. OpenAI via OpenRouter API (gpt-4o-mini and gpt-4o)
+            if self.openrouter_api_key:
+                for or_oa_model in ["openai/gpt-4o-mini", "openai/gpt-4o"]:
+                    try:
+                        has_yielded = False
+                        async for chunk in self._stream_openai_compatible(
+                            url="https://openrouter.ai/api/v1/chat/completions",
+                            api_key=self.openrouter_api_key,
+                            model=or_oa_model,
+                            messages=messages,
+                            images=images,
+                            extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                        ):
+                            has_yielded = True
+                            yield chunk
+                        if has_yielded:
+                            return
+                    except Exception as e:
+                        logger.warning(f"OpenRouter OpenAI ({or_oa_model}) stream error for news/search: {e}")
+
+            # B. Google Gemini API (High-speed factual grounding & live world knowledge)
+            if self.gemini_api_key:
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_gemini(model, messages, images=images):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.warning(f"Google Gemini stream error for news/search: {e}")
+
+            # C. Direct OpenAI API (if configured)
             if self.openai_api_key:
                 for oa_model in ["gpt-4o", "gpt-4o-mini"]:
                     try:
@@ -160,37 +193,17 @@ class CloudLLMProvider:
                     except Exception as e:
                         logger.warning(f"Direct OpenAI ({oa_model}) stream error for news/search: {e}")
 
-            # B. Google Gemini API (High-speed factual grounding & live world knowledge)
-            if self.gemini_api_key:
+            # D. Groq API (High-speed fallback)
+            if self.groq_api_key:
                 try:
                     has_yielded = False
-                    async for chunk in self._stream_gemini(model, messages, images=images):
+                    async for chunk in self._stream_groq(model, messages, images=images):
                         has_yielded = True
                         yield chunk
                     if has_yielded:
                         return
                 except Exception as e:
-                    logger.warning(f"Google Gemini stream error for news/search: {e}")
-
-            # C. OpenAI via OpenRouter API (gpt-4o / gpt-4o-mini)
-            if self.openrouter_api_key:
-                for or_oa_model in ["openai/gpt-4o", "openai/gpt-4o-mini"]:
-                    try:
-                        has_yielded = False
-                        async for chunk in self._stream_openai_compatible(
-                            url="https://openrouter.ai/api/v1/chat/completions",
-                            api_key=self.openrouter_api_key,
-                            model=or_oa_model,
-                            messages=messages,
-                            images=images,
-                            extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
-                        ):
-                            has_yielded = True
-                            yield chunk
-                        if has_yielded:
-                            return
-                    except Exception as e:
-                        logger.warning(f"OpenRouter OpenAI ({or_oa_model}) stream error for news/search: {e}")
+                    logger.warning(f"Groq stream error for news/search: {e}")
 
         # 2. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
@@ -392,7 +405,7 @@ class CloudLLMProvider:
                     formatted_messages[idx]["content"] = content_parts
                     break
 
-        tokens_limit = 1800 if "openrouter.ai" in url else 4096
+        tokens_limit = 1500 if "openrouter.ai" in url else 4096
         payload = {
             "model": model,
             "messages": formatted_messages,

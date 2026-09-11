@@ -366,10 +366,20 @@ class ChatService:
         # Inject real-time cache context into the latest user prompt cleanly
         if live_web_context:
             user_orig_q = formatted_messages[-1]["content"]
+            is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|happening|global|latest)\b", str(user_orig_q), re.IGNORECASE))
+            if is_news:
+                directive = (
+                    "Directive: Provide a comprehensive, highly organized World News & Current Affairs briefing based on the verified intelligence cache above. "
+                    "Structure your answer with clear section headings (such as Top Global Headlines, Geopolitics & Diplomacy, Global Economy & Markets, Regional Developments). "
+                    "Detail the verified events, key figures, dates, and significance clearly. Never state that your knowledge is outdated."
+                )
+            else:
+                directive = "Directive: Answer the question directly, comprehensively, and factually using the verified cache facts above."
+
             formatted_messages[-1]["content"] = (
                 f"Question: {user_orig_q}\n\n"
                 f"[Verified Real-Time Intelligence Cache as of {today_str}]:\n{live_web_context}\n\n"
-                f"Please answer the question directly and factually using the verified cache facts above."
+                f"{directive}"
             )
 
         # Append document attachments to prompt context if present

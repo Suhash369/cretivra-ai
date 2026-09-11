@@ -166,27 +166,35 @@ class WebSearchService:
 
         return ""
 
-    async def _search_tavily(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
+    async def _search_tavily(self, query: str, api_key: str, max_results: int = 6) -> List[str]:
         url = "https://api.tavily.com/search"
+        is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|global|geopolitics|war|conflict|election|minister|president|brics)\b", query, re.IGNORECASE))
+        target_count = 8 if is_news else max_results
         payload = {
             "api_key": api_key,
             "query": query,
-            "search_depth": "basic",
+            "search_depth": "advanced" if is_news else "basic",
             "include_answer": True,
-            "max_results": max_results
+            "max_results": target_count
         }
-        async with httpx.AsyncClient(timeout=3.5) as client:
+        if is_news:
+            payload["topic"] = "news"
+            payload["days"] = 3
+
+        async with httpx.AsyncClient(timeout=6.0) as client:
             res = await client.post(url, json=payload)
             if res.status_code == 200:
                 data = res.json()
                 results = []
                 if data.get("answer"):
-                    results.append(f"• Direct Fact: {data['answer']}")
-                for r in data.get("results", [])[:max_results]:
+                    results.append(f"• Verified Key Summary: {data['answer']}")
+                for r in data.get("results", [])[:target_count]:
                     title = r.get("title", "").strip()
-                    content = r.get("content", "").strip()[:160].replace("\n", " ")
+                    content = r.get("content", "").strip()[:240].replace("\n", " ")
+                    pub = r.get("published_date") or ""
+                    date_str = f" [{pub[:10]}]" if pub else ""
                     if content:
-                        results.append(f"• {title}: {content}")
+                        results.append(f"• {title}{date_str}: {content}")
                 return results
         return []
 
@@ -259,33 +267,36 @@ class WebSearchService:
                 return results
         return []
 
-    async def _search_google_news(self, query: str, max_results: int = 5) -> List[str]:
-        url = "https://news.google.com/rss/search"
-        params = {
-            "q": query,
-            "hl": "en-IN",
-            "gl": "IN",
-            "ceid": "IN:en"
-        }
+    async def _search_google_news(self, query: str, max_results: int = 6) -> List[str]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
+        results = []
+        is_world_query = bool(re.search(r"\b(world|global|international|all over the world|around the world|current affairs)\b", query, re.IGNORECASE))
+        
+        urls_to_check = []
+        if is_world_query:
+            urls_to_check.append(("https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en", {}))
+        urls_to_check.append(("https://news.google.com/rss/search", {"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"}))
 
         async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
-            res = await client.get(url, params=params, headers=headers)
-            if res.status_code != 200:
-                return []
-
-            items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
-            results = []
-            for item in items[:max_results]:
-                title_match = re.search(r'<title>(.*?)</title>', item)
-                pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                if title_match:
-                    title = html.unescape(title_match.group(1)).strip()
-                    pub = pub_match.group(1).strip() if pub_match else ""
-                    results.append(f"{title} ({pub})" if pub else title)
-            return results
+            for fetch_url, params in urls_to_check:
+                try:
+                    res = await client.get(fetch_url, params=params if params else None, headers=headers)
+                    if res.status_code == 200:
+                        items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
+                        for item in items[:max_results]:
+                            title_match = re.search(r'<title>(.*?)</title>', item)
+                            pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                            if title_match:
+                                title = html.unescape(title_match.group(1)).strip()
+                                pub = pub_match.group(1).strip() if pub_match else ""
+                                results.append(f"{title} [{pub}]" if pub else title)
+                        if len(results) >= max_results:
+                            break
+                except Exception:
+                    continue
+        return results[:max_results]
 
     async def _search_wikipedia(self, query: str) -> List[str]:
         url = "https://en.wikipedia.org/w/api.php"
