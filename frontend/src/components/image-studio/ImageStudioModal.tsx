@@ -46,6 +46,7 @@ const STYLES = [
 
 const MODELS = [
   { id: 'cretivra-flux', label: 'Cretivra FLUX.1 Art', engine: 'flux', badge: 'FLUX.1 Pro' },
+  { id: 'cretivra-gemini', label: 'Google Gemini Vision & Imagen', engine: 'gemini', badge: 'Zero Watermark' },
   { id: 'cretivra-diffusion', label: 'Cretivra SDXL Studio', engine: 'flux-realism', badge: 'SDXL Realism' },
   { id: 'cretivra-anime', label: 'Cretivra Anime Studio', engine: 'flux-anime', badge: 'Anime Studio' },
   { id: 'cretivra-3d', label: 'Cretivra 3D & CGI', engine: 'flux-3d', badge: '3D Octane' },

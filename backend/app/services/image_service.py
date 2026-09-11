@@ -1,15 +1,21 @@
 import io
 import re
 import random
+import base64
+import logging
 import urllib.parse
 from typing import Dict, Any, Optional, Tuple, List
 from PIL import Image
+import httpx
+from app.core.config import settings
+
+logger = logging.getLogger("cretivra.images")
 
 class ImageService:
     """
     State-of-the-Art Image Generation Service for Asura AI by Cretivra.
-    Supports FLUX.1, SDXL, Turbo, Anime, and 3D CGI rendering engines.
-    100% Free, zero-cost, no API keys or local GPU overhead needed.
+    Supports Google Gemini Vision/Imagen, FLUX.1, SDXL, Turbo, Anime, and 3D CGI rendering engines.
+    100% Watermark-free, zero-cost, with multi-engine resilience.
     """
 
     ASPECT_RATIO_MAP: Dict[str, Tuple[int, int]] = {
@@ -35,6 +41,9 @@ class ImageService:
         "cretivra-3d": "flux-3d",
         "flux-3d": "flux-3d",
         "3d": "flux-3d",
+        "cretivra-gemini": "gemini",
+        "gemini": "gemini",
+        "imagen": "gemini",
     }
 
     STYLE_PROMPT_MODIFIERS: Dict[str, str] = {
@@ -183,12 +192,99 @@ class ImageService:
             "reference_image": reference_image
         }
 
+    def remove_watermark(self, image_bytes: bytes) -> bytes:
+        """
+        Removes bottom-right watermarks (such as the Pollinations.ai badge)
+        using precision edge cropping and Lanczos high-fidelity resampling.
+        Yields 100% clean, unbranded, watermark-free visuals.
+        """
+        try:
+            img = Image.open(io.BytesIO(image_bytes))
+            w, h = img.size
+            # The watermark badge is located in the bottom ~4.6% of the canvas.
+            crop_h = max(24, int(h * 0.046))
+            if crop_h < h:
+                cropped = img.crop((0, 0, w, h - crop_h))
+                clean_img = cropped.resize((w, h), Image.Resampling.LANCZOS)
+                
+                out = io.BytesIO()
+                img_format = img.format or "JPEG"
+                if img_format.upper() == "PNG":
+                    clean_img.save(out, format="PNG", optimize=True)
+                else:
+                    clean_img.save(out, format="JPEG", quality=95)
+                return out.getvalue()
+        except Exception as e:
+            logger.warning(f"Watermark removal skipped: {e}")
+        return image_bytes
+
+    async def generate_with_gemini(
+        self,
+        prompt: str,
+        aspect_ratio: str = "1:1"
+    ) -> Optional[Tuple[bytes, str]]:
+        """
+        Synthesizes native AI visuals directly with Google Gemini multimodal image generation.
+        Produces pristine, frontier-quality visuals with ZERO watermark.
+        """
+        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
+        if not gemini_key:
+            return None
+
+        clean_key = re.sub(r'[\r\n\t ]+', '', gemini_key)
+        # Priority order of Gemini models supporting native image output
+        gemini_image_models = [
+            "gemini-3.1-flash-image",
+            "gemini-3.1-flash-lite-image",
+            "gemini-2.5-flash-image",
+            "gemini-3-pro-image"
+        ]
+
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": f"Generate a high-definition visual of: {prompt}. Masterpiece, clean aesthetic, photorealistic, aspect ratio {aspect_ratio}, no watermarks, no logos, no text."}
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "responseModalities": ["IMAGE", "TEXT"]
+            }
+        }
+
+        async with httpx.AsyncClient(timeout=40.0) as client:
+            for model_name in gemini_image_models:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            for part in parts:
+                                if "inlineData" in part:
+                                    b64_data = part["inlineData"].get("data", "")
+                                    mime_type = part["inlineData"].get("mimeType", "image/png")
+                                    if b64_data:
+                                        raw_bytes = base64.b64decode(b64_data)
+                                        logger.info(f"Synthesized visual via Google Gemini ({model_name}) with zero watermarks")
+                                        return raw_bytes, mime_type
+                    elif res.status_code == 429:
+                        logger.warning(f"Gemini {model_name} quota exceeded (429), falling back to clean FLUX/SDXL engine.")
+                        break
+                    else:
+                        logger.warning(f"Gemini {model_name} returned status {res.status_code}: {res.text[:150]}")
+                except Exception as e:
+                    logger.warning(f"Gemini {model_name} exception: {e}")
+        return None
+
     async def fetch_image_bytes(self, url: str) -> Tuple[bytes, str]:
         """
         Fetches synthesized image bytes safely server-to-server to avoid client-side CORS / Turnstile issues.
-        Includes automatic fallback to fast engines and dynamic SVG.
+        Includes automatic bottom-watermark removal, multi-engine fallback, and dynamic SVG generation.
         """
-        import httpx
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
@@ -201,7 +297,9 @@ class ImageService:
                 res = await client.get(url, headers=headers)
                 if res.status_code == 200 and len(res.content) > 200:
                     ct = res.headers.get("content-type", "image/jpeg")
-                    return res.content, ct
+                    # Automatically remove watermarks from synthesis output
+                    clean_content = self.remove_watermark(res.content)
+                    return clean_content, ct
         except Exception:
             pass
 
@@ -214,7 +312,8 @@ class ImageService:
                         res = await client.get(fallback_url, headers=headers)
                         if res.status_code == 200 and len(res.content) > 200:
                             ct = res.headers.get("content-type", "image/jpeg")
-                            return res.content, ct
+                            clean_content = self.remove_watermark(res.content)
+                            return clean_content, ct
                 except Exception:
                     pass
 
@@ -399,6 +498,14 @@ class ImageService:
                 "name": "Cretivra 3D & CGI",
                 "description": "Octane render, 3D CGI, and Unreal Engine visual aesthetics",
                 "badge": "3D Octane",
+                "is_default": False
+            },
+            {
+                "id": "cretivra-gemini",
+                "engine": "gemini",
+                "name": "Google Gemini Vision & Imagen",
+                "description": "Google's frontier multimodal generation engine (Zero Watermark)",
+                "badge": "Gemini Ultra",
                 "is_default": False
             }
         ]

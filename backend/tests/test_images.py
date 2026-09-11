@@ -80,3 +80,23 @@ def test_registry_image_models():
     assert registry.is_image_model("cretivra-flux") is True
     assert registry.is_image_model("cretivra-diffusion") is True
     assert registry.is_image_model("cretivra-1") is False
+
+def test_watermark_removal():
+    from PIL import Image
+    import io
+    test_img = Image.new("RGB", (512, 512), color=(100, 150, 200))
+    buf = io.BytesIO()
+    test_img.save(buf, format="JPEG")
+    orig_bytes = buf.getvalue()
+    
+    clean_bytes = image_service.remove_watermark(orig_bytes)
+    assert len(clean_bytes) > 0
+    clean_img = Image.open(io.BytesIO(clean_bytes))
+    assert clean_img.size == (512, 512)
+
+def test_gemini_model_in_catalog(client):
+    res = client.get("/api/images/models")
+    assert res.status_code == 200
+    models = res.json()["models"]
+    engine_ids = [m["id"] for m in models]
+    assert "cretivra-gemini" in engine_ids

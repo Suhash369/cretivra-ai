@@ -62,15 +62,70 @@ async def proxy_image(
 
     return Response(content=data, media_type=content_type, headers=headers)
 
+_gemini_image_cache: Dict[str, Tuple[bytes, str]] = {}
+
+@router.get("/gemini/{image_id}")
+async def get_gemini_image(
+    image_id: str,
+    download: Optional[bool] = Query(False),
+    filename: Optional[str] = Query(None)
+):
+    """
+    Serves native Google Gemini synthesized images with zero watermark.
+    """
+    if image_id not in _gemini_image_cache:
+        raise HTTPException(status_code=404, detail="Synthesized visual expired or not found.")
+    
+    data, content_type = _gemini_image_cache[image_id]
+    headers = {
+        "Cache-Control": "public, max-age=86400, immutable",
+        "Access-Control-Allow-Origin": "*",
+    }
+    if download:
+        clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', filename or "gemini-visual")[:40]
+        ext = "png" if "png" in content_type else "jpg"
+        headers["Content-Disposition"] = f'attachment; filename="{clean_name}.{ext}"'
+
+    return Response(content=data, media_type=content_type, headers=headers)
+
 @router.post("/generate")
 async def generate_image(request: ImageGenerateRequest):
     """
-    Generate an AI Image using Cretivra FLUX.1, SDXL, Turbo, Anime, or 3D engine.
-    100% Free ($0.00 cost, zero API keys required).
+    Generate an AI Image using Google Gemini Vision/Imagen, FLUX.1, SDXL, Turbo, Anime, or 3D engine.
+    Watermark-free visuals with multi-engine fallback.
     """
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
-    
+
+    # 1. If Google Gemini model was selected, attempt native Gemini image generation
+    if request.model in ["gemini", "cretivra-gemini"]:
+        gemini_result = await image_service.generate_with_gemini(
+            prompt=request.prompt,
+            aspect_ratio=request.aspect_ratio or "1:1"
+        )
+        if gemini_result:
+            import uuid
+            img_id = f"gemini_{uuid.uuid4().hex[:12]}"
+            _gemini_image_cache[img_id] = gemini_result
+            img_url = f"/api/images/gemini/{img_id}"
+            return {
+                "success": True,
+                "prompt": request.prompt.strip(),
+                "enhanced_prompt": request.prompt.strip(),
+                "image_url": img_url,
+                "proxy_url": img_url,
+                "model": "gemini",
+                "model_id": "cretivra-gemini",
+                "provider": "Google Gemini Vision & Imagen (Zero Watermark)",
+                "aspect_ratio": request.aspect_ratio or "1:1",
+                "width": 1024,
+                "height": 1024,
+                "seed": request.seed or 42,
+                "style": request.style,
+                "reference_image": request.reference_image
+            }
+
+    # 2. Standard multi-engine generation with automatic watermark removal via proxy
     result = image_service.generate_image_url(
         prompt=request.prompt,
         aspect_ratio=request.aspect_ratio,

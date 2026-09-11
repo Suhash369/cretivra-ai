@@ -3,7 +3,9 @@ import { Copy, Check, Download, Maximize2, Sparkles, Image as ImageIcon, Refresh
 import { getImageProxyUrl } from '../../services/api';
 
 export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ src, alt }) => {
-  const [activeSrc, setActiveSrc] = useState<string>(src || '');
+  // Always default to backend proxy to strip watermarks and avoid Turnstile blocks
+  const initialSafeSrc = src ? (getImageProxyUrl(src) || src) : '';
+  const [activeSrc, setActiveSrc] = useState<string>(initialSafeSrc);
   const [loaded, setLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -12,7 +14,8 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
 
   useEffect(() => {
     if (src) {
-      setActiveSrc(src);
+      const safeSrc = getImageProxyUrl(src) || src;
+      setActiveSrc(safeSrc);
       setLoaded(false);
       setHasError(false);
     }
@@ -33,7 +36,9 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
   // Determine model engine badge
   let badgeLabel = 'FLUX.1 Art';
   const checkUrl = activeSrc || src || '';
-  if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
+  if (checkUrl.includes('/gemini/') || checkUrl.includes('model=gemini') || (alt && alt.toLowerCase().includes('gemini'))) {
+    badgeLabel = 'Google Gemini';
+  } else if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
     badgeLabel = 'Anime Studio';
   } else if (checkUrl.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
     badgeLabel = '3D Octane';

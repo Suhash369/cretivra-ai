@@ -67,13 +67,31 @@ class ChatService:
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': f'Synthesizing visual with {engine_name}...'})}\n\n"
             await asyncio.sleep(0.3)
 
-            img_data = image_service.generate_image_url(
-                prompt=image_prompt,
-                model=model_id,
-                enhance=True
-            )
-            
-            image_reply = f"Here is your generated visual for: **{image_prompt}**\n\n![{image_prompt}]({img_data['image_url']})"
+            # 1. Attempt Google Gemini image generation if key configured or Gemini model selected
+            gemini_result = None
+            if "gemini" in model_id.lower() or getattr(settings, "GEMINI_API_KEY", ""):
+                try:
+                    gemini_result = await image_service.generate_with_gemini(prompt=image_prompt)
+                except Exception as g_err:
+                    logger.warning(f"Gemini image synthesis fallback: {g_err}")
+                    gemini_result = None
+
+            if gemini_result:
+                import uuid
+                from app.api.images import _gemini_image_cache
+                img_id = f"gemini_{uuid.uuid4().hex[:12]}"
+                _gemini_image_cache[img_id] = gemini_result
+                rendered_url = f"/api/images/gemini/{img_id}"
+            else:
+                img_data = image_service.generate_image_url(
+                    prompt=image_prompt,
+                    model=model_id,
+                    enhance=True
+                )
+                # Use proxy_url to ensure watermark removal and Turnstile bypass
+                rendered_url = img_data.get("proxy_url") or img_data["image_url"]
+
+            image_reply = f"Here is your generated visual for: **{image_prompt}**\n\n![{image_prompt}]({rendered_url})"
             
             # Stream final result
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': image_reply, 'full_content': image_reply, 'done': True, 'reasoning_status': None})}\n\n"
