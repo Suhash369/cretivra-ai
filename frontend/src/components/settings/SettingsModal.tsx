@@ -234,17 +234,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-gray-100 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-gray-400 font-medium mb-1">System Prompt</label>
-                  <p className="text-[11px] text-gray-500 mb-1.5">The master behind-the-scenes instruction that defines Asura AI's identity, temporal grounding (Year 2026), and behavior.</p>
-                  <textarea
-                    rows={3}
-                    value={settings.system_prompt}
-                    onChange={(e) => setSettingsState({ ...settings, system_prompt: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-gray-100 focus:outline-none focus:border-indigo-500 resize-none"
-                  />
-                </div>
               </div>
             )}
 

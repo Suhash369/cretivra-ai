@@ -299,7 +299,10 @@ class ChatService:
 
         # Formulate system prompt with current live date and directives
         today_str = datetime.now().strftime("%B %d, %Y")
-        base_sys = system_prompt or settings.SYSTEM_PROMPT
+        if system_prompt and system_prompt.strip() != settings.SYSTEM_PROMPT.strip():
+            base_sys = f"{settings.SYSTEM_PROMPT}\n\n[Contextual Directive]: {system_prompt}"
+        else:
+            base_sys = settings.SYSTEM_PROMPT
         
         deep_directive = ""
         if is_deep_research_active:
