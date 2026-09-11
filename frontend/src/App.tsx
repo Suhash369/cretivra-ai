@@ -1073,14 +1073,14 @@ export function App() {
             )}
           </div>
 
-          {/* Dedicated Image Studio Button */}
+          {/* Dedicated Image Studio Button (Icon Only) */}
           <button
             onClick={() => setImageStudioOpen(true)}
             className="cv-header-btn-studio cursor-pointer"
-            title="Open Cretivra Image Generation Studio"
+            title="Image Studio"
+            aria-label="Image Studio"
           >
-            <Palette size={13} className="shrink-0 text-purple-400" />
-            <span className="hidden sm:inline">Image Studio</span>
+            <Palette size={14} className="shrink-0 text-purple-400" />
           </button>
 
           {/* Test Bench / Arena Button */}
