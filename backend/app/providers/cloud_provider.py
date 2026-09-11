@@ -140,7 +140,7 @@ class CloudLLMProvider:
         )
 
         if is_news_or_search:
-            logger.info("Current affairs / world news query detected — prioritizing OpenAI API for high-precision results")
+            logger.info("Current affairs / world news query detected — prioritizing OpenAI and Google Gemini APIs for high-precision results")
             # A. Direct OpenAI API (if configured)
             if self.openai_api_key:
                 for oa_model in ["gpt-4o", "gpt-4o-mini"]:
@@ -160,7 +160,19 @@ class CloudLLMProvider:
                     except Exception as e:
                         logger.warning(f"Direct OpenAI ({oa_model}) stream error for news/search: {e}")
 
-            # B. OpenAI via OpenRouter API (gpt-4o / gpt-4o-mini)
+            # B. Google Gemini API (High-speed factual grounding & live world knowledge)
+            if self.gemini_api_key:
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_gemini(model, messages, images=images):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.warning(f"Google Gemini stream error for news/search: {e}")
+
+            # C. OpenAI via OpenRouter API (gpt-4o / gpt-4o-mini)
             if self.openrouter_api_key:
                 for or_oa_model in ["openai/gpt-4o", "openai/gpt-4o-mini"]:
                     try:
@@ -518,14 +530,13 @@ class CloudLLMProvider:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
         
-        # Multi-model fallback chain for Gemini (Flash 3.6/3.7/latest have world-class vision capabilities)
+        # Multi-model fallback chain for Gemini (Flash 3.7/3.6 have world-class vision & factual search grounding)
         gemini_model_candidates = [
-            "gemini-3.6-flash",
             "gemini-3.7-flash",
+            "gemini-3.6-flash",
             "gemini-flash-latest",
-            "gemini-3.8-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-1.5-flash"
+            "gemma-4-26b-a4b-it",
+            "gemini-pro-latest"
         ]
 
         contents = []
@@ -586,7 +597,7 @@ class CloudLLMProvider:
                 "parts": [{"text": "\n\n".join(system_instructions)}]
             }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             for gem_model in gemini_model_candidates:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:streamGenerateContent?alt=sse&key={clean_key}"
                 try:
