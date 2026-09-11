@@ -189,9 +189,16 @@ export function useChat(options?: UseChatOptions) {
               })
             );
           },
-          onError: (err) => {
+          onError: (err: any) => {
             console.error('Streaming error:', err);
-            setError("Cretivra couldn't complete that response. Please try again.");
+            setIsGenerating(false);
+            setReasoningStatus(null);
+            abortControllerRef.current = null;
+            if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
+              setError('Session expired or authentication required. Please sign in again.');
+            } else {
+              setError("Cretivra couldn't complete that response. Please try again.");
+            }
           },
           onComplete: () => {
             setIsGenerating(false);
@@ -202,6 +209,7 @@ export function useChat(options?: UseChatOptions) {
       } catch (err: any) {
         setIsGenerating(false);
         setReasoningStatus(null);
+        abortControllerRef.current = null;
         if (err.name !== 'AbortError') {
           setError(err.message || 'Error formulating response');
         }
@@ -252,6 +260,17 @@ export function useChat(options?: UseChatOptions) {
                 )
               );
             },
+            onError: (err: any) => {
+              console.error('Edit streaming error:', err);
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+              if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
+                setError('Session expired or authentication required. Please sign in again.');
+              } else {
+                setError("Cretivra couldn't complete that response. Please try again.");
+              }
+            },
             onComplete: () => {
               setIsGenerating(false);
               setReasoningStatus(null);
@@ -277,6 +296,17 @@ export function useChat(options?: UseChatOptions) {
                 )
               );
             },
+            onError: (err: any) => {
+              console.error('Edit streaming error:', err);
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+              if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
+                setError('Session expired or authentication required. Please sign in again.');
+              } else {
+                setError("Cretivra couldn't complete that response. Please try again.");
+              }
+            },
             onComplete: () => {
               setIsGenerating(false);
               setReasoningStatus(null);
@@ -287,6 +317,7 @@ export function useChat(options?: UseChatOptions) {
       } catch (err: any) {
         setIsGenerating(false);
         setReasoningStatus(null);
+        abortControllerRef.current = null;
       }
     },
     [messages, activeConversationId, selectedModel, isGenerating]
@@ -331,6 +362,17 @@ export function useChat(options?: UseChatOptions) {
                 )
               );
             },
+            onError: (err: any) => {
+              console.error('Regenerate streaming error:', err);
+              setIsGenerating(false);
+              setReasoningStatus(null);
+              abortControllerRef.current = null;
+              if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
+                setError('Session expired or authentication required. Please sign in again.');
+              } else {
+                setError("Cretivra couldn't complete that response. Please try again.");
+              }
+            },
             onComplete: () => {
               setIsGenerating(false);
               setReasoningStatus(null);
@@ -358,6 +400,17 @@ export function useChat(options?: UseChatOptions) {
                   )
                 );
               },
+              onError: (err: any) => {
+                console.error('Regenerate streaming error:', err);
+                setIsGenerating(false);
+                setReasoningStatus(null);
+                abortControllerRef.current = null;
+                if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
+                  setError('Session expired or authentication required. Please sign in again.');
+                } else {
+                  setError("Cretivra couldn't complete that response. Please try again.");
+                }
+              },
               onComplete: () => {
                 setIsGenerating(false);
                 setReasoningStatus(null);
@@ -369,6 +422,7 @@ export function useChat(options?: UseChatOptions) {
       } catch (err: any) {
         setIsGenerating(false);
         setReasoningStatus(null);
+        abortControllerRef.current = null;
       }
     },
     [messages, activeConversationId, selectedModel, isGenerating]

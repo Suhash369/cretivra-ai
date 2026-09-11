@@ -44,7 +44,7 @@ import {
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
-import { exportPdf } from './services/api';
+import { exportPdf, fetchCurrentUserProfileApi, getAuthToken } from './services/api';
 import { initTheme, applyTheme, type ThemeMode } from './services/theme';
 import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -245,6 +245,44 @@ export function App() {
     } catch {
       // Ignore localStorage access errors
     }
+  }, []);
+
+  // Validate authentication session with backend on mount
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    fetchCurrentUserProfileApi()
+      .then((profile) => {
+        setUser(profile);
+        try {
+          localStorage.setItem('cretivra_user', JSON.stringify(profile));
+        } catch {}
+      })
+      .catch((err) => {
+        console.warn('Stored session is invalid or user was deleted from database:', err);
+        try {
+          localStorage.removeItem('cretivra_auth_token');
+          localStorage.removeItem('cretivra_user');
+        } catch {}
+        setUser(null);
+        setAuthOpen(true);
+      });
+  }, []);
+
+  // Listen for unauthorized 401 broadcast events from API / streaming calls
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      try {
+        localStorage.removeItem('cretivra_auth_token');
+        localStorage.removeItem('cretivra_user');
+      } catch {}
+      setUser(null);
+      setAuthOpen(true);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
   // Auto-resize textarea

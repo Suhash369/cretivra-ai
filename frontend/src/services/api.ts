@@ -18,6 +18,14 @@ export function getAuthToken(): string | null {
   }
 }
 
+export function checkAuthResponse(res: Response) {
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+    }
+  }
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -61,7 +69,10 @@ export async function fetchCurrentUserProfileApi(): Promise<{ id: string; email:
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error('Not authenticated');
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error('Not authenticated');
+  }
   return res.json();
 }
 
@@ -98,7 +109,10 @@ export async function fetchConversations(searchQuery?: string): Promise<{ conver
   const res = await fetch(url, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error(`Failed to fetch conversations: ${res.statusText}`);
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error(`Failed to fetch conversations: ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -108,7 +122,10 @@ export async function createConversation(title = 'New Conversation', model_id = 
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ title, model_id }),
   });
-  if (!res.ok) throw new Error(`Failed to create conversation: ${res.statusText}`);
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error(`Failed to create conversation: ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -116,7 +133,10 @@ export async function getConversation(id: string): Promise<Conversation> {
   const res = await fetch(`${API_BASE}/conversations/${id}`, {
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error(`Failed to fetch conversation ${id}: ${res.statusText}`);
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error(`Failed to fetch conversation ${id}: ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -126,7 +146,10 @@ export async function updateConversation(id: string, payload: { title?: string; 
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`Failed to update conversation: ${res.statusText}`);
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error(`Failed to update conversation: ${res.statusText}`);
+  }
   return res.json();
 }
 
@@ -135,7 +158,10 @@ export async function deleteConversation(id: string): Promise<void> {
     method: 'DELETE',
     headers: { ...getAuthHeaders() },
   });
-  if (!res.ok) throw new Error(`Failed to delete conversation: ${res.statusText}`);
+  if (!res.ok) {
+    checkAuthResponse(res);
+    throw new Error(`Failed to delete conversation: ${res.statusText}`);
+  }
 }
 
 export async function bulkDeleteConversations(ids: string[]): Promise<{ deleted: number }> {

@@ -36,6 +36,12 @@ export async function readSSEStream(
     });
 
     if (!res.ok) {
+      if (res.status === 401) {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
+        throw new Error('Session expired or authentication required. Please sign in again.');
+      }
       throw new Error(`Server returned HTTP status ${res.status}`);
     }
 
