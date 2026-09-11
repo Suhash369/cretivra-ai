@@ -50,6 +50,7 @@ import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
@@ -152,6 +153,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -231,6 +233,18 @@ export function App() {
   useEffect(() => {
     const cleanup = initTheme();
     return cleanup;
+  }, []);
+
+  // Check if first-time visitor to display onboarding tour
+  useEffect(() => {
+    try {
+      const hasCompletedTour = localStorage.getItem('asura_onboarding_completed');
+      if (!hasCompletedTour) {
+        setOnboardingOpen(true);
+      }
+    } catch {
+      // Ignore localStorage access errors
+    }
   }, []);
 
   // Auto-resize textarea
@@ -1020,6 +1034,16 @@ export function App() {
             <span className="hidden sm:inline">Test Bench</span>
           </a>
 
+          {/* AI Guide / Interactive Tour Button */}
+          <button
+            onClick={() => setOnboardingOpen(true)}
+            className="cv-header-btn-bench cursor-pointer flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border border-violet-500/40 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:border-violet-400 transition-all shadow-sm"
+            title="Interactive Onboarding Guide & Features Tour"
+          >
+            <Sparkles size={13} className="shrink-0 text-violet-400 animate-pulse" />
+            <span className="hidden sm:inline">AI Guide</span>
+          </button>
+
           {/* Action buttons when conversation is active */}
           {activeConversationId && (
             <>
@@ -1679,10 +1703,23 @@ export function App() {
       <AuthModal
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
-        onLoginSuccess={(userData) => {
+        onLoginSuccess={(userData, _token, isNewRegistration) => {
           setUser(userData);
           clearActiveChat();
           refreshConversations();
+          if (isNewRegistration) {
+            setOnboardingOpen(true);
+          }
+        }}
+      />
+
+      <OnboardingTourModal
+        isOpen={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        onSelectPrompt={(promptText, modelId) => {
+          if (modelId) setSelectedModel(modelId);
+          setInput(promptText);
+          sendMessage(promptText, modelId || selectedModel);
         }}
       />
 

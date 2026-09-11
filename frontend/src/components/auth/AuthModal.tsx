@@ -7,7 +7,7 @@ import { loginUserApi, registerUserApi } from "../../services/api";
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (user: any, token: string) => void;
+  onLoginSuccess: (user: any, token: string, isNewRegistration?: boolean) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
@@ -27,6 +27,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
 
     try {
       let data;
+      const isRegistering = tab === "register";
       if (tab === "login") {
         data = await loginUserApi({ email, password });
       } else {
@@ -37,7 +38,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
       localStorage.setItem("cretivra_auth_token", data.access_token);
       localStorage.setItem("cretivra_user", JSON.stringify(data.user));
 
-      onLoginSuccess(data.user, data.access_token);
+      onLoginSuccess(data.user, data.access_token, isRegistering);
       onClose();
     } catch (err: any) {
       setError(err.message || "Authentication failed. Please try again.");
