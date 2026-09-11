@@ -125,7 +125,11 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
 
   return (
     <div
-      className={`fixed bottom-5 right-5 z-40 sm:bottom-6 sm:right-6 font-sans select-none ${className}`}
+      className={`fixed z-[9999] font-sans select-none ${className}`}
+      style={{
+        bottom: 'max(36px, env(safe-area-inset-bottom, 36px))',
+        right: 'max(24px, env(safe-area-inset-right, 24px))',
+      }}
       id="cretivra-suggestion-widget"
     >
       {/* Expanded Suggestion Card */}
@@ -414,7 +418,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
             Suggestions
           </span>
 
-          {/* Glowing Supabase active dot */}
+          {/* Glowing active status indicator dot */}
           <span className="relative flex h-2 w-2 ml-0.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />

@@ -24,7 +24,7 @@ export function SiteLayoutWrapper({
     pathname?.startsWith('/test-bench/');
 
   if (isStudioOnly) {
-    return <main className="h-screen w-screen overflow-hidden">{children}</main>;
+    return <main className="h-[100dvh] w-full max-h-[100dvh] overflow-hidden">{children}</main>;
   }
 
   return (

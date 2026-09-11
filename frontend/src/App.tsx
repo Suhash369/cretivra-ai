@@ -938,7 +938,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[var(--bg-base)] text-[var(--text)] overflow-hidden font-sans relative">
+    <div className="flex h-[100dvh] w-full max-h-[100dvh] bg-[var(--bg-base)] text-[var(--text)] overflow-hidden font-sans relative">
       {/* Background Ambient Glowing Orbs */}
       <div className="cv-ambient">
         <div className="cv-orb cv-orb-1" />

@@ -15,7 +15,7 @@ const DynamicApp = dynamic(() => import('../../App').then((mod) => mod.App), {
 
 export function StudioClient() {
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-base)] text-[var(--text)]">
+    <div className="h-[100dvh] w-full max-h-[100dvh] overflow-hidden bg-[var(--bg-base)] text-[var(--text)]">
       <DynamicApp />
     </div>
   );
