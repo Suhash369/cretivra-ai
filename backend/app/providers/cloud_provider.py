@@ -34,11 +34,46 @@ class CloudLLMProvider:
             self.together_api_key
         )
 
+    def _detect_current_affairs_intent(self, messages: List[Dict[str, Any]]) -> bool:
+        """
+        Detects if the conversation or prompt is asking for current affairs,
+        world news, breaking events, geopolitics, or live real-time information.
+        """
+        all_text = " ".join([m.get("content", "") for m in messages if isinstance(m.get("content"), str)])
+
+        if any(tag in all_text for tag in [
+            "[Verified Real-Time Intelligence Cache",
+            "[Verified Real-Time World News",
+            "[REAL-TIME SEARCH]",
+            "[Real-Time News",
+            "[LIVE REAL-TIME"
+        ]):
+            return True
+
+        news_patterns = [
+            r"\b(current\s+affairs|world\s+news|global\s+news|international\s+news|breaking\s+news|daily\s+news)\b",
+            r"\b(news\s+all\s+over\s+the\s+world|news\s+around\s+the\s+world|all\s+over\s+the\s+world|latest\s+news|today'?s\s+news|today'?s\s+headlines)\b",
+            r"\b(what('?s|\s+is)\s+happening\s+in|what\s+happened\s+in|what('?s|\s+is)\s+going\s+on\s+in)\b",
+            r"\b(geopolitics|geopolitical|foreign\s+policy|diplomacy|summit|un\s+general\s+assembly|g20|brics|nato)\b",
+            r"\b(prime\s+minister|president|election|election\s+results|assembly\s+election|cabinet|parliament)\b",
+            r"\b(war|conflict|ceasefire|sanctions|treaty|protest|crisis)\b",
+            r"\b(stock\s+market\s+today|crude\s+oil\s+price|gold\s+rate\s+today|inflation\s+rate|gdp\s+growth)\b",
+            r"\b(who\s+won|score\s+update|medal\s+tally|olympics|world\s+cup|champions\s+trophy)\b",
+            r"\b(202[4-9]\s+news|in\s+202[5-9])\b"
+        ]
+
+        for p in news_patterns:
+            if re.search(p, all_text, re.IGNORECASE):
+                return True
+
+        return False
+
     async def stream_chat(
         self,
         model: str,
         messages: List[Dict[str, Any]],
-        images: Optional[List[Dict[str, Any]]] = None
+        images: Optional[List[Dict[str, Any]]] = None,
+        is_search: bool = False
     ) -> AsyncGenerator[Dict[str, Any], None]:
         # Enforce system prompt if not present
         if not messages or messages[0].get("role") != "system":
@@ -69,7 +104,7 @@ class CloudLLMProvider:
                             model=or_model,
                             messages=messages,
                             images=images,
-                            extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                            extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
                         ):
                             has_yielded = True
                             yield chunk
@@ -96,7 +131,56 @@ class CloudLLMProvider:
                 except Exception as e:
                     logger.error(f"OpenAI Vision stream error: {e}")
 
-        # 1. Try DeepSeek API if model is reasoning or deepseek
+        # 1. Current Affairs & World News Routing:
+        # If user searches or queries current affairs, breaking events, world news, or real-time web intelligence,
+        # route primarily to OpenAI APIs (GPT-4o / GPT-4o-mini via direct OpenAI or OpenRouter OpenAI) for state-of-the-art results.
+        is_news_or_search = bool(
+            is_search
+            or self._detect_current_affairs_intent(messages)
+        )
+
+        if is_news_or_search:
+            logger.info("Current affairs / world news query detected — prioritizing OpenAI API for high-precision results")
+            # A. Direct OpenAI API (if configured)
+            if self.openai_api_key:
+                for oa_model in ["gpt-4o", "gpt-4o-mini"]:
+                    try:
+                        has_yielded = False
+                        async for chunk in self._stream_openai_compatible(
+                            url="https://api.openai.com/v1/chat/completions",
+                            api_key=self.openai_api_key,
+                            model=oa_model,
+                            messages=messages,
+                            images=images
+                        ):
+                            has_yielded = True
+                            yield chunk
+                        if has_yielded:
+                            return
+                    except Exception as e:
+                        logger.warning(f"Direct OpenAI ({oa_model}) stream error for news/search: {e}")
+
+            # B. OpenAI via OpenRouter API (gpt-4o / gpt-4o-mini)
+            if self.openrouter_api_key:
+                for or_oa_model in ["openai/gpt-4o", "openai/gpt-4o-mini"]:
+                    try:
+                        has_yielded = False
+                        async for chunk in self._stream_openai_compatible(
+                            url="https://openrouter.ai/api/v1/chat/completions",
+                            api_key=self.openrouter_api_key,
+                            model=or_oa_model,
+                            messages=messages,
+                            images=images,
+                            extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                        ):
+                            has_yielded = True
+                            yield chunk
+                        if has_yielded:
+                            return
+                    except Exception as e:
+                        logger.warning(f"OpenRouter OpenAI ({or_oa_model}) stream error for news/search: {e}")
+
+        # 2. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
             try:
                 has_yielded = False
@@ -296,12 +380,13 @@ class CloudLLMProvider:
                     formatted_messages[idx]["content"] = content_parts
                     break
 
+        tokens_limit = 1800 if "openrouter.ai" in url else 4096
         payload = {
             "model": model,
             "messages": formatted_messages,
             "stream": True,
             "temperature": 0.2,
-            "max_tokens": 4096
+            "max_tokens": tokens_limit
         }
 
         async with httpx.AsyncClient(timeout=60.0) as client:

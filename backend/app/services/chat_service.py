@@ -392,7 +392,12 @@ class ChatService:
         full_assistant_reply = ""
 
         try:
-            async for chunk in ollama_provider.stream_chat(underlying_model, formatted_messages, images=image_attachments):
+            async for chunk in ollama_provider.stream_chat(
+                underlying_model,
+                formatted_messages,
+                images=image_attachments,
+                is_search=is_search_active
+            ):
                 content = chunk.get("content", "")
                 done = chunk.get("done", False)
                 reasoning = chunk.get("reasoning_status")

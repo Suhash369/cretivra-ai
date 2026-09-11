@@ -133,7 +133,8 @@ class OllamaProvider(BaseLLMProvider):
         model: str,
         messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None,
-        images: Optional[List[Dict[str, Any]]] = None
+        images: Optional[List[Dict[str, Any]]] = None,
+        is_search: bool = False
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Streaming chat response generator with automatic high-speed Cloud LLM routing and multimodal vision.
@@ -141,9 +142,9 @@ class OllamaProvider(BaseLLMProvider):
         health = await self.health_check()
         if not health["available"]:
             if cloud_provider.has_keys():
-                logger.info(f"Ollama offline — streaming '{model}' via Cloud LLM Provider (with {len(images or [])} images)")
+                logger.info(f"Ollama offline — streaming '{model}' via Cloud LLM Provider (with {len(images or [])} images, is_search={is_search})")
                 has_yielded = False
-                async for chunk in cloud_provider.stream_chat(model, messages, images=images):
+                async for chunk in cloud_provider.stream_chat(model, messages, images=images, is_search=is_search):
                     has_yielded = True
                     yield chunk
                 if has_yielded:
@@ -183,7 +184,7 @@ class OllamaProvider(BaseLLMProvider):
                 async with client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response:
                     if response.status_code != 200:
                         if cloud_provider.has_keys():
-                            async for chunk in cloud_provider.stream_chat(model, messages, images=images):
+                            async for chunk in cloud_provider.stream_chat(model, messages, images=images, is_search=is_search):
                                 yield chunk
                             return
                         async for chunk in self._mock_stream_chat_response(model, messages, images=images):
@@ -212,7 +213,7 @@ class OllamaProvider(BaseLLMProvider):
         except Exception as e:
             logger.error(f"Ollama stream exception: {e}")
             if cloud_provider.has_keys():
-                async for chunk in cloud_provider.stream_chat(model, messages, images=images):
+                async for chunk in cloud_provider.stream_chat(model, messages, images=images, is_search=is_search):
                     yield chunk
                 return
             async for chunk in self._mock_stream_chat_response(model, messages, images=images):
