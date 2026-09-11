@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
-  Paperclip,
   Settings2,
   Plus,
   ChevronDown,
@@ -1611,15 +1610,6 @@ export function App() {
                     />
                   </div>
 
-                  {/* File Upload Button */}
-                  <button
-                    type="button"
-                    className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                    title="Attach file (PDF, Word, PowerPoint, CSV, Text, Images)"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Paperclip size={15} />
-                  </button>
                   <input
                     ref={fileInputRef}
                     type="file"
