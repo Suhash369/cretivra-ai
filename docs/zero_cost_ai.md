@@ -1,66 +1,63 @@
-# CRETIVRA AI — 100% Free ($0.00) AI Providers Guide
+# CRETIVRA AI — Zero-Cost ($0.00) AI Runtime Guide
 
-You do **NOT** need to pay any money or enter any credit card to run **CRETIVRA AI** at full ChatGPT intelligence.
+You do **NOT** need to pay any subscription or enter credit card information to run **CRETIVRA AI** at full frontier intelligence.
 
-Here are the 4 best **100% FREE ($0.00)** options with zero credit card required:
-
----
-
-## ⚡ Option 1: Groq API (100% Free, Lightning Fast, No Credit Card)
-
-[Groq](https://console.groq.com/) provides ultra-fast GPU inference for Llama 3.1 70B and DeepSeek R1 completely for free ($0.00).
-
-1. Sign up for free at [console.groq.com](https://console.groq.com/).
-2. Click **API Keys -> Create API Key** (No credit card needed).
-3. Copy your key and add it to `.env`:
-   ```env
-   GROQ_API_KEY=gsk_your_free_groq_key_here
-   ```
+Here are the dedicated runtime options with zero cost required:
 
 ---
 
-## ☁️ Option 2: Google AI Studio (100% Free Tier, No Credit Card)
+## 💻 Option 1: Local Cretivra Neural Core (100% Free Forever, Offline)
 
-Google AI Studio provides **Gemini 1.5 Flash** for free (1,500 requests per day) without requiring any billing or credit card.
-
-1. Go to [aistudio.google.com](https://aistudio.google.com/).
-2. Log in with any free Gmail account.
-3. Click **Get API Key -> Create API Key in new project**.
-4. Copy your key and add it to `.env`:
-   ```env
-   GEMINI_API_KEY=AIzaSy_your_free_key_here
-   ```
-
----
-
-## 🎮 Option 3: Google Colab T4 GPU Server (100% Free GPU)
-
-We built a free Colab GPU server script ([scratch/colab_ollama_server.py](file:///c:/Users/suhas/OneDrive/Desktop/cretivra%20ai/scratch/colab_ollama_server.py)) that runs Ollama on Google's free T4 GPU hardware.
-
-1. Open [Google Colab](https://colab.research.google.com/).
-2. Run our server script cell.
-3. Copy your public Ngrok URL into `.env`:
-   ```env
-   OLLAMA_BASE_URL=https://baritone-armory-appraisal.ngrok-free.dev
-   ```
-
----
-
-## 💻 Option 4: Local Ollama (100% Free Forever, Offline)
-
-Ollama runs open-source pre-trained models (`llama3.1`, `deepseek-r1`) directly on your computer's CPU/GPU with **zero internet, zero API keys, and $0.00 forever**.
+Cretivra AI runs directly on your computer's CPU/GPU with **zero internet required, zero API keys, and complete data privacy forever**.
 
 ```bash
-ollama pull llama3.1
+# Verify local Cretivra models:
+python -m app.services.model_registry
 ```
+
+---
+
+## ⚡ Option 2: High-Speed Hardware Accelerator (100% Free Tier)
+
+Connect high-speed dedicated acceleration hardware for sub-second responses:
+
+1. Obtain your accelerator key.
+2. Add it to `.env`:
+   ```env
+   ACCELERATOR_API_KEY=your_key_here
+   ```
+
+---
+
+## ☁️ Option 3: Cloud Multimodal Accelerator (100% Free Tier)
+
+Connect private cloud endpoints for 100+ page document ingestion and vision reasoning:
+
+1. Obtain your cloud inference key.
+2. Add it to `.env`:
+   ```env
+   CLOUD_INFERENCE_KEY=your_key_here
+   ```
+
+---
+
+## 🎮 Option 4: Dedicated GPU Cloud Node (Free GPU Hardware)
+
+Run the Cretivra Neural Core on remote GPU hardware:
+
+1. Launch your dedicated cloud GPU node.
+2. Configure the endpoint in `.env`:
+   ```env
+   CRETIVRA_ENGINE_URL=https://your-node-url.dev
+   ```
 
 ---
 
 ## 🎯 Summary
 
-| Provider | Model | Cost | Credit Card Required? |
+| Runtime Tier | Powered By | Cost | Privacy |
 | :--- | :--- | :--- | :--- |
-| **Groq API** | Llama 3.1 70B & DeepSeek R1 | **$0.00 Free** | ❌ No |
-| **Google AI Studio** | Gemini 1.5 Flash | **$0.00 Free** | ❌ No |
-| **Google Colab** | Ollama on T4 GPU | **$0.00 Free** | ❌ No |
-| **Local Ollama** | Llama 3.1 & DeepSeek R1 | **$0.00 Free** | ❌ No |
+| **Local Cretivra Core** | Cretivra Foundation Weights | **$0.00 Free** | 🔒 100% On-Device Air-gapped |
+| **Hardware Accelerator** | Cretivra High-Velocity Core | **$0.00 Free** | ⚡ Ultra-low latency |
+| **Multimodal Cloud** | Cretivra Multimodal Core | **$0.00 Free** | 📄 Long-context & Vision |
+| **Dedicated GPU Node** | Cretivra Cloud Neural Engine | **$0.00 Free** | 🚀 Dedicated GPU Compute |

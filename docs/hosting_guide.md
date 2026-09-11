@@ -1,37 +1,28 @@
 # CRETIVRA AI — Production Hosting & Deployment Guide
 
-This guide explains how to host **CRETIVRA AI** and configure local AI models (Ollama) so the application functions seamlessly as a private, ChatGPT-like platform.
+This guide explains how to host **CRETIVRA AI** and configure the Cretivra Neural Core so the application functions seamlessly as a private, frontier intelligence platform.
 
 ---
 
-## ⚡ Step 1: Make it Work Like ChatGPT (Local LLM Setup)
+## ⚡ Step 1: Initialize the Cretivra Neural Core
 
-By default, when Ollama is offline or no models are loaded, Cretivra AI operates in **Simulation / Safety Fallback Mode**. To get live AI answers just like ChatGPT:
+Cretivra AI delivers real-time AI responses through the unified Cretivra Model Registry:
 
-### 1. Start the Ollama Service
-Ensure Ollama is running on your machine:
+### 1. Verify Model Registry Status
 ```bash
-# Verify Ollama installation & status:
-ollama list
+# Verify Cretivra models status:
+python -m app.services.model_registry
 ```
-*(If Ollama is not installed, download it from [ollama.com](https://ollama.com)).*
 
-### 2. Pull Your Preferred Open-Source LLMs
-Run the following commands in your terminal to download models:
-
-```bash
-# 💬 Standard ChatGPT-like Conversational Model (Recommended):
-ollama pull llama3
-
-# 🔬 Deep Reasoning Model (For Cretivra Reason):
-ollama pull deepseek-r1
-
-# ⚡ High-Performance Code Model (For Cretivra Code):
-ollama pull qwen2.5-coder
-```
+### 2. Available Cretivra Foundation Models
+Cretivra AI automatically provisions model profiles:
+- **Cretivra 1**: Balanced conversational and everyday intelligence.
+- **Cretivra Reason**: Deep mathematical, reasoning, and logic engine.
+- **Cretivra Coder Pro**: Software engineering, architecture, and code analysis.
+- **Cretivra Omni 4**: Full multimodal vision and document intelligence.
 
 ### 3. Open Cretivra AI
-Go to `http://localhost:5173` (or your hosted domain). Cretivra AI automatically detects installed models and streams real-time AI responses!
+Go to `http://localhost:5173` (or your hosted domain). Cretivra AI automatically streams real-time AI responses!
 
 ---
 
@@ -90,22 +81,16 @@ To host Cretivra AI on a public cloud server with SSL HTTPS domain:
 #### 2. Install Dependencies
 ```bash
 sudo apt update && sudo apt install -y docker.exe docker-compose-plugin nginx certbot python3-certbot-nginx
-curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-#### 3. Pull LLM Models on VPS
-```bash
-ollama pull llama3
-```
-
-#### 4. Clone & Launch Cretivra AI
+#### 3. Clone & Launch Cretivra AI
 ```bash
 git clone <YOUR_GIT_REPO_URL>
 cd cretivra-ai
 docker-compose up --build -d
 ```
 
-#### 5. Configure Nginx Reverse Proxy & SSL
+#### 4. Configure Nginx Reverse Proxy & SSL
 Create `/etc/nginx/sites-available/cretivra`:
 ```nginx
 server {
@@ -130,7 +115,7 @@ sudo nginx -t && sudo systemctl reload nginx
 sudo certbot --nginx -d ai.yourdomain.com
 ```
 
-Now your private ChatGPT alternative is live at **`https://ai.yourdomain.com`**!
+Now your private Cretivra AI platform is live at **`https://ai.yourdomain.com`**!
 
 ---
 

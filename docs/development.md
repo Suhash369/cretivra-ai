@@ -3,7 +3,7 @@
 ## Prerequisites
 - Python 3.10+
 - Node.js 18+ & npm
-- Ollama (installed locally from https://ollama.com)
+- Cretivra AI Engine runtime
 
 ## Quickstart
 

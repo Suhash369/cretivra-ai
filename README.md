@@ -77,8 +77,8 @@ graph TD
     User["User Interface (React 19 + TS + Tailwind)"] -->|SSE Stream / REST| FastAPI["FastAPI Backend Engine"]
     FastAPI -->|Persistence| DB[(SQLite Database)]
     FastAPI -->|Resolve Model ID| Registry["CretivraModelRegistry"]
-    Registry -->|Map Underlying Name| Ollama["Ollama Local Service"]
-    Ollama -->|Inference| Model["Open Source LLM"]
+    Registry -->|Dynamic Routing| Core["Cretivra Neural Core"]
+    Core -->|Inference| Model["Cretivra Foundation Models"]
 ```
 
 ---
@@ -88,17 +88,12 @@ graph TD
 ### Prerequisites
 - [Python 3.10+](https://www.python.org/)
 - [Node.js 18+](https://nodejs.org/)
-- [Ollama](https://ollama.com/) installed and running locally
+- Cretivra AI Engine runtime
 
-### 1. Install & Pull Ollama Models
+### 1. Initialize Cretivra Neural Core
 ```bash
-# Pull recommended models:
-ollama pull llama3
-ollama pull llama3.1
-ollama pull deepseek-r1
-
-# Verify installed models:
-ollama list
+# Verify Cretivra models registry:
+python -m app.services.model_registry
 ```
 
 ### 2. Configure Backend
@@ -157,13 +152,13 @@ Access Cretivra AI at `http://localhost:8000`.
 
 - [User Authentication & Data Storage Architecture](docs/data_security.md)
 - [100% Free ($0.00) AI Providers Guide](docs/zero_cost_ai.md)
-- [ChatGPT-Level Model Fine-Tuning & Inference Guide](docs/model_training.md)
+- [Frontier Intelligence & Neural Optimization Guide](docs/model_training.md)
 - [100% Free Cloud Production Hosting (Vercel + Render + Supabase + Colab)](docs/cloud_architecture.md)
 - [Production Hosting & Deployment Guide](docs/hosting_guide.md)
 - [Frontend Design System & Components](docs/design_system.md)
 - [Architecture & Data Flow](docs/architecture.md)
 - [API Reference](docs/api.md)
 - [Model Registry Mapping](docs/models.md)
-- [Ollama Setup Guide](docs/ollama.md)
+- [Cretivra Engine Guide](docs/cretivra_engine.md)
 - [Development Guide](docs/development.md)
 - [Multi-Version Roadmap](docs/roadmap.md)

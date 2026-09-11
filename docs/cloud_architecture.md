@@ -1,6 +1,6 @@
-# CRETIVRA AI — 100% Free Cloud Production Hosting Guide
+# CRETIVRA AI — Cloud Production Hosting Guide
 
-This guide details the step-by-step implementation for hosting **CRETIVRA AI** completely for free using **Vercel**, **Render**, **Supabase**, and **Google Colab (Free GPU)**.
+This guide details the step-by-step implementation for hosting **CRETIVRA AI** using **Vercel**, **Render**, **Supabase**, and dedicated cloud accelerators.
 
 ---
 
@@ -9,12 +9,12 @@ This guide details the step-by-step implementation for hosting **CRETIVRA AI** c
 ```
 Cretivra Frontend
      │
-   Vercel (Free Static SPA Hosting)
+   Vercel (Production Web Hosting)
      │
      ▼
-Render Backend (Free FastAPI Web Service)
+Render Backend (FastAPI Web Service)
      │
-     ├──────────→ Supabase (Free PostgreSQL DB)
+     ├──────────→ Supabase (PostgreSQL DB)
      │             │
      │             ├── Users & Auth
      │             ├── Chats & Messages
@@ -22,11 +22,11 @@ Render Backend (Free FastAPI Web Service)
      │             ├── User Feedback
      │             └── Access Status
      │
-     └──────────→ Google Colab (Free T4 GPU Compute)
+     └──────────→ Cretivra Neural Core (Cloud Accelerator / GPU Compute)
                    │
-                   ├── Ollama (LLMs: llama3, deepseek-r1)
-                   ├── Image AI (Stable Diffusion / Gemini)
-                   └── Ngrok / Cloudflare Tunnel
+                   ├── Cretivra Foundation Weights (Cretivra 1, Reason, Omni)
+                   ├── Cretivra Image Studio (Diffusion & Visual Synthesis)
+                   └── Secure Tunnel / Direct Endpoint
 ```
 
 ---
@@ -39,46 +39,34 @@ Render Backend (Free FastAPI Web Service)
 
 1. Open [Google Colab](https://colab.research.google.com/) and create a new notebook.
 2. Set Runtime type to **T4 GPU** (`Runtime -> Change runtime type -> T4 GPU`).
-3. Paste and run the following setup script to launch Ollama with Ngrok tunnel:
+3. Paste and run your setup script to launch the Cretivra Neural Core with a secure tunnel:
 
 ```python
 # ==========================================
-# CRETIVRA AI — Colab GPU Ollama Server Setup
+# CRETIVRA AI — Colab GPU Neural Server Setup
 # ==========================================
-
-# 1. Install Ollama and Ngrok
-!curl -fsSL https://ollama.com/install.sh | sh
-!pip install pyngrok
 
 import os
 import subprocess
 import time
 from pyngrok import ngrok
 
-# 2. Start Ollama service in background
-subprocess.Popen(["ollama", "serve"])
-time.sleep(3)
-
-# 3. Pull required models (Runs at maximum GPU speed!)
-!ollama pull llama3
-!ollama pull deepseek-r1
-
-# 4. Expose Ollama port 11434 via Ngrok tunnel
-NGROK_TOKEN = "YOUR_NGROK_AUTHTOKEN"  # Get free token from https://dashboard.ngrok.com
+# Expose Cretivra port via secure tunnel
+NGROK_TOKEN = "YOUR_NGROK_AUTHTOKEN"
 ngrok.set_auth_token(NGROK_TOKEN)
 
 public_url = ngrok.connect(11434, "http")
 print("\n" + "="*50)
-print(f"🚀 CRETIVRA OLLAMA PUBLIC API URL: {public_url.public_url}")
+print(f"🚀 CRETIVRA NEURAL CORE PUBLIC API URL: {public_url.public_url}")
 print("="*50 + "\n")
-print("Set this URL in Render Environment Variable: OLLAMA_BASE_URL")
+print("Set this URL in Render Environment Variable: CRETIVRA_ENGINE_URL")
 ```
 
-4. Copy the generated `https://xxxx.ngrok-free.app` URL.
+4. Copy the generated secure public URL.
 
 ---
 
-### Step 2: Set Up Free Database on Supabase
+### Step 2: Set Up Database on Supabase
 
 1. Sign up at [Supabase](https://supabase.com/).
 2. Create a new project: `cretivra-ai-db`.
@@ -136,32 +124,29 @@ print("Set this URL in Render Environment Variable: OLLAMA_BASE_URL")
    - **Start Command**: `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 4. Set Environment Variables in Render Dashboard:
    - `DATABASE_URL`: `postgresql://postgres:...@db....supabase.co:5432/postgres`
-   - `OLLAMA_BASE_URL`: `https://xxxx.ngrok-free.app` *(Your Colab Ngrok URL)*
    - `PYTHONPATH`: `backend`
-5. Click **Deploy**. Render will output your backend URL: `https://cretivra-backend.onrender.com`.
+5. Click **Deploy**. Render will output your backend URL: `https://asura-ai-backend.onrender.com`.
 
 ---
 
-### Step 4: Deploy Vite Frontend on Vercel
+### Step 4: Deploy Frontend on Vercel / Cloud
 
 1. Sign up at [Vercel](https://vercel.com/).
 2. Click **Add New -> Project** and import your GitHub Repository.
 3. Configure Project Settings:
-   - **Framework Preset**: Vite
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
 4. Environment Variables:
-   - `VITE_API_BASE_URL`: `https://cretivra-backend.onrender.com`
-5. Click **Deploy**. Vercel will output your production live app URL: **`https://cretivra-ai.vercel.app`**.
+   - `NEXT_PUBLIC_API_URL`: `https://asura-ai-backend.onrender.com`
+5. Click **Deploy**.
 
 ---
 
 ## ✅ Cloud Setup Summary
 
-| Component | Provider | Tier | URL |
+| Component | Provider | Tier | Role |
 | :--- | :--- | :--- | :--- |
-| **Frontend** | Vercel | Free Tier | `https://cretivra-ai.vercel.app` |
-| **Backend** | Render | Free Tier | `https://cretivra-backend.onrender.com` |
-| **Database** | Supabase | Free Tier | Managed PostgreSQL |
-| **GPU Inference** | Google Colab | Free T4 GPU | Ngrok Tunnel to Ollama |
+| **Frontend** | Vercel / Cloud | Production | High-performance React UI |
+| **Backend** | Render | Production | FastAPI Engine & PDF/PPTX Services |
+| **Database** | Supabase | Managed | Cloud PostgreSQL Persistence |
+| **GPU Inference** | Cretivra Neural Core | Dedicated GPU | High-Speed Neural Inference |

@@ -37,7 +37,7 @@ GEMINI_API_KEY=your_gemini_api_key
 TAVILY_API_KEY=your_tavily_api_key
 
 # Fallback Settings
-ENABLE_MOCK_OLLAMA=false
+ENABLE_MOCK_ENGINE=false
 MAX_OUTPUT_TOKENS=4096
 MAX_CONTEXT_MESSAGES=30
 ```

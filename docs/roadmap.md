@@ -5,7 +5,7 @@ This document outlines the multi-version evolutionary roadmap for the Cretivra A
 ---
 
 ### VERSION 1 — Local-First Core Engine [CURRENT COMPLETED RELEASE]
-- [x] Local AI chat architecture powered by Ollama engine
+- [x] Local AI chat architecture powered by Cretivra Neural Core
 - [x] Cretivra Model Registry mapping layer (`cretivra-1`, `cretivra-reason`, etc.)
 - [x] Real-time SSE response streaming with stop generation
 - [x] Persistent SQLite database with conversation history & grouped date filtering
@@ -21,7 +21,7 @@ This document outlines the multi-version evolutionary roadmap for the Cretivra A
 ### VERSION 2 — Document Intelligence & RAG Engine
 - [ ] RAG architecture activation with ChromaDB vector store integration
 - [ ] Automated chunking strategies (semantic, fixed size, parent-child)
-- [ ] Local embedding generation via Ollama embedding models
+- [ ] Embedding generation via Cretivra neural embedding models
 - [ ] Document library & knowledge base management for chats
 
 ---

@@ -9,7 +9,7 @@
   {
     "status": "healthy",
     "backend": { "status": "connected", "name": "CRETIVRA AI", "version": "1.0.0" },
-    "ollama": { "status": "connected", "url": "http://localhost:11434", "installed_models_count": 2 },
+    "engine": { "status": "connected", "name": "Cretivra Neural Core", "installed_models_count": 8 },
     "database": { "status": "connected" },
     "models": { "total_registered": 8, "available_count": 8 }
   }
@@ -17,7 +17,7 @@
 
 ### Models Registry
 - **GET `/api/models`**: Lists all registered Cretivra models.
-- **PATCH `/api/models/{id}`**: Admin endpoint to re-map Cretivra model to a different underlying model.
+- **PATCH `/api/models/{id}`**: Admin endpoint to re-map Cretivra model tiers.
 
 ### Chat & Streaming
 - **POST `/api/chat/stream`**: Initiates SSE streaming response for prompt.
@@ -32,8 +32,10 @@
 - **PATCH `/api/conversations/{id}`**: Renames conversation title or changes model.
 - **DELETE `/api/conversations/{id}`**: Deletes conversation and attachments.
 
-### File Handling & Settings
+### File Handling & PDF Synthesis
 - **POST `/api/files/upload`**: Uploads PDF, DOCX, TXT, CSV, MD, PNG, JPG, WEBP files up to 20MB.
+- **POST `/api/files/export-pdf`**: Synthesizes a publication-grade PDF document with running headers, footers, and tables.
+- **GET `/api/files/download/{filename}`**: Downloads generated PDF and PPTX documents.
 - **GET `/api/settings`**: Retrieves system configuration.
 - **PATCH `/api/settings`**: Updates default model, temperature, max context messages.
 - **POST `/api/settings/clear-conversations`**: Clears all local conversation data.
