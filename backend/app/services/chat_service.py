@@ -370,14 +370,23 @@ class ChatService:
         if live_web_context:
             user_orig_q = formatted_messages[-1]["content"]
             is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|happening|global|latest)\b", str(user_orig_q), re.IGNORECASE))
-            if is_news:
+            is_whereabouts = bool(re.search(r"\b(where is|where are|currently|today|now|location|schedule|travel|visit|whereabouts)\b", str(user_orig_q), re.IGNORECASE))
+
+            if is_whereabouts:
+                directive = (
+                    "Directive: Answer the question factually and accurately using the verified real-time cache above. "
+                    "CRITICAL: Always prioritize the most recent chronological updates, latest dates (such as September 10-11, 2026), "
+                    "official travel departures, and overseas visits over previous days' activities or older routines. "
+                    "Clearly state the exact current location and the reason for the visit."
+                )
+            elif is_news:
                 directive = (
                     "Directive: Provide a comprehensive, highly organized World News & Current Affairs briefing based on the verified intelligence cache above. "
                     "Structure your answer with clear section headings (such as Top Global Headlines, Geopolitics & Diplomacy, Global Economy & Markets, Regional Developments). "
                     "Detail the verified events, key figures, dates, and significance clearly. Never state that your knowledge is outdated."
                 )
             else:
-                directive = "Directive: Answer the question directly, comprehensively, and factually using the verified cache facts above."
+                directive = "Directive: Answer the question directly, comprehensively, and factually using the latest verified cache facts above."
 
             formatted_messages[-1]["content"] = (
                 f"Question: {user_orig_q}\n\n"

@@ -97,9 +97,25 @@ class WebSearchService:
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
         if tavily_key:
             try:
-                tavily_res = await self._search_tavily(clean_q, tavily_key, max_results=max_results)
-                if tavily_res:
-                    res_str = "\n".join(tavily_res[:max_results])
+                is_temporal = bool(re.search(r"\b(where is|where are|currently|today|now|schedule|travel|visit|whereabouts|latest|breaking|happening|status of)\b", clean_q, re.IGNORECASE))
+                queries_to_run = [clean_q]
+                if is_temporal:
+                    queries_to_run.append(f"{clean_q} latest schedule travel visit news today September 2026")
+
+                search_tasks = [self._search_tavily(q, tavily_key, max_results=max_results) for q in queries_to_run]
+                results_lists = await asyncio.gather(*search_tasks, return_exceptions=True)
+
+                combined = []
+                seen_titles = set()
+                for res_list in results_lists:
+                    if isinstance(res_list, list):
+                        for r in res_list:
+                            dedup_key = r[:40].lower()
+                            if dedup_key not in seen_titles:
+                                seen_titles.add(dedup_key)
+                                combined.append(r)
+                if combined:
+                    res_str = "\n".join(combined[:max_results + 3])
                     self._CACHE[cache_key] = (now, res_str)
                     return res_str
             except Exception as e:
@@ -168,13 +184,13 @@ class WebSearchService:
 
     async def _search_tavily(self, query: str, api_key: str, max_results: int = 6) -> List[str]:
         url = "https://api.tavily.com/search"
-        is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|global|geopolitics|war|conflict|election|minister|president|brics)\b", query, re.IGNORECASE))
+        is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|global|geopolitics|war|conflict|election|minister|president|brics|cm|pm)\b", query, re.IGNORECASE))
         target_count = 8 if is_news else max_results
         payload = {
             "api_key": api_key,
             "query": query,
             "search_depth": "advanced" if is_news else "basic",
-            "include_answer": True,
+            "include_answer": False,
             "max_results": target_count
         }
         if is_news:
@@ -186,8 +202,6 @@ class WebSearchService:
             if res.status_code == 200:
                 data = res.json()
                 results = []
-                if data.get("answer"):
-                    results.append(f"• Verified Key Summary: {data['answer']}")
                 for r in data.get("results", [])[:target_count]:
                     title = r.get("title", "").strip()
                     content = r.get("content", "").strip()[:240].replace("\n", " ")
