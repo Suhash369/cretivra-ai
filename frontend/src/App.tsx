@@ -702,6 +702,251 @@ export function App() {
 
   const isLanding = messages.length === 0;
 
+  const renderComposer = (isCenter: boolean = false) => {
+    return (
+      <div className={`w-full ${isCenter ? 'relative' : ''}`}>
+        {!user ? (
+          <div className={isCenter ? 'relative w-full group' : ''}>
+            {isCenter && <div className="cv-search-glow-aura" />}
+            <div
+              className={`relative z-10 p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-900 border-2 ${
+                isCenter ? 'border-cyan-500/30 dark:border-cyan-500/40 shadow-2xl' : 'border-slate-200 dark:border-gray-800 shadow-md'
+              } flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Sign in to use Asura AI models</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">Sign in to access models, web search, reasoning, and save your private chat history.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-95 text-white text-xs font-semibold shadow-sm transition-all shrink-0 cursor-pointer"
+              >
+                Sign In to Start
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className={isCenter ? 'relative w-full group' : ''}>
+            {isCenter && <div className="cv-search-glow-aura" />}
+            <div
+              className={`relative z-10 rounded-2xl bg-white dark:bg-gray-900 border-2 transition-all ${
+                isCurrentImg
+                  ? 'border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500'
+                  : isCenter
+                  ? 'border-cyan-500/35 dark:border-cyan-500/40 focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-4 focus-within:ring-cyan-500/15 dark:focus-within:ring-cyan-400/15 shadow-xl'
+                  : 'border-slate-300 dark:border-gray-800 focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 shadow-lg'
+              } p-3 sm:p-3.5`}
+            >
+              {/* ChatGPT-style live response status banner */}
+              {isGenerating && (
+                <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
+                    </span>
+                    <span className="font-medium text-xs">
+                      {deepThinkEnabled ? 'Asura DeepThink reasoning in progress...' : webSearchEnabled ? 'Searching real-time cache and formulating answer...' : 'Asura AI is responding...'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] border border-rose-500/30 cursor-pointer transition-colors"
+                  >
+                    <Square size={10} fill="currentColor" />
+                    <span>Stop</span>
+                  </button>
+                </div>
+              )}
+              {/* Attachment preview chips */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
+                  {attachments.map((att) => {
+                    const isImg = att.mime_type.startsWith('image/');
+                    const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
+                    return (
+                      <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
+                        {isImg && att.data_url ? (
+                          <img src={att.data_url} alt="" className="w-4 h-4 rounded object-cover" />
+                        ) : isImg ? (
+                          <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" />
+                        ) : isPpt ? (
+                          <Presentation size={12} className="text-orange-500 dark:text-orange-400" />
+                        ) : (
+                          <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />
+                        )}
+                        <span className="truncate max-w-[120px]">{att.filename}</span>
+                        <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <textarea
+                ref={textareaRef}
+                rows={isCenter ? 2 : 1}
+                placeholder={
+                  isCurrentImg
+                    ? `Prompt visual with ${currentModelObj.display_name}...`
+                    : webSearchEnabled
+                    ? 'Ask anything with live web intelligence...'
+                    : deepThinkEnabled
+                    ? 'Message with deep reasoning activated...'
+                    : 'Message Asura AI by Cretivra...'
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none max-h-52 leading-relaxed"
+              />
+
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
+                <div className="flex items-center gap-1.5">
+                  {/* ChatGPT-Style Action Menu (+) Button */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setActionMenuOpen(!actionMenuOpen)}
+                      className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                        actionMenuOpen
+                          ? 'bg-cyan-600 text-white border-cyan-500 shadow-md rotate-45'
+                          : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-gray-800/90 hover:bg-slate-200 dark:hover:bg-gray-700 border-slate-300 dark:border-gray-700/60'
+                      }`}
+                      title="Add photos, files, presentations, sketches, or tools"
+                    >
+                      <Plus size={16} className="transition-transform duration-200" />
+                    </button>
+
+                    <ActionMenu
+                      isOpen={actionMenuOpen}
+                      onClose={() => setActionMenuOpen(false)}
+                      onUploadFile={() => fileInputRef.current?.click()}
+                      onOpenLibrary={() => setLibraryModalOpen(true)}
+                      onOpenImageStudio={() => setImageStudioOpen(true)}
+                      onCreateImage={() => {
+                        setInput('Create an image of ');
+                        textareaRef.current?.focus();
+                      }}
+                      onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                      webSearchActive={webSearchEnabled}
+                      onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                      deepThinkActive={deepThinkEnabled}
+                      onCreatePresentation={() => {
+                        setInput('Create a 5-slide presentation on ');
+                        textareaRef.current?.focus();
+                      }}
+                      onCreatePdf={() => {
+                        setInput('Generate a comprehensive PDF document for ');
+                        textareaRef.current?.focus();
+                      }}
+                      onOpenSketch={() => setSketchModalOpen(true)}
+                      onVisualizeData={() => {
+                        setInput('Create an interactive chart and visualization for ');
+                        textareaRef.current?.focus();
+                      }}
+                      onOpenGitHub={() => {
+                        setInput('Analyze GitHub repository code and summarize recent commit changes.');
+                        textareaRef.current?.focus();
+                      }}
+                    />
+                  </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        Array.from(e.target.files).forEach((file) => handleFileUpload(file));
+                        e.target.value = '';
+                      }
+                    }}
+                    accept=".pdf,.docx,.pptx,.ppt,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
+                  />
+
+                  {/* Web Search Toggle (Perplexity-style) */}
+                  <button
+                    type="button"
+                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                      webSearchEnabled
+                        ? 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border-cyan-400 dark:border-cyan-500/50 shadow-sm'
+                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
+                    }`}
+                    title={webSearchEnabled ? 'Web search enabled' : 'Toggle real-time web intelligence'}
+                  >
+                    <Globe size={12} className={webSearchEnabled ? 'text-cyan-600 dark:text-cyan-400 animate-pulse' : ''} />
+                    <span>Search</span>
+                  </button>
+
+                  {/* Deep Reasoning Toggle (Claude / DeepSeek style) */}
+                  <button
+                    type="button"
+                    onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
+                      deepThinkEnabled
+                        ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/50 shadow-sm'
+                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
+                    }`}
+                    title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep step-by-step reasoning'}
+                  >
+                    <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
+                    <span>DeepThink</span>
+                  </button>
+
+                  {/* Image Studio Quick Opener */}
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
+                    title="Open AI Image Studio"
+                    onClick={() => setImageStudioOpen(true)}
+                  >
+                    <Palette size={15} />
+                  </button>
+                </div>
+
+                {/* Send or Stop Generation Button */}
+                <button
+                  type="button"
+                  className={`p-2 rounded-xl text-white transition-all cursor-pointer flex items-center justify-center ${
+                    isGenerating
+                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/30'
+                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
+                  }`}
+                  disabled={!isGenerating && !input.trim() && attachments.length === 0}
+                  onClick={() => (isGenerating ? stopGeneration() : handleSend())}
+                  title={isGenerating ? 'Stop generating' : 'Send message'}
+                >
+                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={15} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
+          {isCurrentImg
+            ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
+            : webSearchEnabled
+            ? 'Real-time intelligence cache synchronized with 2026 facts.'
+            : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-screen w-screen bg-[var(--bg-base)] text-[var(--text)] overflow-hidden font-sans relative">
       {/* Background Ambient Glowing Orbs */}
@@ -1176,43 +1421,54 @@ export function App() {
           onTouchMove={handleUserTouchMove}
         >
           {isLanding ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto">
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
               <div className="mb-4">
                 <CretivraMark size={52} />
               </div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
                 {userDisplayName ? `What can I help with today, ${userDisplayName}?` : 'What can I help with today?'}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-8 max-w-md">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md">
                 Frontier intelligence engineered for reasoning, deep search, and creative multimodal generation.
               </p>
 
-              {/* Suggestion Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full text-left">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s.title}
-                    className="p-4 rounded-2xl bg-white dark:bg-gray-900/80 border border-slate-200 dark:border-gray-800 hover:border-cyan-500/60 dark:hover:border-cyan-500/40 hover:bg-slate-50 dark:hover:bg-gray-800/60 transition-all cursor-pointer shadow-sm hover:shadow-md group"
-                    onClick={() => {
-                      if (!user) {
-                        setAuthOpen(true);
-                        return;
-                      }
-                      if (s.title === 'Generate an AI Image') {
-                        setSelectedModel('cretivra-flux');
-                      }
-                      handleSend(s.prompt);
-                    }}
-                  >
-                    <s.icon size={18} className={s.title === 'Generate an AI Image' ? 'text-purple-500 mb-2' : 'text-cyan-600 dark:text-cyan-400 mb-2'} />
-                    <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                      {s.title}
-                    </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                      {s.sub}
-                    </div>
-                  </button>
-                ))}
+              {/* Options above search bar, aligned to the left as animated buttons */}
+              <div className="w-full mb-3 text-left">
+                <div className="flex items-center justify-start gap-2 flex-wrap">
+                  {SUGGESTIONS.map((s, idx) => (
+                    <button
+                      key={s.title}
+                      style={{ animationDelay: `${idx * 75}ms` }}
+                      className="cv-option-button group flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/90 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-800 hover:border-cyan-500/60 dark:hover:border-cyan-500/50 hover:bg-cyan-50/50 dark:hover:bg-gray-800/90 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white shadow-xs hover:shadow-md hover:shadow-cyan-500/10 cursor-pointer text-xs font-medium"
+                      onClick={() => {
+                        if (!user) {
+                          setAuthOpen(true);
+                          return;
+                        }
+                        if (s.title === 'Generate an AI Image') {
+                          setSelectedModel('cretivra-flux');
+                        }
+                        handleSend(s.prompt);
+                      }}
+                      title={s.sub}
+                    >
+                      <s.icon
+                        size={14}
+                        className={
+                          s.title === 'Generate an AI Image'
+                            ? 'text-purple-500 group-hover:scale-110 transition-transform'
+                            : 'text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform'
+                        }
+                      />
+                      <span>{s.title}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Central Search Bar with Glowing Aura Animation */}
+              <div className="w-full text-left">
+                {renderComposer(true)}
               </div>
             </div>
           ) : (
@@ -1491,229 +1747,12 @@ export function App() {
           )}
         </div>
 
-        {/* Anchored Composer Area (Always visible, shrink-0) */}
-        <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent">
-          {!user ? (
-            <div className="p-4 rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-200 dark:border-gray-800 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <Lock size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Sign in to use Asura AI models</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Sign in to access models, web search, reasoning, and save your private chat history.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setAuthOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-95 text-white text-xs font-semibold shadow-sm transition-all shrink-0 cursor-pointer"
-              >
-                Sign In to Start
-              </button>
-            </div>
-          ) : (
-            <div className={`relative rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 p-3 shadow-lg focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 transition-all ${isCurrentImg ? 'border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500' : ''}`}>
-              {/* ChatGPT-style live response status banner */}
-              {isGenerating && (
-                <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
-                    </span>
-                    <span className="font-medium text-xs">
-                      {deepThinkEnabled ? 'Asura DeepThink reasoning in progress...' : webSearchEnabled ? 'Searching real-time cache and formulating answer...' : 'Asura AI is responding...'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={stopGeneration}
-                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] border border-rose-500/30 cursor-pointer transition-colors"
-                  >
-                    <Square size={10} fill="currentColor" />
-                    <span>Stop</span>
-                  </button>
-                </div>
-              )}
-              {/* Attachment preview chips */}
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
-                  {attachments.map((att) => {
-                    const isImg = att.mime_type.startsWith('image/');
-                    const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
-                    return (
-                      <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
-                        {isImg && att.data_url ? (
-                          <img src={att.data_url} alt="" className="w-4 h-4 rounded object-cover" />
-                        ) : isImg ? (
-                          <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" />
-                        ) : isPpt ? (
-                          <Presentation size={12} className="text-orange-500 dark:text-orange-400" />
-                        ) : (
-                          <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />
-                        )}
-                        <span className="truncate max-w-[120px]">{att.filename}</span>
-                        <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                placeholder={
-                  isCurrentImg
-                    ? `Prompt visual with ${currentModelObj.display_name}...`
-                    : webSearchEnabled
-                    ? 'Ask anything with live web intelligence...'
-                    : deepThinkEnabled
-                    ? 'Message with deep reasoning activated...'
-                    : 'Message Asura AI by Cretivra...'
-                }
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                className="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none max-h-52 leading-relaxed"
-              />
-
-              <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
-                <div className="flex items-center gap-1.5">
-                  {/* ChatGPT-Style Action Menu (+) Button */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setActionMenuOpen(!actionMenuOpen)}
-                      className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                        actionMenuOpen
-                          ? 'bg-cyan-600 text-white border-cyan-500 shadow-md rotate-45'
-                          : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-gray-800/90 hover:bg-slate-200 dark:hover:bg-gray-700 border-slate-300 dark:border-gray-700/60'
-                      }`}
-                      title="Add photos, files, presentations, sketches, or tools"
-                    >
-                      <Plus size={16} className="transition-transform duration-200" />
-                    </button>
-
-                    <ActionMenu
-                      isOpen={actionMenuOpen}
-                      onClose={() => setActionMenuOpen(false)}
-                      onUploadFile={() => fileInputRef.current?.click()}
-                      onOpenLibrary={() => setLibraryModalOpen(true)}
-                      onOpenImageStudio={() => setImageStudioOpen(true)}
-                      onCreateImage={() => {
-                        setInput('Create an image of ');
-                        textareaRef.current?.focus();
-                      }}
-                      onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-                      webSearchActive={webSearchEnabled}
-                      onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                      deepThinkActive={deepThinkEnabled}
-                      onCreatePresentation={() => {
-                        setInput('Create a 5-slide presentation on ');
-                        textareaRef.current?.focus();
-                      }}
-                      onCreatePdf={() => {
-                        setInput('Generate a comprehensive PDF document for ');
-                        textareaRef.current?.focus();
-                      }}
-                      onOpenSketch={() => setSketchModalOpen(true)}
-                      onVisualizeData={() => {
-                        setInput('Create an interactive chart and visualization for ');
-                        textareaRef.current?.focus();
-                      }}
-                      onOpenGitHub={() => {
-                        setInput('Analyze GitHub repository code and summarize recent commit changes.');
-                        textareaRef.current?.focus();
-                      }}
-                    />
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        Array.from(e.target.files).forEach((file) => handleFileUpload(file));
-                        e.target.value = '';
-                      }
-                    }}
-                    accept=".pdf,.docx,.pptx,.ppt,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
-                  />
-
-                  {/* Web Search Toggle (Perplexity-style) */}
-                  <button
-                    type="button"
-                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                      webSearchEnabled
-                        ? 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border-cyan-400 dark:border-cyan-500/50 shadow-sm'
-                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
-                    }`}
-                    title={webSearchEnabled ? 'Web search enabled' : 'Toggle real-time web intelligence'}
-                  >
-                    <Globe size={12} className={webSearchEnabled ? 'text-cyan-600 dark:text-cyan-400 animate-pulse' : ''} />
-                    <span>Search</span>
-                  </button>
-
-                  {/* Deep Reasoning Toggle (Claude / DeepSeek style) */}
-                  <button
-                    type="button"
-                    onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                      deepThinkEnabled
-                        ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/50 shadow-sm'
-                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
-                    }`}
-                    title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep step-by-step reasoning'}
-                  >
-                    <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
-                    <span>DeepThink</span>
-                  </button>
-
-                  {/* Image Studio Quick Opener */}
-                  <button
-                    type="button"
-                    className="p-1.5 rounded-lg text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors cursor-pointer"
-                    title="Open AI Image Studio"
-                    onClick={() => setImageStudioOpen(true)}
-                  >
-                    <Palette size={15} />
-                  </button>
-                </div>
-
-                {/* Send or Stop Generation Button */}
-                <button
-                  type="button"
-                  className={`p-2 rounded-xl text-white transition-all cursor-pointer flex items-center justify-center ${
-                    isGenerating
-                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/30'
-                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
-                  }`}
-                  disabled={!isGenerating && !input.trim() && attachments.length === 0}
-                  onClick={() => (isGenerating ? stopGeneration() : handleSend())}
-                  title={isGenerating ? 'Stop generating' : 'Send message'}
-                >
-                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={15} />}
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
-            {isCurrentImg
-              ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
-              : webSearchEnabled
-              ? 'Real-time intelligence cache synchronized with 2026 facts.'
-              : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
+        {/* Anchored Composer Area (Only visible during active conversation) */}
+        {!isLanding && (
+          <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent animate-in fade-in duration-200">
+            {renderComposer(false)}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modals */}

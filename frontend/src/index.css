@@ -916,6 +916,77 @@ body.dark .katex {
   animation: cv-pulse-ring 3s ease-in-out infinite;
 }
 
+/* Better Glowing Search Bar Animation */
+@keyframes cv-glow-pulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(1);
+    filter: blur(20px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.02);
+    filter: blur(28px);
+  }
+}
+
+@keyframes cv-glow-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.cv-search-glow-aura {
+  position: absolute;
+  inset: -6px;
+  border-radius: 28px;
+  background: linear-gradient(125deg, rgba(6, 182, 212, 0.65), rgba(139, 92, 246, 0.65), rgba(236, 72, 153, 0.45), rgba(59, 130, 246, 0.6));
+  background-size: 250% 250%;
+  animation: cv-glow-pulse 4s ease-in-out infinite, cv-glow-shift 8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+html.light .cv-search-glow-aura,
+body.light .cv-search-glow-aura,
+:root[data-theme="light"] .cv-search-glow-aura {
+  background: linear-gradient(125deg, rgba(6, 182, 212, 0.4), rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.3), rgba(59, 130, 246, 0.35));
+  background-size: 250% 250%;
+  opacity: 0.6;
+}
+
+/* Micro-animations for Option Buttons */
+@keyframes cv-option-entrance {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.cv-option-button {
+  animation: cv-option-entrance 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cv-option-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px -2px rgba(6, 182, 212, 0.25);
+}
+
+.cv-option-button:active {
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor, .animate-float-slow, .animate-scan-beam, .animate-pulse-ring { animation: none !important; }
+  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor, .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button { animation: none !important; }
 }
