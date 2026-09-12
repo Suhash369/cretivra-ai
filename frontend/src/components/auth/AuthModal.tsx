@@ -8,10 +8,15 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: any, token: string, isNewRegistration?: boolean) => void;
+  initialTab?: "login" | "register";
 }
 
-export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
-  const [tab, setTab] = useState<"login" | "register">("login");
+export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login" }: AuthModalProps) {
+  const [tab, setTab] = useState<"login" | "register">(initialTab);
+
+  React.useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab, isOpen]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");

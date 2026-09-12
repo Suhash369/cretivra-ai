@@ -15,7 +15,9 @@ export function SiteLayoutWrapper({
   footer,
 }: SiteLayoutWrapperProps) {
   const pathname = usePathname();
-  const isStudioOnly =
+  const isCleanCanvas =
+    pathname === '/' ||
+    pathname === '/ai-agents' ||
     pathname === '/studio' ||
     pathname === '/chat' ||
     pathname === '/test-bench' ||
@@ -23,8 +25,8 @@ export function SiteLayoutWrapper({
     pathname?.startsWith('/chat/') ||
     pathname?.startsWith('/test-bench/');
 
-  if (isStudioOnly) {
-    return <main className="h-[100dvh] w-full max-h-[100dvh] overflow-hidden">{children}</main>;
+  if (isCleanCanvas) {
+    return <main className="w-full min-h-screen">{children}</main>;
   }
 
   return (

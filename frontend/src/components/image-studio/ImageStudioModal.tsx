@@ -110,7 +110,24 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [fullscreenImage, isOpen, onClose]);
 
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [isDescribing, setIsDescribing] = useState(false);
+  const referenceInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
+
+  const handleReferenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setReferenceFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setReferenceImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleEnhancePrompt = async () => {
     if (!prompt.trim() || isEnhancing) return;
@@ -126,23 +143,6 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
     } finally {
       setIsEnhancing(false);
     }
-  };
-
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
-  const [isDescribing, setIsDescribing] = useState(false);
-  const referenceInputRef = useRef<HTMLInputElement>(null);
-
-  const handleReferenceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setReferenceFile(file);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setReferenceImage(event.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
   const handleDescribeReference = async () => {

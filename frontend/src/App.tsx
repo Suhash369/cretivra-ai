@@ -246,6 +246,29 @@ export function App() {
     }
   }, []);
 
+  // Listen for tasks queued from Manus Landing Page
+  useEffect(() => {
+    try {
+      const queuedPrompt = sessionStorage.getItem('asura_initial_prompt');
+      if (queuedPrompt) {
+        sessionStorage.removeItem('asura_initial_prompt');
+        const initialAttsStr = sessionStorage.getItem('asura_initial_attachments');
+        if (initialAttsStr) {
+          sessionStorage.removeItem('asura_initial_attachments');
+          try {
+            const parsed = JSON.parse(initialAttsStr);
+            if (Array.isArray(parsed)) {
+              parsed.forEach((att: Attachment) => attachExisting(att));
+            }
+          } catch {}
+        }
+        setTimeout(() => {
+          sendMessage(queuedPrompt);
+        }, 150);
+      }
+    } catch {}
+  }, [sendMessage, attachExisting]);
+
   // Listen for direct URL requests to open Image Studio (?studio=image or #image-studio)
   useEffect(() => {
     if (typeof window === 'undefined') return;
