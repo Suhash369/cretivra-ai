@@ -40,6 +40,10 @@ import {
   Globe,
   Menu,
   Lock,
+  Gamepad2,
+  Palette,
+  LineChart,
+  Zap,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -51,6 +55,9 @@ import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
+import { SlideGeneratorModal } from './components/landing/SlideGeneratorModal';
+import { WebsiteGeneratorModal } from './components/landing/WebsiteGeneratorModal';
+import { GameCreatorModal } from './components/landing/GameCreatorModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
@@ -184,6 +191,11 @@ export function App() {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [sketchModalOpen, setSketchModalOpen] = useState(false);
   const [libraryModalOpen, setLibraryModalOpen] = useState(false);
+  const [slideModalOpen, setSlideModalOpen] = useState(false);
+  const [websiteModalOpen, setWebsiteModalOpen] = useState(false);
+  const [gameModalOpen, setGameModalOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom state
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -232,6 +244,17 @@ export function App() {
   useEffect(() => {
     const cleanup = initTheme();
     return cleanup;
+  }, []);
+
+  // Close more menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Check if first-time visitor to display onboarding tour
@@ -728,43 +751,17 @@ export function App() {
   const renderComposer = (isCenter: boolean = false) => {
     return (
       <div className={`w-full ${isCenter ? 'relative' : ''}`}>
-        {!user ? (
-          <div className={isCenter ? 'relative w-full group' : ''}>
-            {isCenter && <div className="cv-search-glow-aura" />}
-            <div
-              className={`relative z-10 p-4 sm:p-5 rounded-2xl bg-white dark:bg-gray-900 border-2 ${
-                isCenter ? 'border-cyan-500/30 dark:border-cyan-500/40 shadow-2xl' : 'border-slate-200 dark:border-gray-800 shadow-md'
-              } flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left transition-all`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-sm">
-                  <Lock size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">Sign in to use Asura AI models</h4>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">Sign in to access models, web search, reasoning, and save your private chat history.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setAuthOpen(true)}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-95 text-white text-xs font-semibold shadow-sm transition-all shrink-0 cursor-pointer"
-              >
-                Sign In to Start
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className={isCenter ? 'relative w-full group' : ''}>
-            {isCenter && <div className="cv-search-glow-aura" />}
-            <div
-              className={`relative z-10 rounded-2xl bg-white dark:bg-gray-900 border-2 transition-all ${
-                isCurrentImg
-                  ? 'border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500'
-                  : isCenter
-                  ? 'border-cyan-500/35 dark:border-cyan-500/40 focus-within:border-cyan-500 dark:focus-within:border-cyan-400 focus-within:ring-4 focus-within:ring-cyan-500/15 dark:focus-within:ring-cyan-400/15 shadow-xl'
-                  : 'border-slate-300 dark:border-gray-800 focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 shadow-lg'
-              } p-3 sm:p-3.5`}
-            >
+        <div className={isCenter ? 'relative w-full group' : ''}>
+          {isCenter && <div className="cv-search-glow-aura" />}
+          <div
+            className={`relative z-10 transition-all ${
+              isCenter
+                ? 'rounded-[28px] bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)] focus-within:border-slate-400 dark:focus-within:border-gray-600 focus-within:shadow-[0_12px_36px_rgb(0,0,0,0.09)] p-4 sm:p-5'
+                : isCurrentImg
+                ? 'rounded-2xl bg-white dark:bg-gray-900 border-2 border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500 p-3 sm:p-3.5'
+                : 'rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 shadow-lg p-3 sm:p-3.5'
+            }`}
+          >
               {/* ChatGPT-style live response status banner */}
               {isGenerating && (
                 <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
@@ -816,7 +813,9 @@ export function App() {
                 ref={textareaRef}
                 rows={isCenter ? 2 : 1}
                 placeholder={
-                  isCurrentImg
+                  isCenter
+                    ? 'Assign a task or ask anything'
+                    : isCurrentImg
                     ? `Prompt visual with ${currentModelObj.display_name}...`
                     : webSearchEnabled
                     ? 'Ask anything with live web intelligence...'
@@ -832,7 +831,9 @@ export function App() {
                     handleSend();
                   }
                 }}
-                className="w-full bg-transparent text-sm text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none max-h-52 leading-relaxed"
+                className={`w-full bg-transparent text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none leading-relaxed ${
+                  isCenter ? 'text-base sm:text-[17px] min-h-[70px] max-h-60' : 'text-sm max-h-52'
+                }`}
               />
 
               <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
@@ -934,21 +935,26 @@ export function App() {
                 {/* Send or Stop Generation Button */}
                 <button
                   type="button"
-                  className={`p-2 rounded-xl text-white transition-all cursor-pointer flex items-center justify-center ${
+                  className={`transition-all cursor-pointer flex items-center justify-center ${
+                    isCenter ? 'w-9 h-9 rounded-full' : 'p-2 rounded-xl text-white'
+                  } ${
                     isGenerating
-                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/30'
-                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
+                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md text-white'
+                      : isCenter
+                      ? input.trim() || attachments.length > 0
+                        ? 'bg-[#18181b] hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-gray-950 shadow-sm scale-100'
+                        : 'bg-slate-100 dark:bg-gray-800 text-slate-400 dark:text-gray-600 cursor-not-allowed scale-95'
+                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed text-white'
                   }`}
                   disabled={!isGenerating && !input.trim() && attachments.length === 0}
                   onClick={() => (isGenerating ? stopGeneration() : handleSend())}
-                  title={isGenerating ? 'Stop generating' : 'Send message'}
+                  title={isGenerating ? 'Stop generating' : 'Send message (Enter)'}
                 >
-                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={15} />}
+                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={isCenter ? 18 : 15} />}
                 </button>
               </div>
             </div>
           </div>
-        )}
         <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
           {isCurrentImg
             ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
@@ -1425,46 +1431,124 @@ export function App() {
         >
           {isLanding ? (
             <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
-              <div className="mb-4">
-                <CretivraMark size={52} />
+              {/* Announcement pill matching Manus interface */}
+              <div className="mb-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors select-none">
+                <span>Asura has resumed independent operations. Our next chapter starts now.</span>
+                <span>→</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
-                {userDisplayName ? `What can I help with today, ${userDisplayName}?` : 'What can I help with today?'}
+
+              {/* Title: What can I do for you? in elegant serif */}
+              <h1 className="font-manus-serif text-4xl sm:text-5xl lg:text-[54px] font-normal text-slate-900 dark:text-white tracking-tight text-center mb-8 select-none leading-tight">
+                What can I do for you?
               </h1>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-md">
-                Frontier intelligence engineered for reasoning, deep search, and creative multimodal generation.
-              </p>
 
-              {/* Options above search bar, aligned to the left as animated buttons */}
-              <div className="w-full mb-3 text-left">
-                <div className="flex items-center justify-start gap-2 flex-wrap">
-                  {SUGGESTIONS.map((s, idx) => (
-                    <button
-                      key={s.title}
-                      style={{ animationDelay: `${idx * 75}ms` }}
-                      className="cv-option-button group flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/90 dark:bg-gray-900/90 border border-slate-200 dark:border-gray-800 hover:border-cyan-500/60 dark:hover:border-cyan-500/50 hover:bg-cyan-50/50 dark:hover:bg-gray-800/90 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white shadow-xs hover:shadow-md hover:shadow-cyan-500/10 cursor-pointer text-xs font-medium"
-                      onClick={() => {
-                        if (!user) {
-                          setAuthOpen(true);
-                          return;
-                        }
-                        handleSend(s.prompt);
-                      }}
-                      title={s.sub}
-                    >
-                      <s.icon
-                        size={14}
-                        className="text-cyan-600 dark:text-cyan-400 group-hover:scale-110 transition-transform"
-                      />
-                      <span>{s.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Central Search Bar with Glowing Aura Animation */}
+              {/* Central Search Bar Card */}
               <div className="w-full text-left">
                 {renderComposer(true)}
+              </div>
+
+              {/* Quick Action Suggestion Chips: Create slides, Build website, Design, Create games, More */}
+              <div className="flex items-center justify-center gap-2.5 flex-wrap mt-6 max-w-2xl">
+                {/* Option 1: Create slides */}
+                <button
+                  type="button"
+                  onClick={() => setSlideModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                >
+                  <Presentation size={15} className="text-amber-500" />
+                  <span>Create slides</span>
+                </button>
+
+                {/* Option 2: Build website */}
+                <button
+                  type="button"
+                  onClick={() => setWebsiteModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                >
+                  <Globe size={15} className="text-blue-500" />
+                  <span>Build website</span>
+                </button>
+
+                {/* Option 3: Design */}
+                <button
+                  type="button"
+                  onClick={() => setImageStudioOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                >
+                  <Palette size={15} className="text-purple-500" />
+                  <span>Design</span>
+                </button>
+
+                {/* Option 4: Create games */}
+                <button
+                  type="button"
+                  onClick={() => setGameModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                >
+                  <Gamepad2 size={15} className="text-emerald-500" />
+                  <span>Create games</span>
+                </button>
+
+                {/* Option 5: More Dropdown */}
+                <div className="relative" ref={moreMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                  >
+                    <span>More</span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {moreMenuOpen && (
+                    <div className="absolute right-0 sm:left-0 mt-2 w-56 rounded-2xl bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-800 shadow-xl p-2 z-50 animate-in fade-in duration-100 text-left">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          handleSend('Conduct a comprehensive deep research investigation on autonomous AI agent execution frameworks, comparing multi-agent orchestration vs. monolithic single-loop LLMs.');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      >
+                        <Search size={14} className="text-cyan-500" />
+                        <span>Deep Research</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          handleSend('Analyze quarterly revenue metrics and customer churn data. Produce executive summary tables and mathematical projections for next fiscal year.');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      >
+                        <LineChart size={14} className="text-blue-500" />
+                        <span>Data Analysis</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          handleSend('Write a resilient Python automation workflow that monitors customer support webhooks, extracts priority tags, and dispatches automated resolutions.');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      >
+                        <Zap size={14} className="text-amber-500" />
+                        <span>Automate Workflow</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          handleSend('Perform a detailed legal and compliance contract review on terms of service, highlighting liability caps, indemnification clauses, and SLA guarantees.');
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                      >
+                        <FileText size={14} className="text-purple-500" />
+                        <span>Document Review</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
@@ -1815,6 +1899,30 @@ export function App() {
         onClose={() => setImageStudioOpen(false)}
         onInsertToChat={(_imageUrl, promptText) => {
           sendMessage(promptText, selectedModel);
+        }}
+      />
+
+      <SlideGeneratorModal
+        isOpen={slideModalOpen}
+        onClose={() => setSlideModalOpen(false)}
+        onGenerateWithAgent={(prompt) => {
+          handleSend(prompt);
+        }}
+      />
+
+      <WebsiteGeneratorModal
+        isOpen={websiteModalOpen}
+        onClose={() => setWebsiteModalOpen(false)}
+        onGenerateWithAgent={(prompt) => {
+          handleSend(prompt);
+        }}
+      />
+
+      <GameCreatorModal
+        isOpen={gameModalOpen}
+        onClose={() => setGameModalOpen(false)}
+        onGenerateWithAgent={(prompt) => {
+          handleSend(prompt);
         }}
       />
 

@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
-import { AsuraManusLanding } from '../components/landing/AsuraManusLanding';
+import { StudioClient } from './studio/StudioClient';
 
 export const metadata: Metadata = {
-  title: 'Asura AI | Autonomous Intelligence Platform',
+  title: 'Asura AI Studio | Autonomous Intelligence Platform',
   description:
-    'Assign any task or ask anything. Asura AI builds presentations, websites, games, and designs with autonomous multi-step intelligence.',
+    'Dedicated AI Studio by Cretivra. Access frontier intelligence models, real-time intelligence caching, and autonomous task execution in a standalone workspace.',
   alternates: {
     canonical: 'https://ai.cretivra.com',
   },
 };
 
 export default function HomePage() {
-  return <AsuraManusLanding />;
+  return <StudioClient />;
 }

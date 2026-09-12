@@ -26,7 +26,7 @@ export function SiteLayoutWrapper({
     pathname?.startsWith('/test-bench/');
 
   if (isCleanCanvas) {
-    return <main className="w-full min-h-screen">{children}</main>;
+    return <main className="h-[100dvh] w-full max-h-[100dvh] overflow-hidden">{children}</main>;
   }
 
   return (
