@@ -429,42 +429,39 @@ export function App() {
 
   // User input listeners to distinguish intentional user scroll from programmatic auto-follow
   const handleUserWheel = (e: React.WheelEvent) => {
-    if (isLanding) {
+    if (isLanding || !scrollRef.current) {
       setShowScrollBottom(false);
       return;
     }
-    isUserInteractingRef.current = true;
-    if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
-    userInteractionTimeoutRef.current = setTimeout(() => {
-      isUserInteractingRef.current = false;
-    }, 450);
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    if (e.deltaY < -4) {
-      // User wheeled up
+    if (distanceFromBottom <= 80) {
+      isUserScrolledUpRef.current = false;
+      setShowScrollBottom(false);
+    } else if (distanceFromBottom > 200 && e.deltaY < 0) {
       isUserScrolledUpRef.current = true;
       setShowScrollBottom(true);
-    } else if (e.deltaY > 4 && scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      if (scrollHeight - scrollTop - clientHeight < 60) {
-        isUserScrolledUpRef.current = false;
-        setShowScrollBottom(false);
-      }
     }
   };
 
   const handleUserTouchMove = () => {
-    if (isLanding) {
+    if (isLanding || !scrollRef.current) {
       setShowScrollBottom(false);
       return;
     }
-    isUserInteractingRef.current = true;
-    if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
-    userInteractionTimeoutRef.current = setTimeout(() => {
-      isUserInteractingRef.current = false;
-    }, 450);
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    if (distanceFromBottom <= 80) {
+      isUserScrolledUpRef.current = false;
+      setShowScrollBottom(false);
+    } else if (distanceFromBottom > 200) {
+      isUserScrolledUpRef.current = true;
+      setShowScrollBottom(true);
+    }
   };
 
-  // Scroll listener for "Scroll to bottom" button & position tracking
+  // Scroll listener for "Scroll to bottom" button & position tracking (ChatGPT-style)
   const handleChatScroll = () => {
     if (!scrollRef.current || isLanding) {
       if (showScrollBottom) setShowScrollBottom(false);
@@ -473,19 +470,17 @@ export function App() {
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-    // Re-engage auto-follow when close to the bottom
-    if (distanceFromBottom <= 50) {
+    // If within 80px of the bottom, user is effectively at the bottom
+    if (distanceFromBottom <= 80) {
       isUserScrolledUpRef.current = false;
-      setShowScrollBottom(false);
+      if (showScrollBottom) setShowScrollBottom(false);
       return;
     }
 
-    // Mark user scrolled up only when actively interacting or scrolled up while idle
-    if (distanceFromBottom > 80 && isUserInteractingRef.current) {
+    // Only show button if user has scrolled up significantly (more than 200px)
+    if (distanceFromBottom > 200) {
       isUserScrolledUpRef.current = true;
-      setShowScrollBottom(true);
-    } else if (distanceFromBottom > 120 && !isGenerating) {
-      setShowScrollBottom(true);
+      if (!showScrollBottom) setShowScrollBottom(true);
     }
   };
 
@@ -1578,7 +1573,7 @@ export function App() {
               </p>
             </div>
           ) : (
-            <div className="max-w-3xl w-full mx-auto p-4 space-y-6 pb-24 flex-1">
+            <div className="max-w-3xl w-full mx-auto p-4 space-y-6 pb-6 flex-1">
               {messages.map((m, i) => (
                 <div className="cv-msg-row" key={m.id || i}>
                   {m.role === 'user' ? (
@@ -1826,36 +1821,30 @@ export function App() {
               <div ref={messagesEndRef} className="h-6 w-full shrink-0" />
             </div>
           )}
-
-          {/* Floating Scroll to Bottom Button (ChatGPT-style with live generation indicator) */}
-          {!isLanding && showScrollBottom && (
-            <div className="fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 animate-in fade-in slide-in-from-bottom-3 duration-200">
-              <button
-                type="button"
-                onClick={() => scrollToBottom(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/95 dark:bg-gray-900/95 text-slate-800 dark:text-white border border-slate-300 dark:border-cyan-500/40 shadow-2xl backdrop-blur-md cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-800 transition-all hover:scale-105 active:scale-95 group"
-                title="Jump to latest response"
-              >
-                <div className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center group-hover:translate-y-0.5 transition-transform">
-                  <ArrowDown size={13} className="stroke-[2.5]" />
-                </div>
-                <span className="text-xs font-semibold">
-                  {isGenerating ? 'Generating below...' : 'Scroll to bottom'}
-                </span>
-                {isGenerating && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Anchored Composer Area (Only visible during active conversation) */}
         {!isLanding && (
-          <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent animate-in fade-in duration-200">
+          <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent animate-in fade-in duration-200 relative">
+            {/* ChatGPT-style circular scroll-to-bottom button positioned neatly above the composer */}
+            {showScrollBottom && (
+              <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-30 animate-in fade-in zoom-in-95 duration-150">
+                <button
+                  type="button"
+                  onClick={() => scrollToBottom(true)}
+                  className="w-9 h-9 rounded-full bg-white dark:bg-[#181d28] border border-slate-200 dark:border-gray-700 shadow-md hover:shadow-lg text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center cursor-pointer group active:scale-95"
+                  title="Scroll to latest messages"
+                >
+                  <ArrowDown size={15} className="text-slate-600 dark:text-slate-300 group-hover:translate-y-0.5 transition-transform stroke-[2.5]" />
+                  {isGenerating && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500" />
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
             {renderComposer(false)}
           </div>
         )}
