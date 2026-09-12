@@ -103,14 +103,34 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" className="light scroll-smooth" data-theme="light">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var saved = localStorage.getItem('cretivra_theme');
+                  var theme = (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'light';
+                  var resolved = theme;
+                  if (theme === 'system') {
+                    resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  var root = document.documentElement;
+                  root.setAttribute('data-theme', resolved);
+                  root.classList.remove('dark', 'light');
+                  root.classList.add(resolved);
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
         />
       </head>
-      <body className="min-h-screen bg-[#060911] text-[#e7eaf4] font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+      <body className="min-h-screen bg-[var(--bg-base)] text-[var(--text)] font-sans antialiased selection:bg-cyan-500/30 selection:text-cyan-700 dark:selection:text-cyan-200">
         {/* Global Ambient Background Orbs */}
         <div className="cv-ambient" aria-hidden="true">
           <div className="cv-orb cv-orb-1" />
