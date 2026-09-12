@@ -257,6 +257,14 @@ export function App() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Ensure scroll-to-bottom indicator is never shown on initial landing view
+  useEffect(() => {
+    if (messages.length === 0) {
+      setShowScrollBottom(false);
+      isUserScrolledUpRef.current = false;
+    }
+  }, [messages.length]);
+
   // Check if first-time visitor to display onboarding tour
   useEffect(() => {
     try {
@@ -421,6 +429,10 @@ export function App() {
 
   // User input listeners to distinguish intentional user scroll from programmatic auto-follow
   const handleUserWheel = (e: React.WheelEvent) => {
+    if (isLanding) {
+      setShowScrollBottom(false);
+      return;
+    }
     isUserInteractingRef.current = true;
     if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
     userInteractionTimeoutRef.current = setTimeout(() => {
@@ -441,6 +453,10 @@ export function App() {
   };
 
   const handleUserTouchMove = () => {
+    if (isLanding) {
+      setShowScrollBottom(false);
+      return;
+    }
     isUserInteractingRef.current = true;
     if (userInteractionTimeoutRef.current) clearTimeout(userInteractionTimeoutRef.current);
     userInteractionTimeoutRef.current = setTimeout(() => {
@@ -450,7 +466,10 @@ export function App() {
 
   // Scroll listener for "Scroll to bottom" button & position tracking
   const handleChatScroll = () => {
-    if (!scrollRef.current) return;
+    if (!scrollRef.current || isLanding) {
+      if (showScrollBottom) setShowScrollBottom(false);
+      return;
+    }
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
@@ -955,13 +974,15 @@ export function App() {
               </div>
             </div>
           </div>
-        <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
-          {isCurrentImg
-            ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
-            : webSearchEnabled
-            ? 'Real-time intelligence cache synchronized with 2026 facts.'
-            : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
-        </div>
+        {!isCenter && (
+          <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
+            {isCurrentImg
+              ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
+              : webSearchEnabled
+              ? 'Real-time intelligence cache synchronized with 2026 facts.'
+              : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
+          </div>
+        )}
       </div>
     );
   };
@@ -1430,15 +1451,15 @@ export function App() {
           onTouchMove={handleUserTouchMove}
         >
           {isLanding ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center max-w-3xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
+            <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6 text-center max-w-3xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
               {/* Announcement pill matching Manus interface */}
-              <div className="mb-6 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors select-none">
+              <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors select-none">
                 <span>Asura has resumed independent operations. Our next chapter starts now.</span>
                 <span>→</span>
               </div>
 
               {/* Title: What can I do for you? in elegant serif */}
-              <h1 className="font-manus-serif text-4xl sm:text-5xl lg:text-[54px] font-normal text-slate-900 dark:text-white tracking-tight text-center mb-8 select-none leading-tight">
+              <h1 className="font-manus-serif text-3xl sm:text-4xl lg:text-[46px] font-normal text-slate-900 dark:text-white tracking-tight text-center mb-5 select-none leading-tight">
                 What can I do for you?
               </h1>
 
@@ -1448,14 +1469,14 @@ export function App() {
               </div>
 
               {/* Quick Action Suggestion Chips: Create slides, Build website, Design, Create games, More */}
-              <div className="flex items-center justify-center gap-2.5 flex-wrap mt-6 max-w-2xl">
+              <div className="flex items-center justify-center gap-2 flex-wrap mt-3.5 max-w-2xl">
                 {/* Option 1: Create slides */}
                 <button
                   type="button"
                   onClick={() => setSlideModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
                 >
-                  <Presentation size={15} className="text-amber-500" />
+                  <Presentation size={14} className="text-amber-500" />
                   <span>Create slides</span>
                 </button>
 
@@ -1463,9 +1484,9 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => setWebsiteModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
                 >
-                  <Globe size={15} className="text-blue-500" />
+                  <Globe size={14} className="text-blue-500" />
                   <span>Build website</span>
                 </button>
 
@@ -1473,9 +1494,9 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => setImageStudioOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
                 >
-                  <Palette size={15} className="text-purple-500" />
+                  <Palette size={14} className="text-purple-500" />
                   <span>Design</span>
                 </button>
 
@@ -1483,9 +1504,9 @@ export function App() {
                 <button
                   type="button"
                   onClick={() => setGameModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
                 >
-                  <Gamepad2 size={15} className="text-emerald-500" />
+                  <Gamepad2 size={14} className="text-emerald-500" />
                   <span>Create games</span>
                 </button>
 
@@ -1494,7 +1515,7 @@ export function App() {
                   <button
                     type="button"
                     onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
+                    className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800 hover:border-slate-400 dark:hover:border-gray-600 hover:bg-slate-50 dark:hover:bg-gray-800 text-xs font-medium text-slate-700 dark:text-slate-300 transition-all shadow-xs hover:shadow cursor-pointer"
                   >
                     <span>More</span>
                     <ChevronDown size={13} className={`text-slate-400 transition-transform ${moreMenuOpen ? 'rotate-180' : ''}`} />
@@ -1550,6 +1571,11 @@ export function App() {
                   )}
                 </div>
               </div>
+
+              {/* Bottom Subtle Disclaimer */}
+              <p className="text-[11px] text-slate-400 dark:text-gray-500 mt-4 select-none">
+                Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.
+              </p>
             </div>
           ) : (
             <div className="max-w-3xl w-full mx-auto p-4 space-y-6 pb-24 flex-1">
@@ -1802,7 +1828,7 @@ export function App() {
           )}
 
           {/* Floating Scroll to Bottom Button (ChatGPT-style with live generation indicator) */}
-          {showScrollBottom && (
+          {!isLanding && showScrollBottom && (
             <div className="fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 animate-in fade-in slide-in-from-bottom-3 duration-200">
               <button
                 type="button"
