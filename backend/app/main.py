@@ -1,4 +1,12 @@
 import os
+import sys
+from pathlib import Path
+
+# Ensure 'backend' directory is in sys.path regardless of execution working directory
+backend_dir = str(Path(__file__).resolve().parent.parent)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,8 +21,14 @@ from app.api import health, models, conversations, chat, files, settings as sett
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing Asura AI by Cretivra Database...")
-    init_db()
-    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    try:
+        init_db()
+    except Exception as e:
+        logger.error(f"Database initialization encountered an error (non-fatal): {e}", exc_info=True)
+    try:
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    except Exception as e:
+        logger.warning(f"Could not create upload directory {settings.UPLOAD_DIR}: {e}")
     yield
     logger.info("Shutting down Asura AI by Cretivra backend...")
 

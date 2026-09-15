@@ -1,7 +1,7 @@
 import re
 from fastapi import APIRouter, HTTPException, UploadFile, File, Response, Query
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from app.services.image_service import image_service
 
 router = APIRouter(prefix="/images", tags=["images"])

@@ -7,8 +7,8 @@ db_url = (settings.DATABASE_URL or "").strip().strip("'").strip('"')
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# For SQLite, check_same_thread=False allows multi-threaded requests
-connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {}
+# For SQLite, check_same_thread=False allows multi-threaded requests; for Postgres set strict 5s connect_timeout
+connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {"connect_timeout": 5}
 
 engine = create_engine(
     db_url,
@@ -27,8 +27,26 @@ def get_db():
         db.close()
 
 def init_db():
+    global engine, SessionLocal, db_url
+    from app.core.logging import logger
     from app.database import models  # noqa
-    Base.metadata.create_all(bind=engine)
+
+    try:
+        # Pre-verify database responsiveness with a quick ping
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        Base.metadata.create_all(bind=engine)
+        logger.info("Primary database schema initialized successfully.")
+    except Exception as e:
+        logger.warning(f"Primary database connection unavailable or timed out: {e}. Falling back to resilient SQLite database...")
+        db_url = "sqlite:///./cretivra.db"
+        engine = create_engine(db_url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+        SessionLocal.configure(bind=engine)
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Resilient SQLite fallback initialized successfully.")
+        except Exception as err:
+            logger.error(f"Fallback SQLite initialization error: {err}")
     
     # Auto-migrate missing columns for SQLite
     if db_url.startswith("sqlite"):
