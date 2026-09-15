@@ -34,10 +34,15 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
   if (!src && !activeSrc) return null;
 
   // Determine model engine badge
-  let badgeLabel = 'FLUX.1 Art';
+  let badgeLabel = 'Nano Banana';
   const checkUrl = activeSrc || src || '';
-  if (checkUrl.includes('/gemini/') || checkUrl.includes('model=gemini') || (alt && alt.toLowerCase().includes('gemini'))) {
-    badgeLabel = 'Google Gemini';
+  if (
+    checkUrl.includes('nanobanana') ||
+    checkUrl.includes('/gemini/') ||
+    checkUrl.includes('model=gemini') ||
+    (alt && (alt.toLowerCase().includes('banana') || alt.toLowerCase().includes('gemini')))
+  ) {
+    badgeLabel = 'Nano Banana';
   } else if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
     badgeLabel = 'Anime Studio';
   } else if (checkUrl.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
@@ -46,6 +51,8 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
     badgeLabel = 'SDXL Realism';
   } else if (checkUrl.includes('model=turbo')) {
     badgeLabel = 'Turbo Speed';
+  } else if (checkUrl.includes('model=flux')) {
+    badgeLabel = 'FLUX.1 Art';
   }
 
   const handleCopyLink = (e: React.MouseEvent) => {

@@ -61,35 +61,24 @@ class ChatService:
         if is_dedicated_image_model or detected_image_prompt:
             image_prompt = detected_image_prompt if detected_image_prompt else user_message_content.strip()
             model_info = registry.get_model(model_id)
-            engine_name = model_info.display_name if model_info else "Cretivra Visual Engine"
+            engine_name = model_info.display_name if model_info else "Nano Banana 2"
 
             # Stream generation status
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': f'Synthesizing visual with {engine_name}...'})}\n\n"
             await asyncio.sleep(0.3)
 
-            # 1. Attempt Google Gemini image generation if key configured or Gemini model selected
-            gemini_result = None
-            if "gemini" in model_id.lower() or getattr(settings, "GEMINI_API_KEY", ""):
-                try:
-                    gemini_result = await image_service.generate_with_gemini(prompt=image_prompt)
-                except Exception as g_err:
-                    logger.warning(f"Gemini image synthesis fallback: {g_err}")
-                    gemini_result = None
+            # Determine target engine: default to Nano Banana ("nanobanana2")
+            target_engine = "nanobanana2"
+            if model_id in ["cretivra-anime", "cretivra-3d", "cretivra-turbo", "cretivra-diffusion", "cretivra-flux"]:
+                target_engine = model_id
 
-            if gemini_result:
-                import uuid
-                from app.api.images import _gemini_image_cache
-                img_id = f"gemini_{uuid.uuid4().hex[:12]}"
-                _gemini_image_cache[img_id] = gemini_result
-                rendered_url = f"/api/images/gemini/{img_id}"
-            else:
-                img_data = image_service.generate_image_url(
-                    prompt=image_prompt,
-                    model=model_id,
-                    enhance=True
-                )
-                # Use proxy_url to ensure watermark removal and Turnstile bypass
-                rendered_url = img_data.get("proxy_url") or img_data["image_url"]
+            img_data = image_service.generate_image_url(
+                prompt=image_prompt,
+                model=target_engine,
+                enhance=True
+            )
+            # Use proxy_url to ensure watermark removal, zero logos, and Turnstile bypass
+            rendered_url = img_data.get("proxy_url") or img_data["image_url"]
 
             image_reply = f"Here is your generated visual for: **{image_prompt}**\n\n![{image_prompt}]({rendered_url})"
             

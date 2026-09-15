@@ -91,53 +91,28 @@ async def get_gemini_image(
 @router.post("/generate")
 async def generate_image(request: ImageGenerateRequest):
     """
-    Generate an AI Image using Google Gemini Vision/Imagen, FLUX.1, SDXL, Turbo, Anime, or 3D engine.
-    Watermark-free visuals with multi-engine fallback.
+    Generate an AI Image using Nano Banana (Gemini 3.1 architecture), FLUX.1, SDXL, Turbo, Anime, or 3D engine.
+    100% Watermark-free, zero-logo visuals with multi-engine fallback.
     """
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
 
-    # 1. If Google Gemini model was selected, attempt native Gemini image generation
-    if request.model in ["gemini", "cretivra-gemini"]:
-        gemini_result = await image_service.generate_with_gemini(
-            prompt=request.prompt,
-            aspect_ratio=request.aspect_ratio or "1:1"
-        )
-        if gemini_result:
-            import uuid
-            img_id = f"gemini_{uuid.uuid4().hex[:12]}"
-            _gemini_image_cache[img_id] = gemini_result
-            img_url = f"/api/images/gemini/{img_id}"
-            return {
-                "success": True,
-                "prompt": request.prompt.strip(),
-                "enhanced_prompt": request.prompt.strip(),
-                "image_url": img_url,
-                "proxy_url": img_url,
-                "model": "gemini",
-                "model_id": "cretivra-gemini",
-                "provider": "Google Gemini Vision & Imagen (Zero Watermark)",
-                "aspect_ratio": request.aspect_ratio or "1:1",
-                "width": 1024,
-                "height": 1024,
-                "seed": request.seed or 42,
-                "style": request.style,
-                "reference_image": request.reference_image
-            }
+    target_model = request.model or "nanobanana2"
 
-    # 2. Standard multi-engine generation with automatic watermark removal via proxy
+    # 1. Standard multi-engine generation (with Nano Banana default) and automatic watermark & logo removal
     result = image_service.generate_image_url(
         prompt=request.prompt,
         aspect_ratio=request.aspect_ratio,
         width=request.width,
         height=request.height,
-        model=request.model,
+        model=target_model,
         style=request.style,
         enhance=request.enhance,
         seed=request.seed,
         negative_prompt=request.negative_prompt,
         reference_image=request.reference_image
     )
+    result["provider"] = "Nano Banana Neural Engine (Zero Watermark & No Logos)"
     return result
 
 @router.post("/enhance-prompt")

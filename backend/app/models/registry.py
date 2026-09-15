@@ -174,6 +174,19 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
         version="1.0",
         category="Deep Reasoning"
     ),
+    "cretivra-nano-banana": CretivraModel(
+        id="cretivra-nano-banana",
+        display_name="Cretivra Nano Banana 2",
+        description="Next-gen visual synthesis powered by Nano Banana (Zero Watermark, No Logos)",
+        provider="pollinations",
+        underlying_model="nanobanana2",
+        capabilities=["image", "photorealistic", "creative"],
+        context_length=4096,
+        enabled=True,
+        version="2.0",
+        category="Image Studio",
+        is_available=True
+    ),
     "cretivra-flux": CretivraModel(
         id="cretivra-flux",
         display_name="Cretivra FLUX.1 Art",

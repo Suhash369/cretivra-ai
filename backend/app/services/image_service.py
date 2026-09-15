@@ -28,6 +28,17 @@ class ImageService:
     }
 
     MODEL_ENGINE_MAP: Dict[str, str] = {
+        "cretivra-nano-banana": "nanobanana2",
+        "nano-banana": "nanobanana2",
+        "nano-banana-2": "nanobanana2",
+        "nanobanana": "nanobanana2",
+        "nanobanana2": "nanobanana2",
+        "nanobanana-pro": "nanobanana-pro",
+        "nano-banana-pro": "nanobanana-pro",
+        "nano banana": "nanobanana2",
+        "cretivra-gemini": "nanobanana2",
+        "gemini": "nanobanana2",
+        "imagen": "nanobanana2",
         "cretivra-flux": "flux",
         "flux": "flux",
         "cretivra-diffusion": "flux-realism",
@@ -41,9 +52,6 @@ class ImageService:
         "cretivra-3d": "flux-3d",
         "flux-3d": "flux-3d",
         "3d": "flux-3d",
-        "cretivra-gemini": "gemini",
-        "gemini": "gemini",
-        "imagen": "gemini",
     }
 
     STYLE_PROMPT_MODIFIERS: Dict[str, str] = {
@@ -100,8 +108,8 @@ class ImageService:
         return (w, h)
 
     def resolve_engine(self, model_identifier: str) -> str:
-        key = (model_identifier or "flux").strip().lower()
-        return self.MODEL_ENGINE_MAP.get(key, "flux")
+        key = (model_identifier or "nanobanana2").strip().lower()
+        return self.MODEL_ENGINE_MAP.get(key, "nanobanana2")
 
     def enhance_prompt(self, prompt: str, style: Optional[str] = None, model: Optional[str] = None) -> str:
         clean = prompt.strip()
@@ -117,6 +125,8 @@ class ImageService:
                 additions.append("3D Octane render, raytracing, cinematic lighting")
             elif eng == "flux-realism" and "photo" not in clean.lower():
                 additions.append("photorealistic 8k uhd, 35mm lens, natural studio lighting")
+            elif eng == "nanobanana2" and not any(w in clean.lower() for w in ["8k", "photorealistic", "masterpiece"]):
+                additions.append("masterpiece visual, 8k uhd, cinematic lighting, ultra-detailed")
 
         if additions:
             return f"{clean}, {', '.join(additions)}"
@@ -128,7 +138,7 @@ class ImageService:
         width: Optional[int] = None,
         height: Optional[int] = None,
         aspect_ratio: Optional[str] = "1:1",
-        model: str = "flux",
+        model: str = "nanobanana2",
         style: Optional[str] = None,
         enhance: bool = True,
         seed: Optional[int] = None,
@@ -349,7 +359,7 @@ class ImageService:
   <circle cx="512" cy="420" r="30" fill="url(#glow)" opacity="0.8"/>
   <text x="512" y="600" fill="#f1f5f9" font-size="28" font-family="system-ui, sans-serif" font-weight="bold" text-anchor="middle">Asura AI Image Studio</text>
   <text x="512" y="645" fill="#94a3b8" font-size="16" font-family="system-ui, sans-serif" text-anchor="middle">{safe_prompt}</text>
-  <text x="512" y="685" fill="#a855f7" font-size="13" font-family="monospace" text-anchor="middle">FLUX.1 Neural Engine • 100% Free</text>
+  <text x="512" y="685" fill="#a855f7" font-size="13" font-family="monospace" text-anchor="middle">Nano Banana Neural Engine • 100% Free</text>
 </svg>'''
 
     async def describe_image_for_prompt(self, image_bytes: bytes, filename: str) -> Dict[str, Any]:
@@ -461,12 +471,20 @@ class ImageService:
     def get_available_models(self) -> List[Dict[str, Any]]:
         return [
             {
+                "id": "cretivra-nano-banana",
+                "engine": "nanobanana2",
+                "name": "Cretivra Nano Banana 2",
+                "description": "Next-gen visual synthesis powered by Nano Banana (Zero Watermark, No Logos)",
+                "badge": "Nano Banana",
+                "is_default": True
+            },
+            {
                 "id": "cretivra-flux",
                 "engine": "flux",
                 "name": "Cretivra FLUX.1 Art",
                 "description": "Next-gen photorealism and fine digital art",
                 "badge": "FLUX.1",
-                "is_default": True
+                "is_default": False
             },
             {
                 "id": "cretivra-diffusion",
@@ -502,10 +520,10 @@ class ImageService:
             },
             {
                 "id": "cretivra-gemini",
-                "engine": "gemini",
-                "name": "Google Gemini Vision & Imagen",
-                "description": "Google's frontier multimodal generation engine (Zero Watermark)",
-                "badge": "Gemini Ultra",
+                "engine": "nanobanana2",
+                "name": "Nano Banana Vision Engine",
+                "description": "Frontier multimodal visual synthesis with zero watermarks & no logos",
+                "badge": "Nano Banana",
                 "is_default": False
             }
         ]
