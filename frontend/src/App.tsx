@@ -1861,7 +1861,7 @@ export function App() {
 
         {/* Anchored Composer Area (Only visible during active conversation) */}
         {!isLanding && (
-          <div className="shrink-0 w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 pt-1 bg-transparent animate-in fade-in duration-200 relative">
+          <div className="shrink-0 w-full max-w-3xl xl:max-w-4xl mx-auto px-4 pb-3 pt-1 bg-transparent animate-in fade-in duration-200 relative">
             {/* ChatGPT-style circular scroll-to-bottom button positioned neatly above the composer */}
             {showScrollBottom && (
               <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-30 animate-in fade-in zoom-in-95 duration-150">

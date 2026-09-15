@@ -145,6 +145,26 @@ function TableBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Helper to normalize URLs, especially converting legacy YouTube /c/ and /user/ paths to modern @Handles
+export function normalizeLinkUrl(rawHref?: string): string {
+  if (!rawHref) return '#';
+  let url = rawHref.trim();
+
+  // Normalize YouTube URLs:
+  // e.g. https://www.youtube.com/c/MrBeast -> https://www.youtube.com/@MrBeast
+  // e.g. https://youtube.com/user/MrBeast -> https://www.youtube.com/@MrBeast
+  // e.g. youtube.com/c/MrBeast -> https://www.youtube.com/@MrBeast
+  if (/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:c|user)\/([^\s/?#]+)/i.test(url)) {
+    url = url.replace(/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:c|user)\/([^\s/?#]+)/i, 'https://www.youtube.com/@$1');
+  } else if (/^https?:\/\//i.test(url)) {
+    // Protocol is present
+  } else if (/^(?:www\.)?youtube\.com/i.test(url)) {
+    url = 'https://' + url;
+  }
+
+  return url;
+}
+
 // Preprocessor to normalize LaTeX math expressions from AI responses
 function preprocessMarkdown(raw: string): string {
   if (!raw) return '';
@@ -342,17 +362,18 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
           // Links (with rich styling for PDF & PPTX file downloads + Source Citation Badges)
           a({ href, children, ...props }) {
+            const cleanHref = normalizeLinkUrl(href);
             const isDownload = Boolean(
-              href?.includes('/files/download/') ||
-              href?.endsWith('.pdf') ||
-              href?.endsWith('.pptx') ||
-              href?.endsWith('.docx')
+              cleanHref?.includes('/files/download/') ||
+              cleanHref?.endsWith('.pdf') ||
+              cleanHref?.endsWith('.pptx') ||
+              cleanHref?.endsWith('.docx')
             );
 
             if (isDownload) {
               return (
                 <a
-                  href={href}
+                  href={cleanHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   download
@@ -373,11 +394,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               const cleanNum = rawText.replace(/[\[\]]/g, '');
               return (
                 <a
-                  href={href}
+                  href={cleanHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center font-mono font-bold text-[11px] px-1.5 py-0.5 mx-0.5 -translate-y-0.5 rounded-md bg-cyan-100/90 dark:bg-cyan-950/90 hover:bg-cyan-200 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-300 border border-cyan-300/80 dark:border-cyan-700/80 no-underline shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer select-none align-baseline"
-                  title={href || `Source [${cleanNum}]`}
+                  title={cleanHref || `Source [${cleanNum}]`}
                   {...props}
                 >
                   <span>{cleanNum}</span>
@@ -387,7 +408,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
             return (
               <a
-                href={href}
+                href={cleanHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline underline-offset-4 decoration-cyan-500/40 hover:decoration-cyan-400 font-medium transition-colors inline-flex items-center gap-0.5"

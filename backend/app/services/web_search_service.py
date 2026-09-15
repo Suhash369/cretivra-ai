@@ -18,6 +18,14 @@ def extract_domain(url: str) -> str:
     except Exception:
         return "web"
 
+def normalize_source_url(url: str) -> str:
+    """Normalize URLs, converting legacy YouTube channel paths /c/ and /user/ to modern @Handles."""
+    if not url:
+        return ""
+    # Convert https://www.youtube.com/c/Channel or /user/Channel to https://www.youtube.com/@Channel
+    url = re.sub(r'^(https?://(?:www\.)?youtube\.com)/(?:c|user)/([^\s/?#]+)', r'\1/@\2', url.strip(), flags=re.IGNORECASE)
+    return url
+
 class WebSearchService:
     """
     Production-Grade Multi-Source Search Engine Service for Asura AI by Cretivra.
@@ -187,7 +195,7 @@ class WebSearchService:
 
         for item in raw_items:
             title = (item.get("title") or "Source").strip()
-            url = (item.get("url") or "").strip()
+            url = normalize_source_url((item.get("url") or "").strip())
             snippet = (item.get("snippet") or "").strip()
             domain = item.get("domain") or extract_domain(url)
             date = item.get("date") or ""

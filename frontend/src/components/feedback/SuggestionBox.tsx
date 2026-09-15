@@ -125,10 +125,10 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
 
   return (
     <div
-      className={`fixed z-[9999] font-sans select-none ${className}`}
+      className={`fixed z-40 font-sans select-none pointer-events-auto ${className}`}
       style={{
-        bottom: 'max(36px, env(safe-area-inset-bottom, 36px))',
-        right: 'max(24px, env(safe-area-inset-right, 24px))',
+        bottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
+        right: 'max(16px, env(safe-area-inset-right, 16px))',
       }}
       id="cretivra-suggestion-widget"
     >

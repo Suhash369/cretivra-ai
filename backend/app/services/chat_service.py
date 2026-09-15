@@ -367,6 +367,14 @@ class ChatService:
                 "Provide a thorough, insightful, and comprehensive visual analysis immediately."
             )
 
+        youtube_directive = (
+            "\n\n[URL & YOUTUBE DIRECTIVE]: "
+            "When referencing YouTube channels or creators, ALWAYS use the official modern YouTube Handle URL format: "
+            "`https://www.youtube.com/@ChannelHandle` (e.g. `https://www.youtube.com/@MrBeast`). "
+            "NEVER use deprecated `/c/` or `/user/` paths (such as `youtube.com/c/...`) because YouTube returns a 404 Not Found page for them. "
+            "For general YouTube video queries or topic searches, use `https://www.youtube.com/results?search_query=...`."
+        )
+
         sys_content = (
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
@@ -374,6 +382,7 @@ class ChatService:
             f"{deep_directive}"
             f"{vis_directive}"
             f"{vision_directive}"
+            f"{youtube_directive}"
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]

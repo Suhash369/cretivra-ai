@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Globe, ExternalLink, ChevronDown, ChevronUp, Link2 } from 'lucide-react';
 import type { SourceLink } from '../../types';
+import { normalizeLinkUrl } from './MarkdownRenderer';
 
 interface SourceLinksCardProps {
   sources?: SourceLink[];
@@ -20,7 +21,8 @@ function extractSourcesFromMarkdown(content?: string): SourceLink[] {
   let match;
   while ((match = mdLinkRegex.exec(content)) !== null) {
     const title = match[1].trim();
-    const url = match[2].trim();
+    const rawUrl = match[2].trim();
+    const url = normalizeLinkUrl(rawUrl);
     if (!seenUrls.has(url)) {
       seenUrls.add(url);
       try {
@@ -59,7 +61,10 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
   // Merge explicit sources with any extracted links
   const activeSources = React.useMemo(() => {
     if (sources && sources.length > 0) {
-      return sources;
+      return sources.map((s) => ({
+        ...s,
+        url: normalizeLinkUrl(s.url),
+      }));
     }
     return extractSourcesFromMarkdown(messageContent);
   }, [sources, messageContent]);
