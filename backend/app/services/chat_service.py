@@ -290,6 +290,7 @@ class ChatService:
 
         last_reasoning_status = "Thinking with deep reasoning..." if is_deep_research_active else None
         cache_items = []
+        sources = []
 
         if is_search_active:
             clean_q = web_search_service.normalize_query(user_message_content)
@@ -299,12 +300,13 @@ class ChatService:
                 "Temporal grounding synchronized (2026)",
                 "Synthesizing cached intelligence insights"
             ]
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting real-time web intelligence cache...', 'cache_items': cache_items})}\n\n"
-            search_snippets = await web_search_service.search(user_message_content)
-            if search_snippets:
-                live_web_context = search_snippets
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting real-time web intelligence cache...', 'cache_items': cache_items, 'sources': []})}\n\n"
+            search_data = await web_search_service.search_with_sources(user_message_content)
+            if search_data and search_data.get("context_text"):
+                live_web_context = search_data["context_text"]
+                sources = search_data.get("sources", [])
                 last_reasoning_status = "Synthesized from real-time intelligence"
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': sources})}\n\n"
         elif is_deep_research_active:
             cache_items = [
                 "Deep chain-of-thought activation",
@@ -313,7 +315,7 @@ class ChatService:
                 "Formulating comprehensive analytical report"
             ]
             last_reasoning_status = "Deep reasoning & research in progress..."
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items})}\n\n"
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': []})}\n\n"
 
         # Formulate system prompt with current live date and directives
         today_str = datetime.now().strftime("%B %d, %Y")
@@ -406,10 +408,18 @@ class ChatService:
             else:
                 directive = "Directive: Answer the question directly, comprehensively, and factually using the latest verified cache facts above."
 
+            citation_guidance = (
+                "\n\n[Grounding & Citations Directive]: "
+                "The intelligence cache above provides numbered sources with URLs. "
+                "When referencing facts or figures, cite them clearly using markdown citations (e.g. [1](URL) or [Domain](URL)). "
+                "At the end of your answer, include a '### Sources & References' section with clickable markdown links [Title](URL) for each cited source."
+            )
+
             formatted_messages[-1]["content"] = (
                 f"Question: {user_orig_q}\n\n"
                 f"[Verified Real-Time Intelligence Cache as of {today_str}]:\n{live_web_context}\n\n"
                 f"{directive}"
+                f"{citation_guidance}"
             )
 
         # Append document attachments to prompt context if present
@@ -450,7 +460,7 @@ class ChatService:
                 if content:
                     full_assistant_reply += content
 
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': last_reasoning_status})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': last_reasoning_status, 'sources': sources})}\n\n"
 
             # Save assistant response to DB
             conversation_service.add_message(

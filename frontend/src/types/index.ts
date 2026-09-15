@@ -31,6 +31,13 @@ export interface Attachment {
   };
 }
 
+export interface SourceLink {
+  title: string;
+  url: string;
+  domain?: string;
+  snippet?: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -38,6 +45,7 @@ export interface Message {
   content: string;
   reasoning_status?: string | null;
   cache_items?: string[];
+  sources?: SourceLink[];
   created_at?: string;
   attachments?: Attachment[];
 }

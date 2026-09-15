@@ -2,21 +2,34 @@ import re
 import html
 import httpx
 import asyncio
+from urllib.parse import urlparse
 from typing import Optional, List, Dict, Any
 from app.core.config import settings
 from app.core.logging import logger
+
+def extract_domain(url: str) -> str:
+    """Extract clean domain name without www."""
+    if not url:
+        return "web"
+    try:
+        netloc = urlparse(url).netloc
+        netloc = re.sub(r'^www\.', '', netloc)
+        return netloc or "web"
+    except Exception:
+        return "web"
 
 class WebSearchService:
     """
     Production-Grade Multi-Source Search Engine Service for Asura AI by Cretivra.
     
     Supports:
-    1. Tavily AI Search API (Designed specifically for LLM search grounding)
-    2. Google Search via Serper.dev API
-    3. Google Search via SerpAPI
-    4. Google News Live RSS (Zero-cost, reliable on cloud servers)
-    5. Wikipedia Live API (Instant verified factual grounding)
-    6. DuckDuckGo Search (Fallback)
+    1. Tavily AI Search API (Designed specifically for LLM search grounding with direct source URLs)
+    2. Brave Search API
+    3. Google Search via Serper.dev API
+    4. Google Search via SerpAPI
+    5. Google News Live RSS (Zero-cost, reliable on cloud servers)
+    6. Wikipedia Live API (Instant verified factual grounding)
+    7. DuckDuckGo Search (Fallback)
     """
 
     SEARCH_INTENT_PATTERNS = [
@@ -77,21 +90,27 @@ class WebSearchService:
         clean_q = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', q, flags=re.IGNORECASE)
         return clean_q.strip() or q
 
-    async def search(self, query: str, max_results: int = 6) -> str:
+    async def search_with_sources(self, query: str, max_results: int = 6) -> Dict[str, Any]:
         """
-        Multi-tier accelerated intelligence retrieval pipeline.
-        Utilizes in-memory caching and concurrent source querying.
+        Multi-tier accelerated intelligence retrieval pipeline with source attribution.
+        Returns:
+            {
+                "context_text": str,
+                "sources": List[Dict[str, str]]
+            }
         """
         import time
         clean_q = self.normalize_query(query)
         cache_key = clean_q.lower().strip()
 
-        # Check in-memory cache for instant 0ms response
+        # Check in-memory cache
         now = time.time()
         if cache_key in self._CACHE:
             cached_time, cached_res = self._CACHE[cache_key]
             if now - cached_time < self._CACHE_TTL:
                 return cached_res
+
+        raw_items: List[Dict[str, Any]] = []
 
         # 1. Tavily AI Search API (if configured) - fastest & highest quality
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
@@ -105,84 +124,115 @@ class WebSearchService:
                 search_tasks = [self._search_tavily(q, tavily_key, max_results=max_results) for q in queries_to_run]
                 results_lists = await asyncio.gather(*search_tasks, return_exceptions=True)
 
-                combined = []
-                seen_titles = set()
+                seen_urls = set()
                 for res_list in results_lists:
                     if isinstance(res_list, list):
-                        for r in res_list:
-                            dedup_key = r[:40].lower()
-                            if dedup_key not in seen_titles:
-                                seen_titles.add(dedup_key)
-                                combined.append(r)
-                if combined:
-                    res_str = "\n".join(combined[:max_results + 3])
-                    self._CACHE[cache_key] = (now, res_str)
-                    return res_str
+                        for item in res_list:
+                            u = item.get("url") or item.get("title", "")
+                            if u not in seen_urls:
+                                seen_urls.add(u)
+                                raw_items.append(item)
             except Exception as e:
                 logger.warning(f"Tavily search error: {e}")
 
         # 2. Brave Search API (if configured)
-        brave_key = getattr(settings, "BRAVE_API_KEY", "")
-        if brave_key:
-            try:
-                brave_res = await self._search_brave(clean_q, brave_key, max_results=max_results)
-                if brave_res:
-                    res_str = "\n".join(brave_res[:max_results])
-                    self._CACHE[cache_key] = (now, res_str)
-                    return res_str
-            except Exception as e:
-                logger.warning(f"Brave search error: {e}")
+        if not raw_items:
+            brave_key = getattr(settings, "BRAVE_API_KEY", "")
+            if brave_key:
+                try:
+                    brave_res = await self._search_brave(clean_q, brave_key, max_results=max_results)
+                    if brave_res:
+                        raw_items.extend(brave_res)
+                except Exception as e:
+                    logger.warning(f"Brave search error: {e}")
 
         # 3. Serper (Google Search JSON API, if configured)
-        serper_key = getattr(settings, "SERPER_API_KEY", "")
-        if serper_key:
-            try:
-                serper_res = await self._search_serper(clean_q, serper_key, max_results=max_results)
-                if serper_res:
-                    res_str = "\n".join(serper_res[:max_results])
-                    self._CACHE[cache_key] = (now, res_str)
-                    return res_str
-            except Exception as e:
-                logger.warning(f"Serper search error: {e}")
+        if not raw_items:
+            serper_key = getattr(settings, "SERPER_API_KEY", "")
+            if serper_key:
+                try:
+                    serper_res = await self._search_serper(clean_q, serper_key, max_results=max_results)
+                    if serper_res:
+                        raw_items.extend(serper_res)
+                except Exception as e:
+                    logger.warning(f"Serper search error: {e}")
 
         # 4. Concurrent zero-cost fallback (Google News RSS & Wikipedia concurrently)
-        results: List[str] = []
-        try:
-            tasks = [
-                self._search_wikipedia(clean_q),
-                self._search_google_news(clean_q, max_results=max_results)
-            ]
-            gathered = await asyncio.gather(*tasks, return_exceptions=True)
-            for item in gathered:
-                if isinstance(item, list):
-                    results.extend(item)
-        except Exception as e:
-            logger.debug(f"Concurrent search fallback error: {e}")
+        if len(raw_items) < 2:
+            try:
+                tasks = [
+                    self._search_wikipedia(clean_q),
+                    self._search_google_news(clean_q, max_results=max_results)
+                ]
+                gathered = await asyncio.gather(*tasks, return_exceptions=True)
+                for item in gathered:
+                    if isinstance(item, list):
+                        raw_items.extend(item)
+            except Exception as e:
+                logger.debug(f"Concurrent search fallback error: {e}")
 
         # 5. DuckDuckGo HTML Fallback if still empty
-        if len(results) < 2:
+        if len(raw_items) < 2:
             try:
                 ddg_results = await self._search_duckduckgo(clean_q, max_results=max_results)
                 if ddg_results:
-                    results.extend(ddg_results)
+                    raw_items.extend(ddg_results)
             except Exception as e:
                 logger.debug(f"DuckDuckGo search error: {e}")
 
-        if results:
-            seen = set()
-            unique_results = []
-            for r in results:
-                clean = r.strip()
-                if clean and clean not in seen and len(clean) > 15:
-                    seen.add(clean)
-                    unique_results.append(f"• {clean}")
-            final_res = "\n".join(unique_results[:max_results])
-            self._CACHE[cache_key] = (now, final_res)
-            return final_res
+        # Deduplicate and build clean sources list & formatted context
+        seen = set()
+        clean_sources: List[Dict[str, str]] = []
+        context_lines: List[str] = []
 
-        return ""
+        for item in raw_items:
+            title = (item.get("title") or "Source").strip()
+            url = (item.get("url") or "").strip()
+            snippet = (item.get("snippet") or "").strip()
+            domain = item.get("domain") or extract_domain(url)
+            date = item.get("date") or ""
 
-    async def _search_tavily(self, query: str, api_key: str, max_results: int = 6) -> List[str]:
+            dedup_key = (url or title[:35]).lower()
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
+
+            if not snippet and not title:
+                continue
+
+            clean_sources.append({
+                "title": title,
+                "url": url,
+                "domain": domain,
+                "snippet": snippet[:200]
+            })
+
+            citation_num = len(clean_sources)
+            date_str = f" [{date}]" if date else ""
+            if url:
+                context_lines.append(f"[{citation_num}] [{title}]({url}){date_str}: {snippet} (Domain: {domain})")
+            else:
+                context_lines.append(f"[{citation_num}] {title}{date_str}: {snippet}")
+
+            if len(clean_sources) >= max_results:
+                break
+
+        res_data = {
+            "context_text": "\n".join(context_lines),
+            "sources": clean_sources
+        }
+
+        if clean_sources:
+            self._CACHE[cache_key] = (now, res_data)
+
+        return res_data
+
+    async def search(self, query: str, max_results: int = 6) -> str:
+        """Backward-compatible search returning text string."""
+        res = await self.search_with_sources(query, max_results=max_results)
+        return res.get("context_text", "")
+
+    async def _search_tavily(self, query: str, api_key: str, max_results: int = 6) -> List[Dict[str, Any]]:
         url = "https://api.tavily.com/search"
         is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|global|geopolitics|war|conflict|election|minister|president|brics|cm|pm)\b", query, re.IGNORECASE))
         target_count = 8 if is_news else max_results
@@ -204,15 +254,22 @@ class WebSearchService:
                 results = []
                 for r in data.get("results", [])[:target_count]:
                     title = r.get("title", "").strip()
+                    item_url = r.get("url", "").strip()
                     content = r.get("content", "").strip()[:240].replace("\n", " ")
                     pub = r.get("published_date") or ""
-                    date_str = f" [{pub[:10]}]" if pub else ""
-                    if content:
-                        results.append(f"• {title}{date_str}: {content}")
+                    domain = extract_domain(item_url)
+                    if content or title:
+                        results.append({
+                            "title": title or domain,
+                            "url": item_url,
+                            "domain": domain,
+                            "snippet": content,
+                            "date": pub[:10] if pub else ""
+                        })
                 return results
         return []
 
-    async def _search_brave(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
+    async def _search_brave(self, query: str, api_key: str, max_results: int = 4) -> List[Dict[str, Any]]:
         url = "https://api.search.brave.com/res/v1/web/search"
         headers = {
             "Accept": "application/json",
@@ -228,19 +285,33 @@ class WebSearchService:
                 infobox = data.get("infobox", {}).get("results", [])
                 if infobox and isinstance(infobox, list):
                     info_desc = infobox[0].get("description") or infobox[0].get("title")
+                    info_url = infobox[0].get("url") or ""
                     if info_desc:
-                        results.append(f"• Direct Fact: {info_desc}")
+                        results.append({
+                            "title": "Direct Fact",
+                            "url": info_url,
+                            "domain": extract_domain(info_url),
+                            "snippet": info_desc,
+                            "date": ""
+                        })
                 
                 web_results = data.get("web", {}).get("results", [])
                 for item in web_results[:max_results]:
                     title = item.get("title", "").strip()
-                    desc = item.get("description", "").strip()[:160].replace("\n", " ")
-                    if desc:
-                        results.append(f"• {title}: {desc}")
+                    item_url = item.get("url", "").strip()
+                    desc = item.get("description", "").strip()[:180].replace("\n", " ")
+                    if desc or title:
+                        results.append({
+                            "title": title,
+                            "url": item_url,
+                            "domain": extract_domain(item_url),
+                            "snippet": desc,
+                            "date": ""
+                        })
                 return results
         return []
 
-    async def _search_serper(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
+    async def _search_serper(self, query: str, api_key: str, max_results: int = 4) -> List[Dict[str, Any]]:
         url = "https://google.serper.dev/search"
         headers = {"X-API-KEY": api_key, "Content-Type": "application/json"}
         payload = {"q": query, "num": max_results}
@@ -251,17 +322,31 @@ class WebSearchService:
                 results = []
                 if data.get("answerBox"):
                     ans = data["answerBox"].get("snippet") or data["answerBox"].get("title") or ""
+                    link = data["answerBox"].get("link") or ""
                     if ans:
-                        results.append(f"• Direct Fact: {ans}")
+                        results.append({
+                            "title": "Direct Answer",
+                            "url": link,
+                            "domain": extract_domain(link),
+                            "snippet": ans,
+                            "date": ""
+                        })
                 for item in data.get("organic", [])[:max_results]:
                     title = item.get("title", "").strip()
-                    snippet = item.get("snippet", "").strip()[:160].replace("\n", " ")
-                    if snippet:
-                        results.append(f"• {title}: {snippet}")
+                    item_url = item.get("link", "").strip()
+                    snippet = item.get("snippet", "").strip()[:180].replace("\n", " ")
+                    if snippet or title:
+                        results.append({
+                            "title": title,
+                            "url": item_url,
+                            "domain": extract_domain(item_url),
+                            "snippet": snippet,
+                            "date": ""
+                        })
                 return results
         return []
 
-    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 4) -> List[str]:
+    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 4) -> List[Dict[str, Any]]:
         url = "https://serpapi.com/search.json"
         params = {"q": query, "api_key": api_key, "num": max_results}
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -271,17 +356,31 @@ class WebSearchService:
                 results = []
                 if data.get("answer_box"):
                     ans = data["answer_box"].get("answer") or data["answer_box"].get("snippet") or ""
+                    link = data["answer_box"].get("link") or ""
                     if ans:
-                        results.append(f"• Direct Fact: {ans}")
+                        results.append({
+                            "title": "Direct Fact",
+                            "url": link,
+                            "domain": extract_domain(link),
+                            "snippet": ans,
+                            "date": ""
+                        })
                 for item in data.get("organic_results", [])[:max_results]:
                     title = item.get("title", "").strip()
-                    snippet = item.get("snippet", "").strip()[:160].replace("\n", " ")
-                    if snippet:
-                        results.append(f"• {title}: {snippet}")
+                    item_url = item.get("link", "").strip()
+                    snippet = item.get("snippet", "").strip()[:180].replace("\n", " ")
+                    if snippet or title:
+                        results.append({
+                            "title": title,
+                            "url": item_url,
+                            "domain": extract_domain(item_url),
+                            "snippet": snippet,
+                            "date": ""
+                        })
                 return results
         return []
 
-    async def _search_google_news(self, query: str, max_results: int = 6) -> List[str]:
+    async def _search_google_news(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
@@ -301,23 +400,34 @@ class WebSearchService:
                         items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
                         for item in items[:max_results]:
                             title_match = re.search(r'<title>(.*?)</title>', item)
+                            link_match = re.search(r'<link>(.*?)</link>', item)
                             pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                            source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
                             if title_match:
                                 title = html.unescape(title_match.group(1)).strip()
+                                link = html.unescape(link_match.group(1)).strip() if link_match else ""
                                 pub = pub_match.group(1).strip() if pub_match else ""
-                                results.append(f"{title} [{pub}]" if pub else title)
+                                source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
+                                domain = extract_domain(link) if link else "news.google.com"
+                                results.append({
+                                    "title": f"{title} ({source_name})" if source_name else title,
+                                    "url": link,
+                                    "domain": domain,
+                                    "snippet": title,
+                                    "date": pub[:16] if pub else ""
+                                })
                         if len(results) >= max_results:
                             break
                 except Exception:
                     continue
         return results[:max_results]
 
-    async def _search_wikipedia(self, query: str) -> List[str]:
+    async def _search_wikipedia(self, query: str) -> List[Dict[str, Any]]:
         url = "https://en.wikipedia.org/w/api.php"
         params = {
             "action": "opensearch",
             "search": query,
-            "limit": "2",
+            "limit": "3",
             "namespace": "0",
             "format": "json"
         }
@@ -327,24 +437,60 @@ class WebSearchService:
             res = await client.get(url, params=params, headers=headers)
             if res.status_code == 200:
                 data = res.json()
-                if len(data) >= 3 and data[2]:
-                    return [html.unescape(d).strip() for d in data[2] if d.strip()]
+                results = []
+                titles = data[1] if len(data) > 1 else []
+                snippets = data[2] if len(data) > 2 else []
+                urls = data[3] if len(data) > 3 else []
+                for t, s, u in zip(titles, snippets, urls):
+                    clean_s = html.unescape(s).strip()
+                    if clean_s or t:
+                        results.append({
+                            "title": f"Wikipedia: {t}",
+                            "url": u,
+                            "domain": "wikipedia.org",
+                            "snippet": clean_s or f"Reference article for {t}",
+                            "date": ""
+                        })
+                return results
         return []
 
-    async def _search_duckduckgo(self, query: str, max_results: int = 4) -> List[str]:
+    async def _search_duckduckgo(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
         async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
             res = await client.post("https://html.duckduckgo.com/html/", data={"q": query}, headers=headers)
             if res.status_code == 200:
-                raw_snippets = re.findall(r'<a class="result__snippet"[^>]*>(.*?)</a>', res.text, re.DOTALL)
                 results = []
-                for s in raw_snippets[:max_results]:
-                    clean = re.sub(r'<[^>]+>', '', s)
-                    clean = html.unescape(clean).strip()
-                    if clean:
-                        results.append(clean)
+                # Match result containers
+                blocks = re.findall(r'<div class="result__body"[^>]*>([\s\S]*?)</div>\s*</div>', res.text)
+                for b in blocks[:max_results]:
+                    link_match = re.search(r'<a class="result__url"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', b)
+                    snippet_match = re.search(r'<a class="result__snippet"[^>]*>(.*?)</a>', b)
+                    title_match = re.search(r'<a class="result__a"[^>]*>(.*?)</a>', b)
+                    
+                    raw_url = link_match.group(1).strip() if link_match else ""
+                    # Duckduckgo redirects /uddg?uddg=URL
+                    if "uddg=" in raw_url:
+                        from urllib.parse import unquote
+                        uddg_match = re.search(r'uddg=([^&]+)', raw_url)
+                        if uddg_match:
+                            raw_url = unquote(uddg_match.group(1))
+                    
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)) if title_match else ""
+                    snippet = re.sub(r'<[^>]+>', '', snippet_match.group(1)) if snippet_match else ""
+                    
+                    title = html.unescape(title).strip()
+                    snippet = html.unescape(snippet).strip()
+                    
+                    if snippet or title:
+                        results.append({
+                            "title": title or "DuckDuckGo Result",
+                            "url": raw_url,
+                            "domain": extract_domain(raw_url),
+                            "snippet": snippet,
+                            "date": ""
+                        })
                 return results
         return []
 

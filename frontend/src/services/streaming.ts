@@ -1,4 +1,5 @@
 import { getAuthHeaders } from './api';
+import type { SourceLink } from '../types';
 
 export interface StreamChunkData {
   conversation_id: string;
@@ -8,6 +9,7 @@ export interface StreamChunkData {
   done: boolean;
   reasoning_status?: string | null;
   cache_items?: string[];
+  sources?: SourceLink[];
   cancelled?: boolean;
 }
 

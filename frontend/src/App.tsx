@@ -44,6 +44,8 @@ import {
   Palette,
   LineChart,
   Zap,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -60,6 +62,7 @@ import { WebsiteGeneratorModal } from './components/landing/WebsiteGeneratorModa
 import { GameCreatorModal } from './components/landing/GameCreatorModal';
 import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
+import { SourceLinksCard } from './components/chat/SourceLinksCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
 import { CretivraMark } from './components/common/CretivraLogo';
 import { ConfirmModal } from './components/common/ConfirmModal';
@@ -214,6 +217,7 @@ export function App() {
   const [messageFeedback, setMessageFeedback] = useState<Record<string, 'good' | 'bad'>>({});
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
+  const [expandedMsgIds, setExpandedMsgIds] = useState<Set<string>>(new Set());
 
   // User greeting name
   const userDisplayName = useMemo(() => {
@@ -1446,7 +1450,7 @@ export function App() {
           onTouchMove={handleUserTouchMove}
         >
           {isLanding ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6 text-center max-w-3xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
+            <div className="flex-1 flex flex-col items-center justify-center px-4 py-4 sm:py-6 text-center max-w-4xl xl:max-w-5xl mx-auto w-full my-auto transition-all animate-in fade-in duration-300">
               {/* Announcement pill matching Manus interface */}
               <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-slate-600 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-gray-800 hover:text-slate-900 dark:hover:text-white transition-colors select-none">
                 <span>Asura has resumed independent operations. Our next chapter starts now.</span>
@@ -1573,7 +1577,7 @@ export function App() {
               </p>
             </div>
           ) : (
-            <div className="max-w-3xl w-full mx-auto p-4 space-y-6 pb-6 flex-1">
+            <div className="max-w-5xl xl:max-w-6xl 2xl:max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-7 pb-8 flex-1">
               {messages.map((m, i) => (
                 <div className="cv-msg-row" key={m.id || i}>
                   {m.role === 'user' ? (
@@ -1595,7 +1599,7 @@ export function App() {
 
                       {/* In-place edit user prompt */}
                       {editingUserMsgId === m.id ? (
-                        <div className="w-full max-w-xl bg-white dark:bg-gray-900 border border-cyan-500/50 rounded-2xl p-3 shadow-xl space-y-2.5">
+                        <div className="w-full max-w-2xl bg-white dark:bg-gray-900 border border-cyan-500/50 rounded-2xl p-3 shadow-xl space-y-2.5">
                           <textarea
                             autoFocus
                             rows={3}
@@ -1639,16 +1643,20 @@ export function App() {
                               <Trash2 size={13} />
                             </button>
                           </div>
-                          <div className="bg-slate-900 text-white dark:bg-gradient-to-r dark:from-cyan-950/70 dark:to-indigo-950/70 border border-slate-700 dark:border-cyan-500/30 rounded-2xl px-4 py-2.5 text-sm max-w-xl leading-relaxed shadow-sm">
+                          <div className="bg-slate-900 text-white dark:bg-gradient-to-r dark:from-cyan-950/70 dark:to-indigo-950/70 border border-slate-700 dark:border-cyan-500/30 rounded-2xl px-4 py-3 text-[14.5px] max-w-2xl lg:max-w-3xl leading-relaxed shadow-sm">
                             {m.content}
                           </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="cv-msg-assistant group relative space-y-2">
+                    <div
+                      className={`cv-msg-assistant group relative space-y-3.5 rounded-2xl p-5 sm:p-7 md:p-8 bg-white/95 dark:bg-[#0f1422]/90 border border-slate-200/90 dark:border-slate-800/80 shadow-[0_4px_24px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_32px_rgba(0,0,0,0.45)] backdrop-blur-md transition-all ${
+                        expandedMsgIds.has(m.id || String(i)) ? 'w-full ring-2 ring-cyan-500/40 shadow-xl' : ''
+                      }`}
+                    >
                       {/* Assistant Header */}
-                      <div className="flex items-center justify-between text-xs select-none">
+                      <div className="flex items-center justify-between text-xs select-none pb-1 border-b border-slate-100 dark:border-slate-800/60">
                         <div className="flex items-center gap-2">
                           <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-cyan-500 to-indigo-600 p-0.5 flex items-center justify-center text-white shadow-sm">
                             <Sparkles size={11} />
@@ -1657,6 +1665,9 @@ export function App() {
                           <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 text-cyan-800 dark:text-cyan-300 border border-slate-300 dark:border-slate-700/60 font-mono font-medium">
                             {currentModelObj?.display_name || 'Frontier Intelligence'}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                          <span className="hidden sm:inline">Result Window</span>
                         </div>
                       </div>
 
@@ -1668,9 +1679,12 @@ export function App() {
                         userQuery={i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : undefined}
                       />
 
+                      {/* Interactive Source Citations Card */}
+                      <SourceLinksCard sources={m.sources} messageContent={m.content} />
+
                       {/* Markdown Content */}
                       {m.content ? (
-                        <div className="relative text-sm leading-relaxed text-slate-900 dark:text-slate-100">
+                        <div className="relative text-[15.5px] leading-[1.78] text-slate-900 dark:text-slate-100 pt-1">
                           <MarkdownRenderer content={m.content} />
                           {isGenerating && i === messages.length - 1 && (
                             <span
@@ -1699,7 +1713,7 @@ export function App() {
 
                       {/* Assistant Action Toolbar (ChatGPT / Claude / Gemini style) */}
                       {m.content && (
-                        <div className="flex items-center gap-1.5 pt-2 text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/50 select-none">
+                        <div className="flex items-center gap-1.5 pt-3 text-slate-600 dark:text-slate-400 border-t border-slate-200 dark:border-slate-800/50 select-none">
                           {/* Copy response */}
                           <button
                             onClick={() => handleCopyAssistantMessage(m.id || String(i), m.content)}
@@ -1801,6 +1815,28 @@ export function App() {
                             <span className="text-[11px] hidden sm:inline">PDF</span>
                           </button>
 
+                          {/* Expand / Wide Result Window Size Toggle */}
+                          <button
+                            onClick={() => {
+                              const key = m.id || String(i);
+                              setExpandedMsgIds((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(key)) next.delete(key);
+                                else next.add(key);
+                                return next;
+                              });
+                            }}
+                            className={`p-1.5 rounded-lg transition-colors flex items-center gap-1 text-xs cursor-pointer ${
+                              expandedMsgIds.has(m.id || String(i))
+                                ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-300 dark:border-cyan-700/50'
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 text-slate-500 dark:text-slate-400'
+                            }`}
+                            title={expandedMsgIds.has(m.id || String(i)) ? "Restore standard size" : "Expand result window size to full width"}
+                          >
+                            {expandedMsgIds.has(m.id || String(i)) ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                            <span className="text-[11px] hidden sm:inline">{expandedMsgIds.has(m.id || String(i)) ? 'Compact' : 'Expand'}</span>
+                          </button>
+
                           <div className="flex-1" />
 
                           {/* Delete assistant message */}
@@ -1825,7 +1861,7 @@ export function App() {
 
         {/* Anchored Composer Area (Only visible during active conversation) */}
         {!isLanding && (
-          <div className="shrink-0 w-full max-w-3xl mx-auto px-4 pb-4 pt-1 bg-transparent animate-in fade-in duration-200 relative">
+          <div className="shrink-0 w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 pt-1 bg-transparent animate-in fade-in duration-200 relative">
             {/* ChatGPT-style circular scroll-to-bottom button positioned neatly above the composer */}
             {showScrollBottom && (
               <div className="absolute -top-11 left-1/2 -translate-x-1/2 z-30 animate-in fade-in zoom-in-95 duration-150">

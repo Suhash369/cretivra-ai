@@ -179,7 +179,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   const processedContent = useMemo(() => preprocessMarkdown(content), [content]);
 
   return (
-    <div className={`chat-markdown prose-asura text-slate-800 dark:text-slate-200 text-[14.5px] leading-relaxed font-sans ${className}`}>
+    <div className={`chat-markdown prose-asura text-slate-900 dark:text-slate-100 text-[15.5px] sm:text-[16px] leading-[1.78] font-sans ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[rehypeKatex]}
@@ -222,7 +222,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           td({ children, ...props }) {
             return (
               <td
-                className="px-4 py-3 text-[13.5px] text-slate-800 dark:text-slate-300 align-top leading-relaxed whitespace-normal break-normal font-sans min-w-[130px]"
+                className="px-4 py-3 text-[14px] text-slate-800 dark:text-slate-300 align-top leading-relaxed whitespace-normal break-normal font-sans min-w-[130px]"
                 {...props}
               >
                 {renderWithLineBreaks(children)}
@@ -234,7 +234,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           h1({ children, ...props }) {
             return (
               <h1
-                className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white mt-6 mb-3 pb-2 border-b border-slate-200 dark:border-slate-800/80 leading-snug"
+                className="text-2xl sm:text-[26px] font-bold tracking-tight text-slate-950 dark:text-white mt-7 mb-3.5 pb-2.5 border-b border-slate-200 dark:border-slate-800/80 leading-snug"
                 {...props}
               >
                 {children}
@@ -244,7 +244,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           h2({ children, ...props }) {
             return (
               <h2
-                className="text-xl font-bold tracking-tight text-slate-900 dark:text-white mt-5 mb-2.5 leading-snug"
+                className="text-xl sm:text-[22px] font-bold tracking-tight text-slate-900 dark:text-white mt-6 mb-3 leading-snug"
                 {...props}
               >
                 {children}
@@ -254,7 +254,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           h3({ children, ...props }) {
             return (
               <h3
-                className="text-base font-semibold text-slate-800 dark:text-slate-100 mt-4 mb-2 leading-snug"
+                className="text-base sm:text-[17px] font-semibold text-slate-900 dark:text-slate-100 mt-5 mb-2.5 leading-snug"
                 {...props}
               >
                 {children}
@@ -264,7 +264,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           h4({ children, ...props }) {
             return (
               <h4
-                className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-3 mb-1.5 leading-snug"
+                className="text-sm sm:text-[15px] font-semibold text-slate-850 dark:text-slate-200 mt-4 mb-2 leading-snug"
                 {...props}
               >
                 {children}
@@ -275,7 +275,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           // Paragraphs & Typographic styling
           p({ children, ...props }) {
             return (
-              <p className="mb-3.5 leading-relaxed text-[14.5px] text-slate-800 dark:text-slate-200 last:mb-0" {...props}>
+              <p className="mb-4 leading-[1.78] text-[15.5px] sm:text-[16px] text-slate-900 dark:text-slate-100 last:mb-0" {...props}>
                 {children}
               </p>
             );
@@ -289,7 +289,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           },
           em({ children, ...props }) {
             return (
-              <em className="italic text-slate-700 dark:text-slate-300" {...props}>
+              <em className="italic text-slate-750 dark:text-slate-300" {...props}>
                 {children}
               </em>
             );
@@ -298,21 +298,21 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           // Lists with clean indentation & colored bullets
           ul({ children, ...props }) {
             return (
-              <ul className="my-3 pl-6 list-disc space-y-1.5 marker:text-cyan-600 dark:marker:text-cyan-400 text-slate-800 dark:text-slate-200" {...props}>
+              <ul className="my-3.5 pl-6 list-disc space-y-2 marker:text-cyan-600 dark:marker:text-cyan-400 text-slate-900 dark:text-slate-100" {...props}>
                 {children}
               </ul>
             );
           },
           ol({ children, ...props }) {
             return (
-              <ol className="my-3 pl-6 list-decimal space-y-1.5 marker:font-semibold marker:text-cyan-600 dark:marker:text-cyan-400 text-slate-800 dark:text-slate-200" {...props}>
+              <ol className="my-3.5 pl-6 list-decimal space-y-2 marker:font-semibold marker:text-cyan-600 dark:marker:text-cyan-400 text-slate-900 dark:text-slate-100" {...props}>
                 {children}
               </ol>
             );
           },
           li({ children, ...props }) {
             return (
-              <li className="leading-relaxed text-[14.5px] text-slate-800 dark:text-slate-200 pl-1" {...props}>
+              <li className="leading-[1.78] text-[15.5px] sm:text-[16px] text-slate-900 dark:text-slate-100 pl-1" {...props}>
                 {children}
               </li>
             );
@@ -322,7 +322,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           blockquote({ children, ...props }) {
             return (
               <blockquote
-                className="border-l-4 border-cyan-500 bg-cyan-50/70 dark:bg-cyan-950/20 rounded-r-xl px-4 py-2.5 my-3.5 text-slate-700 dark:text-slate-300 italic text-[14px]"
+                className="border-l-4 border-cyan-500 bg-cyan-50/70 dark:bg-cyan-950/20 rounded-r-xl px-4 py-3 my-4 text-slate-800 dark:text-slate-200 italic text-[15px] leading-relaxed"
                 {...props}
               >
                 {children}
@@ -340,7 +340,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
           },
 
-          // Links (with rich styling for PDF & PPTX file downloads)
+          // Links (with rich styling for PDF & PPTX file downloads + Source Citation Badges)
           a({ href, children, ...props }) {
             const isDownload = Boolean(
               href?.includes('/files/download/') ||
@@ -365,16 +365,36 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               );
             }
 
+            // Detect citation badges e.g. [1], [2], 1, 2
+            const rawText = String(children).trim();
+            const isCitationBadge = /^\[?\d+\]?$/.test(rawText);
+
+            if (isCitationBadge) {
+              const cleanNum = rawText.replace(/[\[\]]/g, '');
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center font-mono font-bold text-[11px] px-1.5 py-0.5 mx-0.5 -translate-y-0.5 rounded-md bg-cyan-100/90 dark:bg-cyan-950/90 hover:bg-cyan-200 dark:hover:bg-cyan-900 text-cyan-800 dark:text-cyan-300 border border-cyan-300/80 dark:border-cyan-700/80 no-underline shadow-2xs hover:scale-110 active:scale-95 transition-all cursor-pointer select-none align-baseline"
+                  title={href || `Source [${cleanNum}]`}
+                  {...props}
+                >
+                  <span>{cleanNum}</span>
+                </a>
+              );
+            }
+
             return (
               <a
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline underline-offset-4 decoration-cyan-500/40 hover:decoration-cyan-400 transition-colors inline-flex items-center gap-0.5 font-medium"
+                className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 underline underline-offset-4 decoration-cyan-500/40 hover:decoration-cyan-400 font-medium transition-colors inline-flex items-center gap-0.5"
                 {...props}
               >
                 <span>{children}</span>
-                <ExternalLink className="w-3 h-3 opacity-70 inline ml-0.5" />
+                <ExternalLink className="w-3 h-3 opacity-75 inline ml-0.5 shrink-0" />
               </a>
             );
           },

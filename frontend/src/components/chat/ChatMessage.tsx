@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Copy, Check, RotateCw, Edit3, ThumbsUp, ThumbsDown, FileText } from 'lucide-react';
 import { IntelligenceCacheCard } from './IntelligenceCacheCard';
+import { SourceLinksCard } from './SourceLinksCard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { GeneratedImageCard } from './GeneratedImageCard';
 import type { Message } from '../../types';
@@ -45,7 +46,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         isUser ? 'bg-transparent' : 'bg-gray-900/40'
       }`}
     >
-      <div className="max-w-3xl mx-auto flex gap-4 items-start">
+      <div className="max-w-5xl xl:max-w-6xl mx-auto flex gap-4 items-start">
         {/* Avatar */}
         <div
           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold shadow-md overflow-hidden ${
@@ -66,11 +67,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
           {/* Claude-style Intelligence Cache Indicator */}
           {!isUser && (
-            <IntelligenceCacheCard
-              reasoningStatus={message.reasoning_status}
-              isGenerating={isGenerating}
-              cacheItems={message.cache_items}
-            />
+            <>
+              <IntelligenceCacheCard
+                reasoningStatus={message.reasoning_status}
+                isGenerating={isGenerating}
+                cacheItems={message.cache_items}
+              />
+              <SourceLinksCard sources={message.sources} messageContent={message.content} />
+            </>
           )}
 
           {/* User File Attachments if present */}

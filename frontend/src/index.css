@@ -580,14 +580,14 @@ body.light .cv-gradient-text,
 .cv-msg-user { display:flex; justify-content:flex-end; }
 .cv-msg-user-bubble { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px 16px 4px 16px;
   padding: 10px 15px; font-size: 14px; max-width: 82%; line-height: 1.6; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-.cv-msg-assistant { font-size: 14.5px; line-height: 1.7; color: var(--text); }
-.cv-msg-assistant p { margin: 0 0 12px; color: var(--text); }
+.cv-msg-assistant { font-size: 15.5px; line-height: 1.78; color: var(--text); }
+.cv-msg-assistant p { margin: 0 0 14px; color: var(--text); }
 
 /* Global Markdown & Table Typography (ChatGPT / Claude / Gemini quality) */
 .chat-markdown,
 .cv-msg-assistant {
-  font-size: 14.5px;
-  line-height: 1.72;
+  font-size: 15.5px;
+  line-height: 1.78;
   color: var(--text);
   overflow-wrap: break-word;
 }

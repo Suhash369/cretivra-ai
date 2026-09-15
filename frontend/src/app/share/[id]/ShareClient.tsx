@@ -14,6 +14,7 @@ import {
 import { fetchSharedConversation } from '../../../services/api';
 import { CretivraMark } from '../../../components/common/CretivraLogo';
 import { IntelligenceCacheCard } from '../../../components/chat/IntelligenceCacheCard';
+import { SourceLinksCard } from '../../../components/chat/SourceLinksCard';
 import { MarkdownRenderer } from '../../../components/chat/MarkdownRenderer';
 import { initTheme } from '../../../services/theme';
 import type { Conversation, Message } from '../../../types';
@@ -94,7 +95,7 @@ export function ShareClient({ conversationId }: { conversationId: string }) {
       </header>
 
       {/* Main Transcript Body */}
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8 sm:py-12">
+      <main className="flex-1 w-full max-w-5xl xl:max-w-6xl mx-auto px-4 py-8 sm:py-12">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 space-y-4">
             <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
@@ -167,10 +168,13 @@ export function ShareClient({ conversationId }: { conversationId: string }) {
                     </div>
 
                     {!isUser && (
-                      <IntelligenceCacheCard 
-                        reasoningStatus={msg.reasoning_status} 
-                        cacheItems={msg.cache_items} 
-                      />
+                      <>
+                        <IntelligenceCacheCard 
+                          reasoningStatus={msg.reasoning_status} 
+                          cacheItems={msg.cache_items} 
+                        />
+                        <SourceLinksCard sources={msg.sources} messageContent={msg.content} />
+                      </>
                     )}
 
                     <MarkdownRenderer content={msg.content} />

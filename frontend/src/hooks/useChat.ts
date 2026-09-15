@@ -180,6 +180,7 @@ export function useChat(options?: UseChatOptions) {
                     content: chunk.full_content !== undefined ? chunk.full_content : (msg.content + (chunk.content || '')),
                     reasoning_status: chunk.reasoning_status || msg.reasoning_status,
                     cache_items: chunk.cache_items || msg.cache_items,
+                    sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
                   };
                 }
                 if (msg.id === tempUserMsgId && chunk.conversation_id) {
@@ -255,7 +256,7 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
                     : msg
                 )
               );
@@ -291,7 +292,7 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
                     : msg
                 )
               );
@@ -357,7 +358,7 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
                     : msg
                 )
               );
@@ -395,7 +396,7 @@ export function useChat(options?: UseChatOptions) {
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === tempAssistantMsgId
-                      ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items }
+                      ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
                       : msg
                   )
                 );
