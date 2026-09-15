@@ -45,7 +45,7 @@ const STYLES = [
 ];
 
 const MODELS = [
-  { id: 'cretivra-nano-banana', label: 'Nano Banana 2 (Cretivra AI)', engine: 'nanobanana2', badge: 'No Logo' },
+  { id: 'cretivra-vision', label: 'Cretivra Vision Ultra', engine: 'nanobanana2', badge: 'Ultra HD' },
   { id: 'cretivra-flux', label: 'Cretivra FLUX.1 Art', engine: 'flux', badge: 'FLUX.1 Pro' },
   { id: 'cretivra-diffusion', label: 'Cretivra SDXL Studio', engine: 'flux-realism', badge: 'SDXL Realism' },
   { id: 'cretivra-anime', label: 'Cretivra Anime Studio', engine: 'flux-anime', badge: 'Anime Studio' },
@@ -60,7 +60,7 @@ export const ImageStudioModal: React.FC<ImageStudioModalProps> = ({
   initialPrompt = '',
 }) => {
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [selectedModel, setSelectedModel] = useState('cretivra-nano-banana');
+  const [selectedModel, setSelectedModel] = useState('cretivra-vision');
   const [selectedRatio, setSelectedRatio] = useState<AspectRatio>('1:1');
   const [selectedStyle, setSelectedStyle] = useState<string>('photorealistic');
   const [negativePrompt, setNegativePrompt] = useState('');

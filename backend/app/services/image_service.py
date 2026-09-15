@@ -28,6 +28,8 @@ class ImageService:
     }
 
     MODEL_ENGINE_MAP: Dict[str, str] = {
+        "cretivra-vision": "nanobanana2",
+        "vision": "nanobanana2",
         "cretivra-nano-banana": "nanobanana2",
         "nano-banana": "nanobanana2",
         "nano-banana-2": "nanobanana2",
@@ -359,7 +361,7 @@ class ImageService:
   <circle cx="512" cy="420" r="30" fill="url(#glow)" opacity="0.8"/>
   <text x="512" y="600" fill="#f1f5f9" font-size="28" font-family="system-ui, sans-serif" font-weight="bold" text-anchor="middle">Asura AI Image Studio</text>
   <text x="512" y="645" fill="#94a3b8" font-size="16" font-family="system-ui, sans-serif" text-anchor="middle">{safe_prompt}</text>
-  <text x="512" y="685" fill="#a855f7" font-size="13" font-family="monospace" text-anchor="middle">Nano Banana Neural Engine • 100% Free</text>
+  <text x="512" y="685" fill="#a855f7" font-size="13" font-family="monospace" text-anchor="middle">Cretivra Vision Engine • 100% Free</text>
 </svg>'''
 
     async def describe_image_for_prompt(self, image_bytes: bytes, filename: str) -> Dict[str, Any]:
@@ -471,11 +473,11 @@ class ImageService:
     def get_available_models(self) -> List[Dict[str, Any]]:
         return [
             {
-                "id": "cretivra-nano-banana",
+                "id": "cretivra-vision",
                 "engine": "nanobanana2",
-                "name": "Cretivra Nano Banana 2",
-                "description": "Next-gen visual synthesis powered by Nano Banana (Zero Watermark, No Logos)",
-                "badge": "Nano Banana",
+                "name": "Cretivra Vision Ultra",
+                "description": "Next-gen photorealistic visual synthesis with zero watermarks and pristine clarity",
+                "badge": "Vision Ultra",
                 "is_default": True
             },
             {
@@ -521,9 +523,9 @@ class ImageService:
             {
                 "id": "cretivra-gemini",
                 "engine": "nanobanana2",
-                "name": "Nano Banana Vision Engine",
-                "description": "Frontier multimodal visual synthesis with zero watermarks & no logos",
-                "badge": "Nano Banana",
+                "name": "Cretivra Vision Studio",
+                "description": "Frontier multimodal visual synthesis with zero watermarks and no logos",
+                "badge": "Vision Studio",
                 "is_default": False
             }
         ]

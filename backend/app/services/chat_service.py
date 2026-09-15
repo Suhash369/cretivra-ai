@@ -61,13 +61,13 @@ class ChatService:
         if is_dedicated_image_model or detected_image_prompt:
             image_prompt = detected_image_prompt if detected_image_prompt else user_message_content.strip()
             model_info = registry.get_model(model_id)
-            engine_name = model_info.display_name if model_info else "Nano Banana 2"
+            engine_name = model_info.display_name if model_info else "Cretivra Vision Engine"
 
             # Stream generation status
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': f'Synthesizing visual with {engine_name}...'})}\n\n"
             await asyncio.sleep(0.3)
 
-            # Determine target engine: default to Nano Banana ("nanobanana2")
+            # Determine target engine: default to nanobanana2 architecture
             target_engine = "nanobanana2"
             if model_id in ["cretivra-anime", "cretivra-3d", "cretivra-turbo", "cretivra-diffusion", "cretivra-flux"]:
                 target_engine = model_id

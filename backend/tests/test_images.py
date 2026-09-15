@@ -101,22 +101,22 @@ def test_gemini_model_in_catalog(client):
     engine_ids = [m["id"] for m in models]
     assert "cretivra-gemini" in engine_ids
 
-def test_nano_banana_model_in_catalog(client):
+def test_vision_model_in_catalog(client):
     res = client.get("/api/images/models")
     assert res.status_code == 200
     models = res.json()["models"]
     engine_ids = [m["id"] for m in models]
-    assert "cretivra-nano-banana" in engine_ids
-    nano_banana = next(m for m in models if m["id"] == "cretivra-nano-banana")
-    assert nano_banana["engine"] == "nanobanana2"
-    assert nano_banana["is_default"] is True
-    assert registry.is_image_model("cretivra-nano-banana") is True
+    assert "cretivra-vision" in engine_ids
+    vision_model = next(m for m in models if m["id"] == "cretivra-vision")
+    assert vision_model["engine"] == "nanobanana2"
+    assert vision_model["is_default"] is True
+    assert registry.is_image_model("cretivra-vision") is True
 
-def test_nano_banana_generate_api(client):
+def test_vision_generate_api(client):
     payload = {
         "prompt": "A crystal galaxy orb",
         "aspect_ratio": "1:1",
-        "model": "cretivra-nano-banana",
+        "model": "cretivra-vision",
         "seed": 100
     }
     res = client.post("/api/images/generate", json=payload)
@@ -127,4 +127,5 @@ def test_nano_banana_generate_api(client):
     assert "nanobanana2" in data["image_url"]
     assert "nologo=true" in data["image_url"]
     assert "proxy_url" in data
+
 

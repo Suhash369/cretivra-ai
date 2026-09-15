@@ -34,15 +34,15 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
   if (!src && !activeSrc) return null;
 
   // Determine model engine badge
-  let badgeLabel = 'Nano Banana';
+  let badgeLabel = 'Cretivra Vision';
   const checkUrl = activeSrc || src || '';
   if (
     checkUrl.includes('nanobanana') ||
     checkUrl.includes('/gemini/') ||
     checkUrl.includes('model=gemini') ||
-    (alt && (alt.toLowerCase().includes('banana') || alt.toLowerCase().includes('gemini')))
+    checkUrl.includes('vision')
   ) {
-    badgeLabel = 'Nano Banana';
+    badgeLabel = 'Cretivra Vision';
   } else if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
     badgeLabel = 'Anime Studio';
   } else if (checkUrl.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
