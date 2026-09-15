@@ -19,11 +19,32 @@ def extract_domain(url: str) -> str:
         return "web"
 
 def normalize_source_url(url: str) -> str:
-    """Normalize URLs, converting legacy YouTube channel paths /c/ and /user/ to modern @Handles."""
+    """Normalize URLs, converting legacy YouTube channel paths and Google Maps links to reliable universal formats."""
     if not url:
         return ""
+    url = url.strip()
     # Convert https://www.youtube.com/c/Channel or /user/Channel to https://www.youtube.com/@Channel
-    url = re.sub(r'^(https?://(?:www\.)?youtube\.com)/(?:c|user)/([^\s/?#]+)', r'\1/@\2', url.strip(), flags=re.IGNORECASE)
+    url = re.sub(r'^(https?://(?:www\.)?youtube\.com)/(?:c|user)/([^\s/?#]+)', r'\1/@\2', url, flags=re.IGNORECASE)
+
+    # Normalize Google Maps queries to universal cross-platform search format
+    if re.search(r'google\.[a-z.]+/maps|maps\.google\.', url, re.IGNORECASE):
+        try:
+            from urllib.parse import urlparse, parse_qs, quote, unquote
+            parsed = urlparse(url if url.startswith("http") else f"https://{url}")
+            qs = parse_qs(parsed.query)
+            q_val = qs.get("query", [None])[0] or qs.get("q", [None])[0] or qs.get("destination", [None])[0]
+            if q_val:
+                clean_q = unquote(q_val).replace("+", " ").strip()
+                return f"https://www.google.com/maps/search/?api=1&query={quote(clean_q)}"
+
+            place_match = re.search(r'/maps/place/([^/@?#]+)', parsed.path, re.IGNORECASE)
+            if place_match:
+                clean_p = unquote(place_match.group(1)).replace("+", " ").strip()
+                clean_p = re.sub(r'@[0-9.,\-+z]+', '', clean_p).strip()
+                return f"https://www.google.com/maps/search/?api=1&query={quote(clean_p)}"
+        except Exception:
+            pass
+
     return url
 
 class WebSearchService:

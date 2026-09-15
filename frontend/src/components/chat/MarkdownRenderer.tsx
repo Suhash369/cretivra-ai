@@ -13,6 +13,7 @@ import {
   FileCode,
   FileDown,
   ExternalLink,
+  MapPin,
 } from 'lucide-react';
 import { GeneratedImageCard } from './GeneratedImageCard';
 
@@ -145,27 +146,95 @@ function TableBlock({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Helper to normalize URLs, especially converting legacy YouTube /c/ and /user/ paths to modern @Handles
-export function normalizeLinkUrl(rawHref?: string): string {
+// Helper to normalize URLs, especially converting legacy YouTube /c/ and /user/ paths to modern @Handles,
+// and normalizing Google Maps / location links so they never 404 or break.
+export function normalizeLinkUrl(rawHref?: string, fallbackLabel?: string): string {
   if (!rawHref) return '#';
   let url = rawHref.trim();
 
-  // Normalize YouTube URLs:
-  // e.g. https://www.youtube.com/c/MrBeast -> https://www.youtube.com/@MrBeast
-  // e.g. https://youtube.com/user/MrBeast -> https://www.youtube.com/@MrBeast
-  // e.g. youtube.com/c/MrBeast -> https://www.youtube.com/@MrBeast
+  // 1. Normalize YouTube URLs:
   if (/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:c|user)\/([^\s/?#]+)/i.test(url)) {
     url = url.replace(/^(?:https?:\/\/)?(?:www\.)?youtube\.com\/(?:c|user)\/([^\s/?#]+)/i, 'https://www.youtube.com/@$1');
-  } else if (/^https?:\/\//i.test(url)) {
-    // Protocol is present
   } else if (/^(?:www\.)?youtube\.com/i.test(url)) {
     url = 'https://' + url;
+  }
+
+  // 2. Normalize Google Maps and location links:
+  const isGoogleMaps = /^(?:https?:\/\/)?(?:www\.)?(?:google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps)/i.test(url);
+
+  if (isGoogleMaps) {
+    let placeQuery = '';
+
+    // Check query params (?q=... or ?query=... or ?destination=...)
+    try {
+      const parsedUrl = new URL(url.startsWith('http') ? url : `https://${url}`);
+      const qParam = parsedUrl.searchParams.get('query') || parsedUrl.searchParams.get('q') || parsedUrl.searchParams.get('destination');
+      if (qParam) {
+        placeQuery = qParam.trim();
+      }
+    } catch {
+      const qParamMatch = url.match(/[?&](?:query|q|destination)=([^&#]+)/i);
+      if (qParamMatch) {
+        placeQuery = decodeURIComponent(qParamMatch[1].replace(/\+/g, ' ')).trim();
+      }
+    }
+
+    // Check path-based queries (/maps/place/..., /maps/search/..., /maps/dir/...)
+    if (!placeQuery) {
+      const placeMatch = url.match(/\/maps\/place\/([^/@?#]+)/i);
+      const searchMatch = url.match(/\/maps\/search\/([^/@?#]+)/i);
+      const dirMatch = url.match(/\/maps\/dir\/(?:[^/]*\/)?([^/@?#]+)/i);
+
+      if (placeMatch) {
+        placeQuery = decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')).trim();
+      } else if (searchMatch) {
+        placeQuery = decodeURIComponent(searchMatch[1].replace(/\+/g, ' ')).trim();
+      } else if (dirMatch) {
+        placeQuery = decodeURIComponent(dirMatch[1].replace(/\+/g, ' ')).trim();
+      }
+    }
+
+    // If it was a hallucinated shortlink like maps.app.goo.gl/... or goo.gl/maps/...
+    // use the link anchor text (e.g. [Eiffel Tower](https://maps.app.goo.gl/...))
+    if (!placeQuery && fallbackLabel) {
+      const cleanedLabel = fallbackLabel.replace(/[\[\]]/g, '').trim();
+      if (!/^(map|maps|google maps|view map|view on map|open map|location|directions|link|here)$/i.test(cleanedLabel)) {
+        placeQuery = cleanedLabel;
+      }
+    }
+
+    if (placeQuery) {
+      // Strip coordinates/zoom parameters like @48.8583701,2.2944813,17z
+      placeQuery = placeQuery.replace(/@[0-9.,\-+z]+/g, '').trim();
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`;
+    }
+
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    return url;
+  }
+
+  // 3. Normalize Apple Maps
+  if (/^(?:https?:\/\/)?maps\.apple\.com/i.test(url)) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    return url;
+  }
+
+  // 4. Normalize OpenStreetMap
+  if (/^(?:https?:\/\/)?(?:www\.)?openstreetmap\.org/i.test(url)) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    return url;
   }
 
   return url;
 }
 
-// Preprocessor to normalize LaTeX math expressions from AI responses
+// Preprocessor to normalize LaTeX math expressions and encode URL spaces from AI responses
 function preprocessMarkdown(raw: string): string {
   if (!raw) return '';
   let text = raw;
@@ -188,6 +257,15 @@ function preprocessMarkdown(raw: string): string {
       return `$$\n${formula.trim()}\n$$`;
     }
   );
+
+  // 4. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)\n\r]+)\)/g, (fullMatch, label, urlPart) => {
+    if (urlPart.includes(' ')) {
+      const encodedUrl = urlPart.replace(/ /g, '%20');
+      return `[${label}](${encodedUrl})`;
+    }
+    return fullMatch;
+  });
 
   return text;
 }
@@ -360,9 +438,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
           },
 
-          // Links (with rich styling for PDF & PPTX file downloads + Source Citation Badges)
+          // Links (with rich styling for Downloads, Source Citations, and Interactive Map Badges)
           a({ href, children, ...props }) {
-            const cleanHref = normalizeLinkUrl(href);
+            const rawText = String(children || '').trim();
+            const cleanHref = normalizeLinkUrl(href, rawText);
             const isDownload = Boolean(
               cleanHref?.includes('/files/download/') ||
               cleanHref?.endsWith('.pdf') ||
@@ -387,7 +466,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             }
 
             // Detect citation badges e.g. [1], [2], 1, 2
-            const rawText = String(children).trim();
             const isCitationBadge = /^\[?\d+\]?$/.test(rawText);
 
             if (isCitationBadge) {
@@ -402,6 +480,34 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                   {...props}
                 >
                   <span>{cleanNum}</span>
+                </a>
+              );
+            }
+
+            // Detect Map & Location Links
+            const isMapLink = Boolean(
+              cleanHref.includes('google.com/maps') ||
+              cleanHref.includes('maps.google.') ||
+              cleanHref.includes('maps.apple.com') ||
+              cleanHref.includes('openstreetmap.org') ||
+              cleanHref.includes('maps.app.goo.gl')
+            );
+
+            if (isMapLink) {
+              return (
+                <a
+                  href={cleanHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 my-1 rounded-xl bg-rose-50/90 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200/90 dark:border-rose-800/70 text-rose-700 dark:text-rose-300 font-semibold text-[13px] no-underline shadow-2xs hover:shadow-xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer select-none group align-middle"
+                  title={`Open location on Google Maps: ${rawText || cleanHref}`}
+                  {...props}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 group-hover:scale-110 group-hover:-translate-y-0.5 transition-transform" />
+                  <span className="font-medium truncate max-w-[260px]">{children}</span>
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-rose-200/70 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 ml-0.5 shrink-0">
+                    Maps ↗
+                  </span>
                 </a>
               );
             }

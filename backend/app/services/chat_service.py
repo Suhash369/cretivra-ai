@@ -375,6 +375,15 @@ class ChatService:
             "For general YouTube video queries or topic searches, use `https://www.youtube.com/results?search_query=...`."
         )
 
+        map_directive = (
+            "\n\n[MAPS & LOCATION DIRECTIVE]: "
+            "When providing links to locations, addresses, landmarks, businesses, or directions, ALWAYS use Google's official Universal Maps Search format: "
+            "`https://www.google.com/maps/search/?api=1&query=<URL_ENCODED_LOCATION>` "
+            "(e.g., `https://www.google.com/maps/search/?api=1&query=Eiffel+Tower%2C+Paris` or `https://www.google.com/maps/search/?api=1&query=Taj+Mahal%2C+Agra`). "
+            "CRITICAL: NEVER hallucinate shortened URLs like `maps.app.goo.gl/...` or `goo.gl/maps/...` (they 404 and fail!). "
+            "NEVER invent internal Google Place IDs. Always use `https://www.google.com/maps/search/?api=1&query=...` with plus signs `+` for spaces so links are 100% reliable on every device."
+        )
+
         sys_content = (
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
@@ -383,6 +392,7 @@ class ChatService:
             f"{vis_directive}"
             f"{vision_directive}"
             f"{youtube_directive}"
+            f"{map_directive}"
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]
