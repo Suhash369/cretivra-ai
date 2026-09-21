@@ -10,6 +10,7 @@ import {
   PenTool,
   BarChart3,
   Check,
+  Zap,
 } from 'lucide-react';
 
 const GitHubIcon = ({ className }: { className?: string }) => (
@@ -44,6 +45,7 @@ interface ActionMenuProps {
   onOpenSketch: () => void;
   onVisualizeData: () => void;
   onOpenGitHub?: () => void;
+  onOpenPlayground?: () => void;
 }
 
 export const ActionMenu: React.FC<ActionMenuProps> = ({
@@ -62,6 +64,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
   onOpenSketch,
   onVisualizeData,
   onOpenGitHub,
+  onOpenPlayground,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -202,6 +205,17 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
       onClick: () => {
         onClose();
         if (onOpenGitHub) onOpenGitHub();
+      },
+    },
+    {
+      id: 'playground',
+      icon: <Zap className="w-[18px] h-[18px] text-violet-400" />,
+      title: 'Asura Playground',
+      description: 'Autonomous agent runtime',
+      badge: 'AGENT',
+      onClick: () => {
+        onClose();
+        if (onOpenPlayground) onOpenPlayground();
       },
     },
   ];

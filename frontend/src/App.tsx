@@ -46,6 +46,8 @@ import {
   Zap,
   Maximize2,
   Minimize2,
+  MessageSquare,
+  Bot,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -69,6 +71,8 @@ import { ConfirmModal } from './components/common/ConfirmModal';
 import { ActionMenu } from './components/chat/ActionMenu';
 import { SketchModal } from './components/chat/SketchModal';
 import { LibraryModal } from './components/chat/LibraryModal';
+import { PlaygroundHome } from './playground/PlaygroundHome';
+import { TaskWorkspace } from './playground/TaskWorkspace';
 import type { Conversation, CretivraModel, SystemSettings, Attachment } from './types';
 
 const SUGGESTIONS = [
@@ -199,6 +203,23 @@ export function App() {
   const [gameModalOpen, setGameModalOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Playground Mode & Autonomous Agent state
+  const [appMode, setAppMode] = useState<'chat' | 'playground'>('chat');
+  const [activePlaygroundRunId, setActivePlaygroundRunId] = useState<string | null>(null);
+  const [playgroundPrompt, setPlaygroundPrompt] = useState<string>('');
+
+  const handleRunInPlayground = (promptText: string) => {
+    setPlaygroundPrompt(promptText);
+    setActivePlaygroundRunId(null);
+    setAppMode('playground');
+  };
+
+  const handleNewPlaygroundRun = () => {
+    setPlaygroundPrompt('');
+    setActivePlaygroundRunId(null);
+    setAppMode('playground');
+  };
 
   // Scroll to bottom state
   const [showScrollBottom, setShowScrollBottom] = useState(false);
@@ -902,6 +923,7 @@ export function App() {
                         setInput('Analyze GitHub repository code and summarize recent commit changes.');
                         textareaRef.current?.focus();
                       }}
+                      onOpenPlayground={() => handleRunInPlayground(input.trim())}
                     />
                   </div>
 
@@ -947,6 +969,23 @@ export function App() {
                   >
                     <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
                     <span>DeepThink</span>
+                  </button>
+
+                  {/* Autonomous Playground Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (input.trim()) {
+                        handleRunInPlayground(input.trim());
+                      } else {
+                        setAppMode('playground');
+                      }
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-300 border-violet-500/30 hover:border-violet-500/60 shadow-xs"
+                    title="Switch to Autonomous Playground or execute current prompt as an agent task"
+                  >
+                    <Zap size={12} className="text-violet-500 dark:text-violet-400" />
+                    <span>Playground</span>
                   </button>
                 </div>
 
@@ -1020,14 +1059,54 @@ export function App() {
             </button>
           </div>
 
-          <div className="px-3 pt-3">
-            <button
-              className="cv-sb-new-btn w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white dark:bg-cyan-950/40 hover:bg-slate-100 dark:hover:bg-cyan-900/50 text-slate-900 dark:text-cyan-300 border border-slate-300 dark:border-cyan-500/40 font-semibold text-xs shadow-xs transition-all cursor-pointer"
-              onClick={handleNewChat}
-            >
-              <Plus size={15} className="text-slate-800 dark:text-cyan-400" />
-              <span>New chat</span>
-            </button>
+          {/* Mode Switcher in Sidebar */}
+          <div className="px-3 pt-3 pb-1">
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-200/60 dark:bg-gray-900 border border-slate-300 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => setAppMode('chat')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  appMode === 'chat'
+                    ? 'bg-white dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-300 shadow-xs border border-slate-300 dark:border-cyan-500/30'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <MessageSquare size={13} />
+                <span>Chat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppMode('playground')}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  appMode === 'playground'
+                    ? 'bg-white dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 shadow-xs border border-slate-300 dark:border-violet-500/30'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Zap size={13} className="text-violet-500" />
+                <span>Playground</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="px-3 pt-1">
+            {appMode === 'chat' ? (
+              <button
+                className="cv-sb-new-btn w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white dark:bg-cyan-950/40 hover:bg-slate-100 dark:hover:bg-cyan-900/50 text-slate-900 dark:text-cyan-300 border border-slate-300 dark:border-cyan-500/40 font-semibold text-xs shadow-xs transition-all cursor-pointer"
+                onClick={handleNewChat}
+              >
+                <Plus size={15} className="text-slate-800 dark:text-cyan-400" />
+                <span>New chat</span>
+              </button>
+            ) : (
+              <button
+                className="cv-sb-new-btn w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white dark:bg-violet-950/40 hover:bg-slate-100 dark:hover:bg-violet-900/50 text-slate-900 dark:text-violet-300 border border-slate-300 dark:border-violet-500/40 font-semibold text-xs shadow-xs transition-all cursor-pointer"
+                onClick={handleNewPlaygroundRun}
+              >
+                <Plus size={15} className="text-slate-800 dark:text-violet-400" />
+                <span>New Task</span>
+              </button>
+            )}
           </div>
 
           {/* Search & Select Mode Toggle Bar */}
@@ -1246,6 +1325,35 @@ export function App() {
             <span className="cv-gradient-text font-bold text-sm tracking-wide">Asura AI by Cretivra</span>
           </div>
 
+          {/* Mode Switcher Pill */}
+          <div className="inline-flex p-0.5 rounded-full bg-slate-100 dark:bg-[#0c1220] border border-slate-200 dark:border-[#1e293b]">
+            <button
+              onClick={() => setAppMode('chat')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                appMode === 'chat'
+                  ? 'bg-white dark:bg-cyan-950/70 text-cyan-600 dark:text-cyan-300 shadow-xs border border-slate-300 dark:border-cyan-500/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              <MessageSquare size={12} />
+              <span>Chat</span>
+            </button>
+            <button
+              onClick={() => setAppMode('playground')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                appMode === 'playground'
+                  ? 'bg-white dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 shadow-xs border border-slate-300 dark:border-violet-500/40'
+                  : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+            >
+              <Zap size={12} className="text-violet-500" />
+              <span>Playground</span>
+              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-violet-500/20 text-violet-600 dark:text-violet-300 border border-violet-400/30">
+                AGENT
+              </span>
+            </button>
+          </div>
+
           {/* Model Selector Dropdown Pill */}
           <div style={{ position: 'relative' }} ref={modelDropdownRef}>
             <div
@@ -1336,24 +1444,36 @@ export function App() {
             )}
           </div>
 
-          {/* Active Chat Breadcrumb & Status (ChatGPT-style location indicator) */}
+          {/* Active Chat / Playground Breadcrumb & Status */}
           <div className="flex-1 min-w-0 flex items-center justify-center px-2">
-            {!isLanding && (
-              <div className="flex items-center gap-2 max-w-[180px] sm:max-w-[280px] md:max-w-md truncate">
-                <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={activeChatTitle}>
-                  {activeChatTitle}
+            {appMode === 'playground' ? (
+              <div className="flex items-center gap-2 max-w-[280px] md:max-w-md truncate">
+                <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                  {activePlaygroundRunId ? `Run #${activePlaygroundRunId.slice(0, 8)}` : 'Asura Autonomous Playground'}
                 </span>
-                {isGenerating ? (
-                  <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 animate-pulse">
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping" />
-                    Generating...
-                  </span>
-                ) : (
-                  <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline font-mono">
-                    ({messages.length} msgs)
-                  </span>
-                )}
+                <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/30">
+                  <Zap size={10} />
+                  <span>Agent Engine</span>
+                </span>
               </div>
+            ) : (
+              !isLanding && (
+                <div className="flex items-center gap-2 max-w-[180px] sm:max-w-[280px] md:max-w-md truncate">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={activeChatTitle}>
+                    {activeChatTitle}
+                  </span>
+                  {isGenerating ? (
+                    <span className="shrink-0 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-ping" />
+                      Generating...
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline font-mono">
+                      ({messages.length} msgs)
+                    </span>
+                  )}
+                </div>
+              )
             )}
           </div>
 
@@ -1441,9 +1561,27 @@ export function App() {
           </div>
         )}
 
-        {/* Scrollable Center Canvas (Landing or Chat) */}
-        <div
-          className="flex-1 min-h-0 overflow-y-auto relative flex flex-col"
+        {appMode === 'playground' ? (
+          activePlaygroundRunId ? (
+            <TaskWorkspace
+              runId={activePlaygroundRunId}
+              onBackToHome={() => {
+                setActivePlaygroundRunId(null);
+              }}
+            />
+          ) : (
+            <PlaygroundHome
+              onStartRun={(runId) => {
+                setActivePlaygroundRunId(runId);
+              }}
+              initialPrompt={playgroundPrompt}
+            />
+          )
+        ) : (
+          <>
+            {/* Scrollable Center Canvas (Landing or Chat) */}
+            <div
+              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col"
           ref={scrollRef}
           onScroll={handleChatScroll}
           onWheel={handleUserWheel}
@@ -1628,6 +1766,13 @@ export function App() {
                         <div className="flex items-start gap-1.5">
                           {/* User action buttons on hover */}
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 pt-1">
+                            <button
+                              onClick={() => handleRunInPlayground(m.content)}
+                              className="p-1 text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 cursor-pointer rounded"
+                              title="Run in Asura Playground (Autonomous Agent Runtime)"
+                            >
+                              <Zap size={13} />
+                            </button>
                             <button
                               onClick={() => handleStartEditUser(m.id, m.content)}
                               className="p-1 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-300 cursor-pointer rounded"
@@ -1837,6 +1982,19 @@ export function App() {
                             <span className="text-[11px] hidden sm:inline">{expandedMsgIds.has(m.id || String(i)) ? 'Compact' : 'Expand'}</span>
                           </button>
 
+                          {/* Run in Playground */}
+                          <button
+                            onClick={() => {
+                              const promptToUse = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : m.content;
+                              handleRunInPlayground(promptToUse);
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/40 hover:text-violet-600 dark:hover:text-violet-400 text-slate-500 dark:text-slate-400 transition-colors flex items-center gap-1 text-xs cursor-pointer border border-transparent hover:border-violet-300 dark:hover:border-violet-700/40"
+                            title="Execute this task in Asura Autonomous Playground"
+                          >
+                            <Zap size={13} className="text-violet-500" />
+                            <span className="text-[11px] hidden sm:inline font-medium">Run in Playground</span>
+                          </button>
+
                           <div className="flex-1" />
 
                           {/* Delete assistant message */}
@@ -1883,6 +2041,8 @@ export function App() {
             )}
             {renderComposer(false)}
           </div>
+        )}
+          </>
         )}
       </div>
 

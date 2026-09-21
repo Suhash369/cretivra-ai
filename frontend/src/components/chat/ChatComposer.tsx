@@ -161,6 +161,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   setText('Analyze GitHub repository code and summarize recent commit changes.');
                   textareaRef.current?.focus();
                 }}
+                onOpenPlayground={() => {
+                  setText('Build a modern web app for ');
+                  textareaRef.current?.focus();
+                }}
               />
             </div>
 
