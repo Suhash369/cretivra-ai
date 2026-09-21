@@ -2,11 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.database.database import init_db
 from app.agents.runtime.planner import planner
 from app.agents.runtime.task_manager import task_manager
 from app.tools.registry import tool_registry
 
+init_db()
 client = TestClient(app)
+
 
 def test_intent_classification():
     assert planner.classify_intent("Build a website for my startup") == "build_web_app"

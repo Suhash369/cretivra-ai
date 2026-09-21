@@ -937,6 +937,118 @@ body.light .cv-search-glow-aura,
   transform: translateY(0);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor, .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button { animation: none !important; }
+/* ==========================================================================
+   Stitch AI Building Animation & Blueprint Canvas Engine
+   ========================================================================== */
+
+@keyframes stitch-laser-sweep {
+  0% {
+    top: -2%;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    top: 102%;
+    opacity: 0;
+  }
 }
+
+.animate-stitch-laser {
+  animation: stitch-laser-sweep 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes blueprint-grid-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.75;
+  }
+}
+
+.cv-blueprint-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.08) 1px, transparent 1px);
+  animation: blueprint-grid-pulse 5s ease-in-out infinite;
+}
+
+html.light .cv-blueprint-grid,
+body.light .cv-blueprint-grid {
+  background-image: 
+    linear-gradient(to right, rgba(2, 132, 199, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+}
+
+@keyframes wireframe-glow {
+  0%, 100% {
+    border-color: rgba(6, 182, 212, 0.35);
+    box-shadow: 0 0 15px rgba(6, 182, 212, 0.12), inset 0 0 12px rgba(6, 182, 212, 0.05);
+  }
+  50% {
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.25), inset 0 0 20px rgba(139, 92, 246, 0.08);
+  }
+}
+
+.cv-wireframe-box {
+  animation: wireframe-glow 3s ease-in-out infinite;
+}
+
+@keyframes wireframe-skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.cv-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.5) 0%,
+    rgba(6, 182, 212, 0.18) 50%,
+    rgba(30, 41, 59, 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: wireframe-skeleton-shimmer 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+html.light .cv-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(226, 232, 240, 0.6) 0%,
+    rgba(2, 132, 199, 0.15) 50%,
+    rgba(226, 232, 240, 0.6) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes materialization-reveal {
+  0% {
+    opacity: 0;
+    filter: blur(8px) brightness(1.3);
+    transform: scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px) brightness(1);
+    transform: scale(1);
+  }
+}
+
+.animate-materialize {
+  animation: materialization-reveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor, .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button, .animate-stitch-laser, .cv-blueprint-grid, .cv-wireframe-box, .cv-skeleton-shimmer, .animate-materialize { animation: none !important; }
+}
+

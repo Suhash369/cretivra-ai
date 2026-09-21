@@ -86,7 +86,7 @@ class Planner:
                 },
                 {
                     "task_type": "coding",
-                    "description": "Synthesize Interactive UI with Google Stitch Engine",
+                    "description": "Synthesize Responsive UI Components & Design System",
                     "tool_name": "file_writer",
                     "input_data": {
                         "path": "index.html",
@@ -100,7 +100,7 @@ class Planner:
                     "tool_name": "file_writer",
                     "input_data": {
                         "path": "app.js",
-                        "content": f"// Google Stitch Modular Production Scripts for {app_name}\nconsole.log('{app_name} initialized with Google Stitch interactive runtime.');\n"
+                        "content": f"// Autonomous UI Modular Production Scripts for {app_name}\nconsole.log('{app_name} initialized with interactive runtime.');\n"
                     },
                     "chain_dependency": True
                 },
@@ -117,8 +117,8 @@ class Planner:
                     "tool_name": "pdf_generator",
                     "input_data": {
                         "title": f"Technical Architecture & Deployment Guide: {app_name}",
-                        "content": f"# {app_name}\n\n## System Overview\nInteractive web application engineered with **Google Stitch UI Engine** on Asura Playground.\n\n## Interactive Features\n- **Rich Interactive UI**: Responsive layout with Tailwind CSS.\n- **Working Dark/Light Mode**: Full client-side theme switcher.\n- **Component Logic**: Working filter tags, interactive modals, and real-time search.\n- **Self-Contained Bundle**: Runs seamlessly in the sandbox preview or as a standalone downloaded application.",
-                        "subtitle": "Asura Playground & Google Stitch UI Engine"
+                        "content": f"# {app_name}\n\n## System Overview\nInteractive web application engineered with **Autonomous UI Synthesis Engine** on Asura Playground.\n\n## Interactive Features\n- **Rich Interactive UI**: Responsive layout with Tailwind CSS.\n- **Working Dark/Light Mode**: Full client-side theme switcher.\n- **Component Logic**: Working filter tags, interactive modals, and real-time search.\n- **Self-Contained Bundle**: Runs seamlessly in the sandbox preview or as a standalone downloaded application.",
+                        "subtitle": "Asura Playground Autonomous UI Engine"
                     },
                     "chain_dependency": True
                 }

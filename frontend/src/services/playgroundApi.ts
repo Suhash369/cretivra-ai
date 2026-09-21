@@ -143,3 +143,56 @@ export function resolveArtifactDownloadUrl(url?: string): string {
   return `${basePrefix}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+export async function synthesizeUiApi(prompt: string, appName?: string, variantTheme?: string, deviceType: string = 'DESKTOP'): Promise<{ success: boolean; html: string; prompt: string; device_type: string }> {
+  const res = await fetch(`${API_BASE}/playground/ui/synthesize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ prompt, app_name: appName, variant_theme: variantTheme, device_type: deviceType }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to synthesize UI');
+  }
+  return res.json();
+}
+
+export async function fetchUiVariantsApi(prompt: string, appName?: string): Promise<{
+  success: boolean;
+  prompt: string;
+  variants: Array<{ id: string; name: string; theme: string; description: string; html: string }>;
+}> {
+  const res = await fetch(`${API_BASE}/playground/ui/variants`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ prompt, app_name: appName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to fetch UI variants');
+  }
+  return res.json();
+}
+
+export async function refineUiApi(prompt: string, instruction: string, currentHtml?: string): Promise<{ success: boolean; html: string; instruction: string }> {
+  const res = await fetch(`${API_BASE}/playground/ui/refine`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ prompt, instruction, current_html: currentHtml }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to refine UI');
+  }
+  return res.json();
+}
+
+

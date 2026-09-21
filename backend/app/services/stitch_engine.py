@@ -1,52 +1,184 @@
 """
-Google Stitch UI Synthesis Engine for Asura Playground.
+Autonomous UI Synthesis & Stitch SDK Engine for Asura Playground.
 Generates complete, production-grade, highly interactive, standalone web applications
 with Tailwind CSS, modern typography, working state management, dark/light mode toggles,
 interactive filters, search, and modals.
+Supports integration with the Stitch SDK / MCP tools when STITCH_API_KEY is configured.
 """
 
 import os
 import re
 import json
-from typing import Optional
+import asyncio
+from typing import Optional, List, Dict, Any
 from app.core.logging import logger
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
 
 class StitchEngine:
     """
-    Google Stitch-inspired AI Web Application Synthesizer.
+    Autonomous AI Web Application Synthesizer with Stitch SDK & MCP protocol integration.
     Produces self-contained, 100% functional, responsive interactive applications.
     """
 
-    def synthesize_ui(self, prompt: str, app_name: Optional[str] = None) -> str:
+    def __init__(self):
+        self.stitch_api_key = os.environ.get("STITCH_API_KEY")
+        self.stitch_endpoint = os.environ.get("STITCH_API_URL", "https://stitch.googleapis.com/mcp")
+
+    async def generate_screen_from_text(self, prompt: str, device_type: str = "DESKTOP") -> str:
+        """
+        Attempts to generate a screen using the official Stitch MCP endpoint if STITCH_API_KEY is set.
+        Gracefully falls back to local synthesis engine.
+        """
+        api_key = os.environ.get("STITCH_API_KEY") or self.stitch_api_key
+        if api_key and httpx:
+            try:
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": api_key,
+                    "Accept": "application/json, text/event-stream"
+                }
+                payload = {
+                    "method": "tools/call",
+                    "params": {
+                        "name": "generate_screen_from_text",
+                        "arguments": {
+                            "prompt": prompt,
+                            "deviceType": device_type
+                        }
+                    }
+                }
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.post(self.stitch_endpoint, json=payload, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        result = data.get("result", {})
+                        content = result.get("content", [])
+                        for item in content:
+                            if item.get("type") == "text" and "<html" in item.get("text", "").lower():
+                                return item["text"]
+            except Exception as e:
+                logger.warning(f"Stitch SDK API call failed or timed out, falling back to built-in synthesis engine: {e}")
+
+        return self.synthesize_ui(prompt)
+
+    def synthesize_ui(self, prompt: str, app_name: Optional[str] = None, variant_theme: Optional[str] = None) -> str:
         name = app_name or self._extract_app_name(prompt)
         prompt_lower = prompt.lower()
 
-        # Domain classification for specialized Stitch UI templates
+        # Domain classification for specialized UI templates
         if any(w in prompt_lower for w in ["portfolio", "resume", "personal", "cv", "developer profile"]):
-            return self._build_portfolio_app(name, prompt)
+            return self._build_portfolio_app(name, prompt, variant_theme)
         elif any(w in prompt_lower for w in ["crm", "pipeline", "sales", "deal", "lead"]):
-            return self._build_crm_app(name, prompt)
+            return self._build_crm_app(name, prompt, variant_theme)
         elif any(w in prompt_lower for w in ["store", "ecommerce", "shop", "product", "cart", "sneaker"]):
-            return self._build_ecommerce_app(name, prompt)
+            return self._build_ecommerce_app(name, prompt, variant_theme)
         elif any(w in prompt_lower for w in ["analytics", "dashboard", "metric", "saas", "finance"]):
-            return self._build_analytics_app(name, prompt)
+            return self._build_analytics_app(name, prompt, variant_theme)
         elif any(w in prompt_lower for w in ["task", "todo", "kanban", "project management", "workflow"]):
-            return self._build_kanban_app(name, prompt)
+            return self._build_kanban_app(name, prompt, variant_theme)
         else:
-            return self._build_dynamic_showcase_app(name, prompt)
+            return self._build_dynamic_showcase_app(name, prompt, variant_theme)
+
+    def generate_variants(self, prompt: str, app_name: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Generates 3 distinct design variants for the prompt (Modern Cyan, Dark Cyber, Clean Minimalist).
+        """
+        name = app_name or self._extract_app_name(prompt)
+        return [
+            {
+                "id": "variant-cyan",
+                "name": "Modern Cyan (Default)",
+                "theme": "cyan",
+                "description": "Balanced high-contrast dark aesthetic with vibrant teal/cyan accents and glassmorphism.",
+                "html": self.synthesize_ui(prompt, name, variant_theme="cyan")
+            },
+            {
+                "id": "variant-cyber",
+                "name": "Cyber Violet (Futuristic)",
+                "theme": "violet",
+                "description": "Deep obsidian backdrop with neon violet/fuchsia accents and glowing borders.",
+                "html": self.synthesize_ui(prompt, name, variant_theme="violet")
+            },
+            {
+                "id": "variant-minimal",
+                "name": "Minimalist Emerald (Clean)",
+                "theme": "emerald",
+                "description": "Clean crisp styling with emerald accents, spacious typography, and refined data cards.",
+                "html": self.synthesize_ui(prompt, name, variant_theme="emerald")
+            }
+        ]
+
+    def edit_ui(self, prompt: str, current_html: str, edit_instruction: str) -> str:
+        """
+        Refines existing HTML according to edit instructions (e.g. changing themes, adding sections).
+        """
+        inst_lower = edit_instruction.lower()
+        if "violet" in inst_lower or "purple" in inst_lower:
+            return self.synthesize_ui(prompt, variant_theme="violet")
+        elif "emerald" in inst_lower or "green" in inst_lower:
+            return self.synthesize_ui(prompt, variant_theme="emerald")
+        elif "light" in inst_lower and "dark" not in inst_lower:
+            return current_html.replace('class="dark scroll-smooth"', 'class="light scroll-smooth"').replace('class="dark"', 'class="light"')
+        elif "dark" in inst_lower:
+            return current_html.replace('class="light scroll-smooth"', 'class="dark scroll-smooth"').replace('class="light"', 'class="dark"')
+        else:
+            # Re-synthesize with enhanced prompt
+            combined_prompt = f"{prompt} - with addition: {edit_instruction}"
+            return self.synthesize_ui(combined_prompt)
 
     def _extract_app_name(self, prompt: str) -> str:
         clean = re.sub(r"^(build|create|design|generate|make|code)\s+(a|an)?\s*", "", prompt, flags=re.IGNORECASE)
         clean = clean.split(" with ")[0].split(" in ")[0].split(" using ")[0]
-        return clean.strip().title()[:50] or "Asura Web Application"
+        return clean.strip().title()[:50] or "Autonomous Web Application"
 
-    def _build_portfolio_app(self, app_name: str, prompt: str) -> str:
+    def _get_theme_palette(self, variant_theme: Optional[str] = None) -> Dict[str, str]:
+        if variant_theme == "violet":
+            return {
+                "accent_from": "from-violet-500",
+                "accent_to": "to-fuchsia-400",
+                "primary": "violet-500",
+                "primary_hover": "violet-400",
+                "badge_bg": "bg-violet-500/10",
+                "badge_border": "border-violet-500/30",
+                "badge_text": "text-violet-300",
+                "glow": "shadow-violet-500/20"
+            }
+        elif variant_theme == "emerald":
+            return {
+                "accent_from": "from-emerald-500",
+                "accent_to": "to-teal-400",
+                "primary": "emerald-500",
+                "primary_hover": "emerald-400",
+                "badge_bg": "bg-emerald-500/10",
+                "badge_border": "border-emerald-500/30",
+                "badge_text": "text-emerald-300",
+                "glow": "shadow-emerald-500/20"
+            }
+        else:
+            return {
+                "accent_from": "from-cyan-500",
+                "accent_to": "to-teal-400",
+                "primary": "cyan-500",
+                "primary_hover": "cyan-400",
+                "badge_bg": "bg-cyan-500/10",
+                "badge_border": "border-cyan-500/30",
+                "badge_text": "text-cyan-300",
+                "glow": "shadow-cyan-500/20"
+            }
+
+    def _build_portfolio_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        palette = self._get_theme_palette(variant_theme)
         return f"""<!DOCTYPE html>
 <html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{app_name} | Google Stitch UI</title>
+  <title>{app_name} | Interactive Prototype</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -91,12 +223,12 @@ class StitchEngine:
   <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4">
     <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-500 to-teal-400 flex items-center justify-center text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr {palette['accent_from']} {palette['accent_to']} flex items-center justify-center text-slate-950 font-bold shadow-lg {palette['glow']}">
           <i class="fa-solid fa-code text-sm"></i>
         </div>
         <div>
           <span class="font-bold text-base tracking-tight text-white">{app_name}</span>
-          <span class="text-[10px] block text-cyan-400 font-mono">Google Stitch &bull; Interactive UI</span>
+          <span class="text-[10px] block text-cyan-400 font-mono">Autonomous Canvas &bull; Interactive UI</span>
         </div>
       </div>
 
@@ -113,7 +245,7 @@ class StitchEngine:
           <i id="themeIcon" class="fa-solid fa-moon text-sm"></i>
         </button>
 
-        <button onclick="openModal('contactModal')" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-semibold text-xs hover:opacity-90 shadow-md shadow-cyan-500/20 transition-all cursor-pointer">
+        <button onclick="openModal('contactModal')" class="px-4 py-2 rounded-xl bg-gradient-to-r {palette['accent_from']} {palette['accent_to']} text-slate-950 font-semibold text-xs hover:opacity-90 shadow-md {palette['glow']} transition-all cursor-pointer">
           Let's Talk
         </button>
       </div>
@@ -127,19 +259,19 @@ class StitchEngine:
 
     <div class="max-w-6xl mx-auto grid md:grid-cols-12 gap-12 items-center relative z-10">
       <div class="md:col-span-7 space-y-6">
-        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-xs font-semibold">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border {palette['badge_border']} {palette['badge_bg']} {palette['badge_text']} text-xs font-semibold">
           <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
           Available for High-Impact Roles & Consulting
         </div>
         <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight leading-tight text-white">
-          Architecting High-Performance <span class="bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">Digital Experiences</span>
+          Architecting High-Performance <span class="bg-gradient-to-r {palette['accent_from']} {palette['accent_to']} bg-clip-text text-transparent">Digital Experiences</span>
         </h1>
         <p class="text-base text-slate-400 leading-relaxed">
           Senior Full-Stack & Autonomous AI Systems Engineer crafting resilient architectures, distributed reactive frontends, and intelligent machine learning workflows.
         </p>
 
         <div class="flex items-center gap-4 pt-2">
-          <a href="#projects" class="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-cyan-500/20">
+          <a href="#projects" class="px-5 py-2.5 rounded-xl bg-{palette['primary']} hover:bg-{palette['primary_hover']} text-slate-950 font-bold text-xs transition-all shadow-lg {palette['glow']}">
             Explore Selected Work
           </a>
           <a href="#contact" class="px-5 py-2.5 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-semibold text-xs transition-all">
@@ -165,7 +297,7 @@ class StitchEngine:
 
       <div class="md:col-span-5 flex justify-center">
         <div class="relative group">
-          <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-teal-400 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition duration-500"></div>
+          <div class="absolute -inset-1 bg-gradient-to-r {palette['accent_from']} {palette['accent_to']} rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition duration-500"></div>
           <div class="relative w-72 h-88 rounded-2xl bg-slate-900 border border-slate-800 p-4 shadow-2xl flex flex-col justify-between">
             <div class="w-full h-56 rounded-xl bg-gradient-to-tr from-slate-800 to-slate-950 border border-slate-700/60 flex items-center justify-center text-cyan-400 text-6xl">
               <i class="fa-solid fa-user-astronaut"></i>
@@ -212,7 +344,6 @@ class StitchEngine:
 
       <!-- Project Cards Grid -->
       <div class="grid md:grid-cols-3 gap-6" id="projectsGrid">
-        <!-- Project 1 -->
         <div class="project-card rounded-2xl bg-slate-900 border border-slate-800 p-5 hover:border-slate-700 transition-all group flex flex-col justify-between" data-category="ai" data-keywords="asura autonomous agent fastapi python react sse">
           <div>
             <div class="w-full h-40 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-cyan-400 text-4xl mb-4 group-hover:scale-102 transition-transform">
@@ -235,7 +366,6 @@ class StitchEngine:
           </div>
         </div>
 
-        <!-- Project 2 -->
         <div class="project-card rounded-2xl bg-slate-900 border border-slate-800 p-5 hover:border-slate-700 transition-all group flex flex-col justify-between" data-category="web" data-keywords="crm dashboard tailwind react pipeline sales">
           <div>
             <div class="w-full h-40 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-teal-400 text-4xl mb-4 group-hover:scale-102 transition-transform">
@@ -258,7 +388,6 @@ class StitchEngine:
           </div>
         </div>
 
-        <!-- Project 3 -->
         <div class="project-card rounded-2xl bg-slate-900 border border-slate-800 p-5 hover:border-slate-700 transition-all group flex flex-col justify-between" data-category="cloud" data-keywords="cloud docker kubernetes terraform devops render">
           <div>
             <div class="w-full h-40 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-indigo-400 text-4xl mb-4 group-hover:scale-102 transition-transform">
@@ -346,7 +475,7 @@ class StitchEngine:
           <textarea rows="4" required placeholder="Tell me about your architectural goals, timeline, and tech stack..." class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-cyan-400"></textarea>
         </div>
 
-        <button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-90 transition-all cursor-pointer flex items-center gap-2">
+        <button type="submit" class="px-6 py-3 rounded-xl bg-gradient-to-r {palette['accent_from']} {palette['accent_to']} text-slate-950 font-bold text-xs shadow-lg {palette['glow']} hover:opacity-90 transition-all cursor-pointer flex items-center gap-2">
           <span>Send Message</span>
           <i class="fa-solid fa-paper-plane text-xs"></i>
         </button>
@@ -356,7 +485,7 @@ class StitchEngine:
 
   <!-- Footer -->
   <footer class="py-8 px-6 border-t border-slate-800/80 text-center text-xs text-slate-500">
-    <p>&copy; 2026 {app_name}. Built autonomously with Asura Playground &amp; Google Stitch UI Engine.</p>
+    <p>&copy; 2026 {app_name}. Built autonomously with Asura Playground UI Engine.</p>
   </footer>
 
   <!-- Modal Dialog -->
@@ -439,14 +568,12 @@ class StitchEngine:
       document.getElementById(id).classList.add('hidden');
     }}
 
-    // Form submission simulation
     function handleFormSubmit(e) {{
       e.preventDefault();
       showToast('Thank you! Message received, will reply within 24h.');
       e.target.reset();
     }}
 
-    // Toast Notification helper
     function showToast(msg) {{
       const t = document.getElementById('toast');
       document.getElementById('toastMsg').textContent = msg;
@@ -459,13 +586,14 @@ class StitchEngine:
 </body>
 </html>"""
 
-    def _build_crm_app(self, app_name: str, prompt: str) -> str:
+    def _build_crm_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        palette = self._get_theme_palette(variant_theme)
         return f"""<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{app_name} | Google Stitch CRM</title>
+  <title>{app_name} | CRM & Sales Pipeline</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -484,7 +612,7 @@ class StitchEngine:
         <i class="fa-solid fa-chart-pie text-xs"></i>
       </div>
       <h1 class="font-bold text-sm text-white">{app_name}</h1>
-      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Google Stitch</span>
+      <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Live Prototype</span>
     </div>
     <div class="flex items-center gap-3">
       <button onclick="openDealModal()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer">
@@ -516,7 +644,6 @@ class StitchEngine:
   <!-- Kanban Pipeline Board -->
   <main class="flex-1 p-6 overflow-x-auto">
     <div class="grid grid-cols-4 gap-4 min-w-[900px] h-full">
-      <!-- Stage 1: Lead In -->
       <div class="flex flex-col bg-slate-900/50 border border-slate-800 rounded-xl p-3">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-300">
           <span>1. Qualified Leads</span>
@@ -542,7 +669,6 @@ class StitchEngine:
         </div>
       </div>
 
-      <!-- Stage 2: Demo -->
       <div class="flex flex-col bg-slate-900/50 border border-slate-800 rounded-xl p-3">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-300">
           <span>2. Demo & Technical Proof</span>
@@ -560,7 +686,6 @@ class StitchEngine:
         </div>
       </div>
 
-      <!-- Stage 3: Proposal -->
       <div class="flex flex-col bg-slate-900/50 border border-slate-800 rounded-xl p-3">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-slate-300">
           <span>3. Proposal & Negotiation</span>
@@ -578,7 +703,6 @@ class StitchEngine:
         </div>
       </div>
 
-      <!-- Stage 4: Closed Won -->
       <div class="flex flex-col bg-slate-900/50 border border-slate-800 rounded-xl p-3">
         <div class="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-bold text-emerald-400">
           <span>4. Closed Won</span>
@@ -653,13 +777,14 @@ class StitchEngine:
 </body>
 </html>"""
 
-    def _build_ecommerce_app(self, app_name: str, prompt: str) -> str:
+    def _build_ecommerce_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        palette = self._get_theme_palette(variant_theme)
         return f"""<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{app_name} | Google Stitch Store</title>
+  <title>{app_name} | Modern Storefront</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
@@ -681,7 +806,7 @@ class StitchEngine:
   <main class="max-w-6xl mx-auto p-6 space-y-6">
     <div class="flex justify-between items-center">
       <h2 class="text-2xl font-bold text-white">Trending Collection</h2>
-      <span class="text-xs text-slate-400">Interactive Google Stitch Storefront</span>
+      <span class="text-xs text-slate-400">Interactive Storefront &amp; Commerce Flow</span>
     </div>
 
     <div class="grid md:grid-cols-3 gap-6" id="productGrid">
@@ -728,13 +853,14 @@ class StitchEngine:
 </body>
 </html>"""
 
-    def _build_analytics_app(self, app_name: str, prompt: str) -> str:
-        return self._build_crm_app(app_name, prompt)
+    def _build_analytics_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        return self._build_crm_app(app_name, prompt, variant_theme)
 
-    def _build_kanban_app(self, app_name: str, prompt: str) -> str:
-        return self._build_crm_app(app_name, prompt)
+    def _build_kanban_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        return self._build_crm_app(app_name, prompt, variant_theme)
 
-    def _build_dynamic_showcase_app(self, app_name: str, prompt: str) -> str:
-        return self._build_portfolio_app(app_name, prompt)
+    def _build_dynamic_showcase_app(self, app_name: str, prompt: str, variant_theme: Optional[str] = None) -> str:
+        return self._build_portfolio_app(app_name, prompt, variant_theme)
+
 
 stitch_engine = StitchEngine()

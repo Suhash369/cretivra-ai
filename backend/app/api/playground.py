@@ -93,3 +93,56 @@ async def stream_direct_task(
             "X-Accel-Buffering": "no"
         }
     )
+
+class UISynthesizeRequest(BaseModel):
+    prompt: str
+    app_name: Optional[str] = None
+    variant_theme: Optional[str] = None
+    device_type: Optional[str] = "DESKTOP"
+
+class UIRefineRequest(BaseModel):
+    prompt: str
+    instruction: str
+    current_html: Optional[str] = None
+
+@router.post("/ui/synthesize")
+async def playground_synthesize_ui(payload: UISynthesizeRequest):
+    if not payload.prompt or not payload.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+    from app.services.stitch_engine import stitch_engine
+    html = await stitch_engine.generate_screen_from_text(payload.prompt.strip(), payload.device_type or "DESKTOP")
+    return {
+        "success": True,
+        "prompt": payload.prompt,
+        "html": html,
+        "device_type": payload.device_type
+    }
+
+@router.post("/ui/variants")
+async def playground_ui_variants(payload: UISynthesizeRequest):
+    if not payload.prompt or not payload.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
+    from app.services.stitch_engine import stitch_engine
+    variants = stitch_engine.generate_variants(payload.prompt.strip(), payload.app_name)
+    return {
+        "success": True,
+        "prompt": payload.prompt,
+        "variants": variants
+    }
+
+@router.post("/ui/refine")
+async def playground_ui_refine(payload: UIRefineRequest):
+    if not payload.instruction or not payload.instruction.strip():
+        raise HTTPException(status_code=400, detail="Refinement instruction cannot be empty.")
+    from app.services.stitch_engine import stitch_engine
+    updated_html = stitch_engine.edit_ui(
+        prompt=payload.prompt,
+        current_html=payload.current_html or "",
+        edit_instruction=payload.instruction.strip()
+    )
+    return {
+        "success": True,
+        "instruction": payload.instruction,
+        "html": updated_html
+    }
+
