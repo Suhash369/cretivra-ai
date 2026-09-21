@@ -431,7 +431,7 @@ class CretivraToolRegistry:
                     file_path=saved_path if os.path.isabs(saved_path) else os.path.abspath(saved_path),
                     project_id=project_id,
                     run_id=run_id,
-                    metadata={"rel_path": rel_path, "content_snippet": content[:300]}
+                    metadata={"rel_path": rel_path, "content": content}
                 )
             except Exception as e:
                 logger.warning(f"Could not register file artifact: {e}")

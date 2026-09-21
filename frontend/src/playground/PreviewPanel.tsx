@@ -13,6 +13,17 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
 
+  // Exit fullscreen on Escape
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
   // If HTML content is provided (e.g. from file_writer on index.html)
   const isHtml = artifact?.type === 'WEBSITE' || artifact?.name?.endsWith('.html') || Boolean(htmlContent);
   const isPdf = artifact?.type === 'PDF' || artifact?.name?.endsWith('.pdf');
@@ -23,7 +34,7 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
         isFullscreen ? 'fixed inset-4 z-50 shadow-2xl bg-white dark:bg-[#060911]' : ''
       }`}
     >
-      <div className="px-4 py-2.5 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50">
+      <div className="px-4 py-2.5 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Monitor className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
           <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
@@ -76,13 +87,26 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
             </a>
           )}
 
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
-          >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-          </button>
+          {isFullscreen && (
+            <button
+              onClick={() => setIsFullscreen(false)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors"
+              title="Exit Fullscreen (Esc)"
+            >
+              <Minimize2 className="w-3.5 h-3.5" />
+              <span>Exit Fullscreen</span>
+            </button>
+          )}
+
+          {!isFullscreen && (
+            <button
+              onClick={() => setIsFullscreen(true)}
+              title="Expand to Fullscreen"
+              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -99,6 +123,14 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
           <pre className="p-4 text-xs font-mono text-cyan-300 overflow-auto h-full selection:bg-cyan-900/50 bg-slate-950">
             {htmlContent}
           </pre>
+        ) : isHtml && !htmlContent ? (
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 gap-3">
+            <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+            <div>
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Loading Application Preview...</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Fetching compiled code for {artifact?.name || 'deliverable'}</p>
+            </div>
+          </div>
         ) : isPdf && artifact?.download_url ? (
           <div className="w-full h-full flex flex-col relative bg-slate-900">
             <iframe
@@ -119,8 +151,14 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
             </div>
           </div>
         ) : markdownContent ? (
-          <div className="p-6 overflow-y-auto h-full text-slate-700 dark:text-slate-300 text-xs leading-relaxed max-w-none font-sans whitespace-pre-wrap">
-            {markdownContent}
+          <div className="p-6 overflow-y-auto h-full text-slate-700 dark:text-slate-300 text-xs leading-relaxed max-w-none font-sans">
+            <div className="p-4 rounded-xl bg-white dark:bg-[#151c2e] border border-slate-200 dark:border-[#232d45] shadow-xs">
+              <div className="flex items-center gap-2 mb-2 text-cyan-600 dark:text-cyan-400 font-semibold">
+                <Monitor className="w-4 h-4" />
+                <span>Execution Summary</span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{markdownContent}</p>
+            </div>
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 dark:text-slate-600">
