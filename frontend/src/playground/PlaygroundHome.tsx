@@ -113,26 +113,26 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#060911] text-slate-100 p-6 md:p-12 flex flex-col items-center justify-start min-h-full">
+    <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 p-6 md:p-12 flex flex-col items-center justify-start min-h-full transition-colors">
       <div className="w-full max-w-4xl flex flex-col items-center text-center mt-4 md:mt-8">
         {/* Brand Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#151c2e] border border-[#232d45] text-xs font-semibold text-cyan-400 mb-6 shadow-sm">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 dark:bg-[#151c2e] border border-cyan-200 dark:border-[#232d45] text-xs font-semibold text-cyan-700 dark:text-cyan-400 mb-6 shadow-xs">
           <Sparkles className="w-3.5 h-3.5" />
           <span>ASURA PLAYGROUND &bull; AUTONOMOUS EXECUTION ENGINE</span>
         </div>
 
         {/* Main Headline */}
-        <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white mb-3 leading-tight">
-          What do you want Asura to <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">build or accomplish?</span>
+        <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-slate-900 dark:text-white mb-3 leading-tight">
+          What do you want Asura to <span className="bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 dark:from-cyan-400 dark:via-blue-400 dark:to-violet-400 bg-clip-text text-transparent">build or accomplish?</span>
         </h1>
-        <p className="text-sm md:text-base text-slate-400 max-w-2xl mb-8">
+        <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 max-w-2xl mb-8">
           Tell Asura what you want done, not how to do it. Autonomous planning, multi-step execution, sandboxed testing, and artifact generation.
         </p>
 
         {/* Natural Language Task Composer */}
         <form
           onSubmit={handleSubmit}
-          className="w-full bg-[#0d121f] border border-[#232d45] focus-within:border-cyan-500/60 rounded-2xl p-3 shadow-2xl shadow-cyan-950/20 transition-all mb-10 text-left"
+          className="w-full bg-white dark:bg-[#0d121f] border border-slate-200 dark:border-[#232d45] focus-within:border-cyan-500/80 rounded-2xl p-3 shadow-xl dark:shadow-2xl shadow-slate-200/50 dark:shadow-cyan-950/20 transition-all mb-10 text-left"
         >
           <textarea
             value={prompt}
@@ -144,23 +144,23 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
               }
             }}
             placeholder="E.g., Build a CRM for my sales team with customer tracking and deal stages..."
-            className="w-full h-28 md:h-32 bg-transparent text-slate-100 placeholder-slate-500 text-sm md:text-base resize-none focus:outline-none px-3 py-2"
+            className="w-full h-28 md:h-32 bg-transparent text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm md:text-base resize-none focus:outline-none px-3 py-2"
           />
 
-          <div className="flex items-center justify-between border-t border-[#232d45]/60 pt-3 px-2 flex-wrap gap-2">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-[#232d45]/60 pt-3 px-2 flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs text-slate-300 font-mono">
-                <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-800 dark:text-slate-300 font-mono">
+                <Cpu className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   aria-label="Select Foundation Model Tier"
-                  className="bg-transparent border-0 text-xs font-mono text-slate-300 focus:outline-none cursor-pointer"
+                  className="bg-transparent border-0 text-xs font-mono text-slate-800 dark:text-slate-300 focus:outline-none cursor-pointer"
                 >
-                  <option value="cretivra-1" className="bg-slate-900">Cretivra 1 (Balanced)</option>
-                  <option value="cretivra-coder" className="bg-slate-900">Cretivra Coder Pro</option>
-                  <option value="cretivra-reason" className="bg-slate-900">Cretivra Reason</option>
-                  <option value="cretivra-1.1" className="bg-slate-900">Cretivra 1.1 (Multimodal)</option>
+                  <option value="cretivra-1" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra 1 (Balanced)</option>
+                  <option value="cretivra-coder" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra Coder Pro</option>
+                  <option value="cretivra-reason" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra Reason</option>
+                  <option value="cretivra-1.1" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra 1.1 (Multimodal)</option>
                 </select>
               </div>
             </div>
@@ -168,7 +168,7 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
             <button
               type="submit"
               disabled={!prompt.trim() || isSubmitting}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold text-xs md:text-sm shadow-md shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs md:text-sm shadow-md shadow-cyan-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>
@@ -187,7 +187,7 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
 
         {/* Quick Action Cards Grid */}
         <div className="w-full text-left mb-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4 px-1">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-4 px-1">
             Quick Autonomous Workflows
           </h3>
 
@@ -200,21 +200,21 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
                   onClick={() => {
                     setPrompt(action.prompt);
                   }}
-                  className="p-4 rounded-xl bg-[#0d121f] border border-[#232d45] hover:border-cyan-500/50 hover:bg-[#151c2e] transition-all cursor-pointer group flex flex-col justify-between"
+                  className="p-4 rounded-xl bg-white dark:bg-[#0d121f] border border-slate-200 dark:border-[#232d45] hover:border-cyan-500/50 hover:bg-slate-50 dark:hover:bg-[#151c2e] shadow-xs dark:shadow-none transition-all cursor-pointer group flex flex-col justify-between"
                 >
                   <div>
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center border mb-3 ${action.color}`}>
                       <Icon className="w-4 h-4" />
                     </div>
-                    <h4 className="text-sm font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors">
+                    <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
                       {action.title}
                     </h4>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                       {action.desc}
                     </p>
                   </div>
 
-                  <div className="mt-4 pt-2 border-t border-[#232d45]/40 flex items-center text-[11px] font-medium text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="mt-4 pt-2 border-t border-slate-100 dark:border-[#232d45]/40 flex items-center text-[11px] font-medium text-cyan-600 dark:text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity">
                     <span>Use workflow</span>
                     <ArrowRight className="w-3 h-3 ml-1" />
                   </div>

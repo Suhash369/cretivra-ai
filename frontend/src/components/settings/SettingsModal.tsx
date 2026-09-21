@@ -119,14 +119,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Left Settings Sidebar */}
         <div className="w-full md:w-52 bg-[var(--bg-base)] p-3 border-r border-[var(--border)] flex flex-row md:flex-col gap-1 overflow-x-auto shrink-0">
           <div className="px-3 py-2 font-bold text-[var(--text)] text-sm hidden md:flex items-center gap-2">
-            <SettingsIcon className="w-4 h-4 text-indigo-400" />
+            <SettingsIcon className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             <span>Settings</span>
           </div>
 
           <button
             onClick={() => setActiveTab('ai')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'ai' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors cursor-pointer ${
+              activeTab === 'ai' ? 'bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-200/50 dark:hover:bg-gray-800/40'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -135,8 +135,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={() => setActiveTab('engine')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'engine' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors cursor-pointer ${
+              activeTab === 'engine' ? 'bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-200/50 dark:hover:bg-gray-800/40'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
@@ -145,8 +145,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={() => setActiveTab('appearance')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'appearance' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors cursor-pointer ${
+              activeTab === 'appearance' ? 'bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-200/50 dark:hover:bg-gray-800/40'
             }`}
           >
             <SettingsIcon className="w-3.5 h-3.5" />
@@ -155,8 +155,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <button
             onClick={() => setActiveTab('privacy')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors ${
-              activeTab === 'privacy' ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-400 hover:bg-gray-800/40'
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium w-full transition-colors cursor-pointer ${
+              activeTab === 'privacy' ? 'bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-200/50 dark:hover:bg-gray-800/40'
             }`}
           >
             <Shield className="w-3.5 h-3.5" />
@@ -165,26 +165,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Right Settings Content Body */}
-        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-6 bg-gray-900">
+        <div className="flex-1 flex flex-col justify-between overflow-y-auto p-6 bg-white dark:bg-gray-900">
           <div>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-white capitalize">{activeTab} Settings</h3>
-              <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white cursor-pointer">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white capitalize">{activeTab} Settings</h3>
+              <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Error Alert if any */}
             {saveError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
                   <span>{saveError}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSaveError(null)}
-                  className="text-rose-400 hover:text-white ml-2"
+                  className="text-rose-500 hover:text-rose-700 dark:text-rose-400 dark:hover:text-white ml-2"
                 >
                   ✕
                 </button>
@@ -193,13 +193,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* AI Parameters Tab */}
             {activeTab === 'ai' && (
-              <div className="space-y-4 text-xs text-gray-300">
+              <div className="space-y-4 text-xs text-slate-700 dark:text-gray-300">
                 <div>
-                  <label className="block text-gray-400 font-medium mb-1">Default Model</label>
+                  <label className="block text-slate-600 dark:text-gray-400 font-medium mb-1">Default Model</label>
                   <select
                     value={settings.default_model}
                     onChange={(e) => setSettingsState({ ...settings, default_model: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-gray-100 focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-gray-950 border border-slate-300 dark:border-gray-800 text-slate-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500"
                   >
                     {models.map((m) => (
                       <option key={m.id} value={m.id}>
@@ -211,8 +211,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <label className="text-gray-400 font-medium">Temperature</label>
-                    <span className="text-indigo-400 font-mono">{settings.temperature}</span>
+                    <label className="text-slate-600 dark:text-gray-400 font-medium">Temperature</label>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-mono">{settings.temperature}</span>
                   </div>
                   <input
                     type="range"
@@ -226,38 +226,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 font-medium mb-1">Max Context Messages</label>
+                  <label className="block text-slate-600 dark:text-gray-400 font-medium mb-1">Max Context Messages</label>
                   <input
                     type="number"
                     value={settings.max_context_messages}
                     onChange={(e) => setSettingsState({ ...settings, max_context_messages: parseInt(e.target.value) || 30 })}
-                    className="w-full p-2.5 rounded-xl bg-gray-950 border border-gray-800 text-gray-100 focus:outline-none focus:border-indigo-500"
-                  />
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-gray-950 border border-slate-300 dark:border-gray-800 text-slate-900 dark:text-gray-100 focus:outline-none focus:border-indigo-500"
+                  >
+                  </input>
                 </div>
               </div>
             )}
 
             {/* Neural Engine Core Tab */}
             {activeTab === 'engine' && (
-              <div className="space-y-4 text-xs text-gray-300">
+              <div className="space-y-4 text-xs text-slate-700 dark:text-gray-300">
                 <div>
-                  <label className="block text-gray-400 font-medium mb-1">Inference Engine Endpoint</label>
+                  <label className="block text-slate-600 dark:text-gray-400 font-medium mb-1">Inference Engine Endpoint</label>
                   <input
                     type="text"
                     value={settings.ollama_base_url}
                     onChange={(e) => setSettingsState({ ...settings, ollama_base_url: e.target.value })}
-                    className="w-full p-2.5 rounded-xl bg-[var(--bg-base)] border border-[var(--border)] text-[var(--text)] font-mono focus:outline-none focus:border-indigo-500"
+                    className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-gray-950 border border-slate-300 dark:border-gray-800 text-slate-900 dark:text-gray-100 font-mono focus:outline-none focus:border-indigo-500"
                   />
-                  <p className="text-[11px] text-gray-500 mt-1">Default local acceleration endpoint: http://localhost:11434</p>
+                  <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-1">Default local acceleration endpoint: http://localhost:11434</p>
                 </div>
               </div>
             )}
 
             {/* Appearance Tab */}
             {activeTab === 'appearance' && (
-              <div className="space-y-4 text-xs text-gray-300">
+              <div className="space-y-4 text-xs text-slate-700 dark:text-gray-300">
                 <div>
-                  <label className="block text-gray-400 font-medium mb-2">Theme Mode</label>
+                  <label className="block text-slate-600 dark:text-gray-400 font-medium mb-2">Theme Mode</label>
                   <div className="grid grid-cols-3 gap-3">
                     {(['dark', 'light', 'system'] as ThemeMode[]).map((t) => (
                       <button
@@ -268,15 +269,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         }}
                         className={`p-3 rounded-xl border text-center capitalize font-semibold transition-all cursor-pointer ${
                           settings.theme === t
-                            ? 'bg-indigo-600/20 border-indigo-500 text-indigo-400 font-bold'
-                            : 'bg-[var(--bg-base)] border-[var(--border)] text-gray-400 hover:border-gray-600'
+                            ? 'bg-indigo-600/15 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold'
+                            : 'bg-slate-100 dark:bg-[var(--bg-base)] border-slate-300 dark:border-[var(--border)] text-slate-700 dark:text-gray-400 hover:border-slate-400 dark:hover:border-gray-600'
                         }`}
                       >
                         {t}
                       </button>
                     ))}
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-2">
+                  <p className="text-[11px] text-slate-500 dark:text-gray-500 mt-2">
                     {settings.theme === 'system'
                       ? 'Automatically synchronizes with your operating system color scheme.'
                       : `Live ${settings.theme} appearance active.`}
@@ -287,28 +288,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* Privacy & Data Tab */}
             {activeTab === 'privacy' && (
-              <div className="space-y-4 text-xs text-gray-300">
-                <div className="p-4 rounded-xl bg-gray-950 border border-gray-800 space-y-2">
-                  <h4 className="font-semibold text-white">Local-First Storage Guarantee</h4>
-                  <p className="text-gray-400 text-[11px] leading-relaxed">
+              <div className="space-y-4 text-xs text-slate-700 dark:text-gray-300">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-gray-950 border border-slate-200 dark:border-gray-800 space-y-2">
+                  <h4 className="font-semibold text-slate-900 dark:text-white">Local-First Storage Guarantee</h4>
+                  <p className="text-slate-600 dark:text-gray-400 text-[11px] leading-relaxed">
                     Your conversations are processed locally through your configured AI infrastructure. No external tracking or telemetry is transmitted.
                   </p>
                 </div>
 
                 <div className="pt-2">
                   {confirmClear ? (
-                    <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-800 space-y-3">
-                      <p className="text-rose-300 font-semibold text-xs">Are you sure you want to clear all conversation history?</p>
+                    <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 space-y-3">
+                      <p className="text-rose-700 dark:text-rose-300 font-semibold text-xs">Are you sure you want to clear all conversation history?</p>
                       <div className="flex gap-2">
                         <button
                           onClick={handleClearHistory}
-                          className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-500"
+                          className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-500 cursor-pointer"
                         >
                           Yes, Clear All Data
                         </button>
                         <button
                           onClick={() => setConfirmClear(false)}
-                          className="px-3 py-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700"
+                          className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300 hover:bg-slate-300 dark:hover:bg-gray-700 cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -317,7 +318,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ) : (
                     <button
                       onClick={() => setConfirmClear(true)}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-950/30 hover:bg-rose-950/50 border border-rose-800/60 text-rose-400 font-semibold transition-colors w-full justify-center"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 border border-rose-300 dark:border-rose-800/60 text-rose-700 dark:text-rose-400 font-semibold transition-colors w-full justify-center cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                       <span>Clear All Conversation History</span>
@@ -329,13 +330,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Modal Footer Save Controls */}
-          <div className="pt-6 border-t border-gray-800 flex justify-between items-center">
+          <div className="pt-6 border-t border-slate-200 dark:border-gray-800 flex justify-between items-center">
             {savedNotice ? (
-              <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold animate-in fade-in">
+              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold animate-in fade-in">
                 <Check className="w-4 h-4" /> Saved successfully
               </span>
             ) : saveError ? (
-              <span className="flex items-center gap-1 text-amber-400 text-xs font-medium">
+              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs font-medium">
                 <AlertCircle className="w-3.5 h-3.5" /> Saved locally
               </span>
             ) : (
@@ -345,7 +346,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium cursor-pointer transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-800 dark:text-gray-300 text-xs font-medium cursor-pointer transition-colors"
               >
                 Close
               </button>

@@ -48,6 +48,7 @@ import {
   Minimize2,
   MessageSquare,
   Bot,
+  ExternalLink,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -108,7 +109,7 @@ const SUGGESTIONS = [
   },
 ];
 
-export function App() {
+export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {}) {
   const [user, setUser] = useState<any>(() => {
     try {
       const saved = localStorage.getItem('cretivra_user');
@@ -205,11 +206,37 @@ export function App() {
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Playground Mode & Autonomous Agent state
-  const [appMode, setAppMode] = useState<'chat' | 'playground'>('chat');
-  const [activePlaygroundRunId, setActivePlaygroundRunId] = useState<string | null>(null);
-  const [playgroundPrompt, setPlaygroundPrompt] = useState<string>('');
+  const [appMode, setAppMode] = useState<'chat' | 'playground'>(() => {
+    if (initialMode) return initialMode;
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/playground')) return 'playground';
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('mode') === 'playground') return 'playground';
+    }
+    return 'chat';
+  });
 
-  const handleRunInPlayground = (promptText: string) => {
+  const [activePlaygroundRunId, setActivePlaygroundRunId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('run') || null;
+    }
+    return null;
+  });
+
+  const [playgroundPrompt, setPlaygroundPrompt] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('prompt') || '';
+    }
+    return '';
+  });
+
+  const handleRunInPlayground = (promptText: string, openInNewTab: boolean = false) => {
+    if (openInNewTab && typeof window !== 'undefined') {
+      window.open(`/playground?prompt=${encodeURIComponent(promptText)}`, '_blank');
+      return;
+    }
     setPlaygroundPrompt(promptText);
     setActivePlaygroundRunId(null);
     setAppMode('playground');
@@ -1074,18 +1101,29 @@ export function App() {
                 <MessageSquare size={13} />
                 <span>Chat</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setAppMode('playground')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  appMode === 'playground'
-                    ? 'bg-white dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 shadow-xs border border-slate-300 dark:border-violet-500/30'
-                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Zap size={13} className="text-violet-500" />
-                <span>Playground</span>
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setAppMode('playground')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    appMode === 'playground'
+                      ? 'bg-white dark:bg-violet-950/70 text-violet-600 dark:text-violet-300 shadow-xs border border-slate-300 dark:border-violet-500/30'
+                      : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Zap size={13} className="text-violet-500" />
+                  <span>Playground</span>
+                </button>
+                <a
+                  href="/playground"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 hover:bg-slate-300/60 dark:hover:bg-violet-950/60 transition-colors"
+                  title="Open Playground in new tab"
+                >
+                  <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
           </div>
 
@@ -1352,6 +1390,16 @@ export function App() {
                 AGENT
               </span>
             </button>
+            <a
+              href="/playground"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer text-slate-500 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-300 hover:bg-slate-200/50 dark:hover:bg-violet-950/40"
+              title="Open Playground in separate browser tab"
+            >
+              <ExternalLink size={12} className="text-violet-500" />
+              <span className="text-[10px] hidden sm:inline">New Tab</span>
+            </a>
           </div>
 
           {/* Model Selector Dropdown Pill */}
@@ -1767,11 +1815,18 @@ export function App() {
                           {/* User action buttons on hover */}
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 pt-1">
                             <button
-                              onClick={() => handleRunInPlayground(m.content)}
+                              onClick={() => handleRunInPlayground(m.content, false)}
                               className="p-1 text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 cursor-pointer rounded"
-                              title="Run in Asura Playground (Autonomous Agent Runtime)"
+                              title="Run in Asura Playground"
                             >
                               <Zap size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleRunInPlayground(m.content, true)}
+                              className="p-1 text-slate-400 hover:text-violet-500 dark:hover:text-violet-400 cursor-pointer rounded"
+                              title="Open & Run in separate tab"
+                            >
+                              <ExternalLink size={12} />
                             </button>
                             <button
                               onClick={() => handleStartEditUser(m.id, m.content)}
@@ -1983,17 +2038,29 @@ export function App() {
                           </button>
 
                           {/* Run in Playground */}
-                          <button
-                            onClick={() => {
-                              const promptToUse = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : m.content;
-                              handleRunInPlayground(promptToUse);
-                            }}
-                            className="p-1.5 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-950/40 hover:text-violet-600 dark:hover:text-violet-400 text-slate-500 dark:text-slate-400 transition-colors flex items-center gap-1 text-xs cursor-pointer border border-transparent hover:border-violet-300 dark:hover:border-violet-700/40"
-                            title="Execute this task in Asura Autonomous Playground"
-                          >
-                            <Zap size={13} className="text-violet-500" />
-                            <span className="text-[11px] hidden sm:inline font-medium">Run in Playground</span>
-                          </button>
+                          <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700/50 bg-slate-50 dark:bg-violet-950/20 transition-colors">
+                            <button
+                              onClick={() => {
+                                const promptToUse = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : m.content;
+                                handleRunInPlayground(promptToUse, false);
+                              }}
+                              className="p-1.5 hover:text-violet-600 dark:hover:text-violet-400 text-slate-600 dark:text-slate-400 flex items-center gap-1 text-xs cursor-pointer"
+                              title="Execute this task in Asura Playground"
+                            >
+                              <Zap size={13} className="text-violet-500" />
+                              <span className="text-[11px] hidden sm:inline font-medium">Run in Playground</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const promptToUse = i > 0 && messages[i - 1]?.role === 'user' ? messages[i - 1].content : m.content;
+                                handleRunInPlayground(promptToUse, true);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-violet-600 dark:hover:text-violet-300 cursor-pointer border-l border-slate-200 dark:border-violet-800/40"
+                              title="Open & Run in separate tab"
+                            >
+                              <ExternalLink size={12} />
+                            </button>
+                          </div>
 
                           <div className="flex-1" />
 

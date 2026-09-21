@@ -262,31 +262,31 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
   })();
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#060911] text-slate-100 overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-slate-50 dark:bg-[#060911] text-slate-900 dark:text-slate-100 overflow-hidden transition-colors">
       {/* Top Header Bar */}
-      <div className="h-14 border-b border-[#232d45] px-4 flex items-center justify-between bg-[#0d121f]/90 shrink-0">
+      <div className="h-14 border-b border-slate-200 dark:border-[#232d45] px-4 flex items-center justify-between bg-white dark:bg-[#0d121f]/90 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBackToHome}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
             title="Back to Playground Home"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
 
           <div className="flex items-center gap-2 min-w-0">
-            <span className="p-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+            <span className="p-1 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 shrink-0">
               <Sparkles className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-semibold text-slate-200 truncate">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-200 truncate">
               {runDetail?.prompt || 'Autonomous Task Run'}
             </h2>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
+            <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
             <span>{runDetail?.duration ? `${runDetail.duration}s` : `${durationTimer}s`}</span>
           </div>
 
@@ -295,7 +295,7 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
           {runDetail?.status === 'RUNNING' && (
             <button
               onClick={handleCancel}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-600 dark:text-rose-300 border border-rose-500/30 text-xs font-medium transition-colors cursor-pointer"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
               Stop
@@ -308,11 +308,11 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
       <div className="flex-1 grid grid-cols-12 gap-3 p-3 overflow-hidden">
         {/* Left Column: Plan & Task Graph (4 cols) */}
         <div className="col-span-4 flex flex-col gap-2 h-full overflow-hidden">
-          <div className="flex bg-[#0d121f] border border-[#232d45] rounded-lg p-1 shrink-0">
+          <div className="flex bg-white dark:bg-[#0d121f] border border-slate-200 dark:border-[#232d45] rounded-lg p-1 shrink-0">
             <button
               onClick={() => setActiveLeftView('plan')}
               className={`flex-1 py-1 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-                activeLeftView === 'plan' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                activeLeftView === 'plan' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               <Layers className="w-3.5 h-3.5" /> Plan Checklist
@@ -320,7 +320,7 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
             <button
               onClick={() => setActiveLeftView('graph')}
               className={`flex-1 py-1 text-xs font-semibold rounded flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-                activeLeftView === 'graph' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                activeLeftView === 'graph' ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               <Activity className="w-3.5 h-3.5" /> Task Graph
@@ -357,25 +357,25 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col bg-[#0d121f] border border-[#232d45] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#232d45] flex items-center justify-between bg-[#151c2e]/50 shrink-0">
+          <div className="flex-1 flex flex-col bg-white dark:bg-[#0d121f] border border-slate-200 dark:border-[#232d45] rounded-xl overflow-hidden shadow-xs">
+            <div className="px-4 py-3 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50 shrink-0">
               <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                <Terminal className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-300">
                   Live Agent Activity
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-slate-500">Real Backend Execution Events</span>
+              <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">Real Backend Execution Events</span>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-xs">
               {activityLogs.length === 0 ? (
-                <div className="h-40 flex items-center justify-center text-slate-600">
+                <div className="h-40 flex items-center justify-center text-slate-400 dark:text-slate-600">
                   <span>Waiting for agent event stream...</span>
                 </div>
               ) : (
                 activityLogs.map((log) => (
-                  <div key={log.id} className="flex items-start gap-2 text-slate-300">
+                  <div key={log.id} className="flex items-start gap-2 text-slate-700 dark:text-slate-300">
                     <span className="text-slate-600 text-[10px] shrink-0 mt-0.5">{log.timestamp}</span>
                     <span
                       className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
