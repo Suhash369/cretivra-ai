@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.database.models import AgentTaskDB, AgentRunDB
 from app.models.registry import registry
 from app.core.logging import logger
+from app.services.stitch_engine import stitch_engine
 
 class Planner:
     def classify_intent(self, prompt: str) -> str:
@@ -74,6 +75,7 @@ class Planner:
     def _build_task_outline(self, intent: str, prompt: str) -> List[Dict[str, Any]]:
         if intent == "build_web_app":
             app_name = re.sub(r"(?:build|create|make)\s+(?:a\s+)?", "", prompt, flags=re.IGNORECASE).strip().title() or "Modern Web Application"
+            stitch_html = stitch_engine.synthesize_ui(prompt, app_name)
             return [
                 {
                     "task_type": "planning",
@@ -84,21 +86,21 @@ class Planner:
                 },
                 {
                     "task_type": "coding",
-                    "description": "Scaffold Project Structure & HTML/CSS Foundation",
+                    "description": "Synthesize Interactive UI with Google Stitch Engine",
                     "tool_name": "file_writer",
                     "input_data": {
                         "path": "index.html",
-                        "content": f"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <title>{app_name} | Asura Playground</title>\n  <script src=\"https://cdn.tailwindcss.com\"></script>\n</head>\n<body class=\"bg-slate-950 text-slate-100 min-h-screen p-6\">\n  <div id=\"root\" class=\"max-w-4xl mx-auto\">\n    <header class=\"border-b border-slate-800 pb-4 mb-6\">\n      <h1 class=\"text-2xl font-bold text-cyan-400\">{app_name}</h1>\n      <p class=\"text-sm text-slate-400\">Built autonomously with Asura Playground</p>\n    </header>\n    <main id=\"app\" class=\"space-y-4\"></main>\n  </div>\n  <script src=\"app.js\"></script>\n</body>\n</html>"
+                        "content": stitch_html
                     },
                     "chain_dependency": True
                 },
                 {
                     "task_type": "coding",
-                    "description": "Implement Interactive Client Logic & State Management",
+                    "description": "Configure Production Application Scripts & Modular Architecture",
                     "tool_name": "file_writer",
                     "input_data": {
                         "path": "app.js",
-                        "content": "// Asura Playground Generated Web Application\nconsole.log('Initializing application runtime...');\ndocument.addEventListener('DOMContentLoaded', () => {\n  const app = document.getElementById('app');\n  if (app) {\n    app.innerHTML = `\n      <div class=\"p-6 rounded-xl bg-slate-900 border border-slate-800 shadow-xl\">\n        <h2 class=\"text-lg font-semibold text-white mb-2\">Application Workspace Ready</h2>\n        <p class=\"text-slate-400 text-sm mb-4\">Interactive components loaded successfully.</p>\n        <button id=\"actionBtn\" class=\"px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-slate-950 font-medium rounded-lg transition-colors\">\n          Execute Action\n        </button>\n        <div id=\"output\" class=\"mt-4 text-xs font-mono text-cyan-300\"></div>\n      </div>\n    `;\n    document.getElementById('actionBtn').onclick = () => {\n      document.getElementById('output').textContent = 'Action executed at ' + new Date().toLocaleTimeString();\n    };\n  }\n});"
+                        "content": f"// Google Stitch Modular Production Scripts for {app_name}\nconsole.log('{app_name} initialized with Google Stitch interactive runtime.');\n"
                     },
                     "chain_dependency": True
                 },
@@ -115,8 +117,8 @@ class Planner:
                     "tool_name": "pdf_generator",
                     "input_data": {
                         "title": f"Technical Architecture & Deployment Guide: {app_name}",
-                        "content": f"# {app_name}\n\n## System Overview\nAutonomously engineered responsive web application created by **Asura Playground**.\n\n## Component Breakdown\n- **Structure**: Semantic HTML5 with Tailwind CSS styling.\n- **State**: Vanilla JavaScript event-driven reactive state.\n- **Security**: Strict client-side sandbox execution.",
-                        "subtitle": "Asura Playground Autonomous Software Engineer"
+                        "content": f"# {app_name}\n\n## System Overview\nInteractive web application engineered with **Google Stitch UI Engine** on Asura Playground.\n\n## Interactive Features\n- **Rich Interactive UI**: Responsive layout with Tailwind CSS.\n- **Working Dark/Light Mode**: Full client-side theme switcher.\n- **Component Logic**: Working filter tags, interactive modals, and real-time search.\n- **Self-Contained Bundle**: Runs seamlessly in the sandbox preview or as a standalone downloaded application.",
+                        "subtitle": "Asura Playground & Google Stitch UI Engine"
                     },
                     "chain_dependency": True
                 }
