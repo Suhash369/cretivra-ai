@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileText, Presentation, FileCode, Download, ExternalLink, Package, FileSpreadsheet, Eye } from 'lucide-react';
-import type { Artifact } from '../services/playgroundApi';
+import { resolveArtifactDownloadUrl, type Artifact } from '../services/playgroundApi';
 
 interface ArtifactPanelProps {
   artifacts: Artifact[];
@@ -81,10 +81,10 @@ export function ArtifactPanel({ artifacts, onSelectPreview, selectedArtifactId }
                   </button>
 
                   <a
-                    href={art.download_url}
-                    download
+                    href={resolveArtifactDownloadUrl(art.download_url)}
+                    download={art.name}
                     title="Download File"
-                    className="p-1.5 rounded bg-slate-800 hover:bg-cyan-600 hover:text-white text-cyan-400 transition-colors cursor-pointer"
+                    className="p-1.5 rounded bg-slate-100 hover:bg-cyan-600 hover:text-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 transition-colors cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" />
                   </a>

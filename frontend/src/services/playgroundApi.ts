@@ -135,3 +135,11 @@ export async function fetchProjectsApi(): Promise<any[]> {
   if (!res.ok) return [];
   return res.json();
 }
+
+export function resolveArtifactDownloadUrl(url?: string): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const basePrefix = API_BASE.endsWith('/api') ? API_BASE.slice(0, -4) : API_BASE;
+  return `${basePrefix}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+

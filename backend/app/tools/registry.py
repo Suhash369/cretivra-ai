@@ -396,25 +396,51 @@ class CretivraToolRegistry:
         content = payload.get("content", "")
         db = context.get("db")
         project_id = context.get("project_id")
+        run_id = context.get("run_id")
 
         if not rel_path:
             return ToolExecutionResult(success=False, output=None, error="Path is required.")
 
+        from app.services.artifact_service import artifact_service
+        from app.services.project_service import project_service
+
+        saved_path = None
+        size = len(content.encode("utf-8")) if isinstance(content, str) else 0
+
         if db and project_id:
             saved_file = project_service.write_project_file(db, project_id, rel_path, content)
-            return ToolExecutionResult(
-                success=True,
-                output={"path": saved_file.path, "size": saved_file.size}
-            )
-
-        root = context.get("project_root")
-        if root:
+            saved_path = saved_file.path
+        else:
+            root = context.get("project_root") or os.path.join(settings.UPLOAD_DIR, "artifacts")
             abs_p = os.path.abspath(os.path.join(root, rel_path.lstrip("/\\")))
             if validate_path_safety(abs_p, root):
                 os.makedirs(os.path.dirname(abs_p), exist_ok=True)
                 with open(abs_p, "w", encoding="utf-8") as f:
                     f.write(content)
-                return ToolExecutionResult(success=True, output={"path": rel_path, "size": len(content)})
+                saved_path = abs_p
+
+        # Register written file as a visible deliverable artifact
+        if saved_path and db:
+            ext = os.path.splitext(rel_path)[1].lower()
+            art_type = "WEBSITE" if ext in [".html", ".htm"] else "SOURCE_CODE"
+            try:
+                artifact_service.create_artifact(
+                    db=db,
+                    artifact_type=art_type,
+                    name=os.path.basename(rel_path),
+                    file_path=saved_path if os.path.isabs(saved_path) else os.path.abspath(saved_path),
+                    project_id=project_id,
+                    run_id=run_id,
+                    metadata={"rel_path": rel_path, "content_snippet": content[:300]}
+                )
+            except Exception as e:
+                logger.warning(f"Could not register file artifact: {e}")
+
+        if saved_path:
+            return ToolExecutionResult(
+                success=True,
+                output={"path": rel_path, "size": size, "content": content}
+            )
 
         return ToolExecutionResult(success=False, output=None, error=f"Could not write file: {rel_path}")
 

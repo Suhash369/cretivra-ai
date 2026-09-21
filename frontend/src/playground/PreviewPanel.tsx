@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, ExternalLink, RefreshCw, Monitor, Code, Eye } from 'lucide-react';
-import type { Artifact } from '../services/playgroundApi';
+import { Maximize2, Minimize2, ExternalLink, RefreshCw, Monitor, Code, Eye, Download } from 'lucide-react';
+import { resolveArtifactDownloadUrl, type Artifact } from '../services/playgroundApi';
 
 interface PreviewPanelProps {
   artifact?: Artifact | null;
@@ -15,6 +15,7 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
 
   // If HTML content is provided (e.g. from file_writer on index.html)
   const isHtml = artifact?.type === 'WEBSITE' || artifact?.name?.endsWith('.html') || Boolean(htmlContent);
+  const isPdf = artifact?.type === 'PDF' || artifact?.name?.endsWith('.pdf');
 
   return (
     <div
@@ -23,19 +24,19 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
       }`}
     >
       <div className="px-4 py-2.5 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50">
-        <div className="flex items-center gap-2">
-          <Monitor className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-          <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-            {artifact ? artifact.name : 'Live Application & Artifact Preview'}
+        <div className="flex items-center gap-2 min-w-0">
+          <Monitor className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+          <h3 className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+            {artifact ? artifact.name : 'Live Application & Deliverable Preview'}
           </h3>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isHtml && (
-            <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5 mr-2">
+            <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5 mr-1">
               <button
                 onClick={() => setActiveTab('preview')}
-                className={`px-2 py-1 text-[11px] font-medium rounded flex items-center gap-1 transition-colors ${
+                className={`px-2 py-1 text-[11px] font-medium rounded flex items-center gap-1 transition-colors cursor-pointer ${
                   activeTab === 'preview' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -43,7 +44,7 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
               </button>
               <button
                 onClick={() => setActiveTab('code')}
-                className={`px-2 py-1 text-[11px] font-medium rounded flex items-center gap-1 transition-colors ${
+                className={`px-2 py-1 text-[11px] font-medium rounded flex items-center gap-1 transition-colors cursor-pointer ${
                   activeTab === 'code' ? 'bg-cyan-600 text-white shadow-xs' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 }`}
               >
@@ -56,16 +57,29 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
             <button
               onClick={() => setIframeKey((k) => k + 1)}
               title="Reload preview"
-              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           )}
 
+          {artifact?.download_url && (
+            <a
+              href={resolveArtifactDownloadUrl(artifact.download_url)}
+              target="_blank"
+              rel="noopener noreferrer"
+              download={artifact.name}
+              title="Download or open in new tab"
+              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -82,34 +96,36 @@ export function PreviewPanel({ artifact, htmlContent, markdownContent }: Preview
             className="w-full h-full border-0 bg-white"
           />
         ) : isHtml && activeTab === 'code' && htmlContent ? (
-          <pre className="p-4 text-xs font-mono text-cyan-300 overflow-auto h-full selection:bg-cyan-900/50">
+          <pre className="p-4 text-xs font-mono text-cyan-300 overflow-auto h-full selection:bg-cyan-900/50 bg-slate-950">
             {htmlContent}
           </pre>
-        ) : artifact?.type === 'PDF' ? (
-          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 gap-3">
-            <div className="p-4 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400">
-              <Monitor className="w-10 h-10" />
+        ) : isPdf && artifact?.download_url ? (
+          <div className="w-full h-full flex flex-col relative bg-slate-900">
+            <iframe
+              key={iframeKey}
+              title={artifact.name}
+              src={resolveArtifactDownloadUrl(artifact.download_url)}
+              className="w-full flex-1 border-0 bg-white"
+            />
+            <div className="px-4 py-2 border-t border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e] shrink-0 text-xs">
+              <span className="text-slate-600 dark:text-slate-400 truncate max-w-[220px]">{artifact.name}</span>
+              <a
+                href={resolveArtifactDownloadUrl(artifact.download_url)}
+                download={artifact.name}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" /> Download PDF Report
+              </a>
             </div>
-            <div>
-              <h4 className="text-sm font-semibold text-slate-200">{artifact.name}</h4>
-              <p className="text-xs text-slate-500 mt-1">Publication-grade vector PDF generated with ReportLab</p>
-            </div>
-            <a
-              href={artifact.download_url}
-              download
-              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow transition-colors"
-            >
-              Download PDF Report
-            </a>
           </div>
         ) : markdownContent ? (
-          <div className="p-6 overflow-y-auto h-full text-slate-300 text-xs leading-relaxed prose prose-invert max-w-none">
+          <div className="p-6 overflow-y-auto h-full text-slate-700 dark:text-slate-300 text-xs leading-relaxed max-w-none font-sans whitespace-pre-wrap">
             {markdownContent}
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-600">
+          <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-400 dark:text-slate-600">
             <Monitor className="w-12 h-12 stroke-[1] mb-2 opacity-30" />
-            <p className="text-xs">Live application preview or artifact inspector will render here.</p>
+            <p className="text-xs">Select an artifact above to preview or inspect deliverables.</p>
           </div>
         )}
       </div>

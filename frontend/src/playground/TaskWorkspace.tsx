@@ -23,6 +23,7 @@ import {
   getPlaygroundRunApi,
   cancelPlaygroundRunApi,
   approveActionApi,
+  resolveArtifactDownloadUrl,
   type AgentRunDetail,
   type AgentTask,
   type Artifact,
@@ -45,6 +46,7 @@ interface ActivityLogItem {
 
 export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
   const [runDetail, setRunDetail] = useState<AgentRunDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
@@ -66,7 +68,12 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
       const data = await getPlaygroundRunApi(runId);
       setRunDetail(data);
       setTasks(data.tasks || []);
-      setArtifacts(data.artifacts || []);
+      if (data.artifacts && data.artifacts.length > 0) {
+        setArtifacts(data.artifacts);
+        setSelectedArtifact((curr) => curr || data.artifacts[0]);
+      } else {
+        setArtifacts([]);
+      }
       if (data.approvals && data.approvals.length > 0) {
         const pending = data.approvals.find((a) => a.status === 'pending');
         setPendingApproval(pending || null);
@@ -79,6 +86,27 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
   useEffect(() => {
     fetchRunDetails();
   }, [runId]);
+
+  // Load preview content when artifact is selected
+  useEffect(() => {
+    if (selectedArtifact) {
+      if (
+        selectedArtifact.type === 'WEBSITE' ||
+        selectedArtifact.name.endsWith('.html') ||
+        selectedArtifact.name.endsWith('.htm')
+      ) {
+        const url = resolveArtifactDownloadUrl(selectedArtifact.download_url);
+        fetch(url)
+          .then((res) => (res.ok ? res.text() : ''))
+          .then((html) => {
+            if (html) setPreviewHtml(html);
+          })
+          .catch(() => {});
+      } else {
+        setPreviewHtml(null);
+      }
+    }
+  }, [selectedArtifact]);
 
   // Duration timer
   useEffect(() => {
