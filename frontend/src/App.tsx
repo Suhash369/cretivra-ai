@@ -52,7 +52,7 @@ import {
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
-import { exportPdf, fetchCurrentUserProfileApi, getAuthToken } from './services/api';
+import { exportPdf, fetchCurrentUserProfileApi, getAuthToken, updateConversation } from './services/api';
 import { initTheme, applyTheme, type ThemeMode } from './services/theme';
 import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -85,7 +85,10 @@ import { KnowledgeWorkspace } from './components/knowledge/KnowledgeWorkspace';
 import { ArtifactsWorkspace } from './components/artifacts/ArtifactsWorkspace';
 import { HealthModal } from './components/settings/HealthModal';
 import { fetchHealth } from './services/api';
-import { startPlaygroundRunApi } from './services/playgroundApi';
+import { startPlaygroundRunApi, type Artifact } from './services/playgroundApi';
+import { ModelSelectorModal } from './components/model-selector/ModelSelectorModal';
+import { ArtifactPreviewModal } from './components/artifacts/ArtifactPreviewModal';
+import { DragAndDropOverlay } from './components/chat/DragAndDropOverlay';
 import type { Conversation, CretivraModel, SystemSettings, Attachment, HealthStatus } from './types';
 
 const SUGGESTIONS = [
@@ -217,6 +220,66 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
+  // Artifact preview & Drag-and-drop file upload state
+  const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  // Model switching with persistence to active conversation
+  const handleSelectModel = (modelId: string) => {
+    setSelectedModel(modelId);
+    if (activeConversationId) {
+      addOrUpdateConversation({ id: activeConversationId, model_id: modelId });
+      if (!activeConversationId.startsWith('guest-')) {
+        updateConversation(activeConversationId, { model_id: modelId }).catch((err) =>
+          console.warn('Failed to update conversation model on server:', err)
+        );
+      }
+    }
+  };
+
+  // Window drag and drop listeners for instant file upload
+  useEffect(() => {
+    const handleDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current++;
+      if (e.dataTransfer?.types?.includes('Files')) {
+        setIsDraggingFile(true);
+      }
+    };
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current--;
+      if (dragCounterRef.current <= 0) {
+        setIsDraggingFile(false);
+        dragCounterRef.current = 0;
+      }
+    };
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+    };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDraggingFile(false);
+      dragCounterRef.current = 0;
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        Array.from(e.dataTransfer.files).forEach((file) => handleFileUpload(file));
+      }
+    };
+
+    window.addEventListener('dragenter', handleDragEnter);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('drop', handleDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('drop', handleDrop);
+    };
+  }, [handleFileUpload]);
+
   // Playground Mode & Autonomous Agent state
   const [appMode, setAppMode] = useState<'chat' | 'playground'>(() => {
     if (initialMode) return initialMode;
@@ -340,12 +403,12 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
       } catch (e) {
         console.warn('Fallback to chat execution:', e);
         setWorkspaceView('chat');
-        sendMessage(cleanPrompt);
+        sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled);
       }
     } else {
       setInput('');
       setWorkspaceView('chat');
-      sendMessage(cleanPrompt);
+      sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled);
     }
   };
 
@@ -1221,7 +1284,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
       />
 
       {/* Main Workspace Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative bg-[#060911]">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative bg-[var(--background)] text-[var(--foreground)] transition-colors duration-200">
         {/* Contextual Header (Part 11) */}
         <ContextualHeader
           currentView={workspaceView}
@@ -1230,7 +1293,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           onStopGeneration={stopGeneration}
           selectedModel={selectedModel}
           availableModels={availableModels}
-          onSelectModel={setSelectedModel}
+          onSelectModel={handleSelectModel}
           onOpenModelSelector={() => setModelOpen(true)}
           webSearchEnabled={webSearchEnabled}
           onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
@@ -1257,7 +1320,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             <button
               onClick={() => {
                 const lastUser = [...messages].reverse().find((msg) => msg.role === 'user');
-                if (lastUser) sendMessage(lastUser.content);
+                if (lastUser) sendMessage(lastUser.content, selectedModel, webSearchEnabled, deepThinkEnabled);
               }}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#F43F5E]/20 hover:bg-[#F43F5E]/30 text-white font-medium cursor-pointer"
             >
@@ -1285,8 +1348,13 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             onOpenImageStudio={() => setImageStudioOpen(true)}
             selectedModel={selectedModel}
             availableModels={availableModels}
-            onSelectModel={setSelectedModel}
+            onSelectModel={handleSelectModel}
             onOpenModelSelector={() => setModelOpen(true)}
+            onOpenSketch={() => setSketchModalOpen(true)}
+            onOpenLibrary={() => setLibraryModalOpen(true)}
+            onOpenSlides={() => setSlideModalOpen(true)}
+            onOpenWebsite={() => setWebsiteModalOpen(true)}
+            onOpenGame={() => setGameModalOpen(true)}
           />
         )}
 
@@ -1330,7 +1398,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
 
         {workspaceView === 'artifacts' && (
           <ArtifactsWorkspace
-            onPreviewArtifact={(_art) => {}}
+            onPreviewArtifact={(art) => setPreviewArtifact(art)}
           />
         )}
 
@@ -1372,27 +1440,53 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                   <div key={m.id || i} className="w-full max-w-4xl mx-auto">
                     {m.role === 'user' ? (
                       <div className="flex justify-end group">
-                        <div className="flex items-start gap-2 max-w-2xl">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1.5">
-                            <button
-                              onClick={() => handleStartEditUser(m.id, m.content)}
-                              className="p-1 text-[#8891A8] hover:text-[#06B6D4] transition-colors"
-                              title="Edit prompt"
-                            >
-                              <Edit3 size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteMessage(m.id)}
-                              className="p-1 text-[#8891A8] hover:text-[#F43F5E] transition-colors"
-                              title="Delete message"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                        {editingUserMsgId === m.id ? (
+                          <div className="flex flex-col gap-2 w-full max-w-2xl bg-[var(--surface-secondary)] border border-[#06B6D4]/50 rounded-2xl p-4 shadow-sm">
+                            <textarea
+                              value={editUserText}
+                              onChange={(e) => setEditUserText(e.target.value)}
+                              className="w-full bg-transparent text-sm text-[var(--foreground)] focus:outline-none resize-none leading-relaxed"
+                              rows={Math.min(8, Math.max(2, editUserText.split('\n').length))}
+                              autoFocus
+                            />
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
+                              <button
+                                onClick={() => setEditingUserMsgId(null)}
+                                className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => handleSaveEditUser(m.id)}
+                                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#06B6D4] text-black hover:bg-[#06B6D4]/90 transition-colors shadow-xs"
+                              >
+                                Save & Submit
+                              </button>
+                            </div>
                           </div>
-                          <div className="bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm">
-                            {m.content}
+                        ) : (
+                          <div className="flex items-start gap-2 max-w-2xl">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1.5">
+                              <button
+                                onClick={() => handleStartEditUser(m.id, m.content)}
+                                className="p-1 text-[var(--muted-foreground)] hover:text-[#06B6D4] transition-colors"
+                                title="Edit prompt"
+                              >
+                                <Edit3 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMessage(m.id)}
+                                className="p-1 text-[var(--muted-foreground)] hover:text-[#F43F5E] transition-colors"
+                                title="Delete message"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                            <div className="bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm">
+                              {m.content}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-start gap-3.5 group">
@@ -1400,8 +1494,8 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                           <CretivraMark size={15} />
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-center justify-between text-xs text-[#8891A8]">
-                            <span className="font-semibold text-[#E7EAF4]">Asura</span>
+                          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                            <span className="font-semibold text-[var(--foreground)]">Asura</span>
                           </div>
 
                           <IntelligenceCacheCard
@@ -1411,19 +1505,19 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                           />
                           <SourceLinksCard sources={m.sources} messageContent={m.content} />
 
-                          <div className="text-[15px] leading-relaxed text-[#E7EAF4]">
+                          <div className="text-[15px] leading-relaxed text-[var(--foreground)]">
                             <MarkdownRenderer content={m.content} />
                           </div>
 
                           {/* Assistant Hover Action Toolbar */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1 text-[#8891A8]">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1 text-[var(--muted-foreground)]">
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(m.content);
                                 setCopiedMsgId(m.id || String(i));
                                 setTimeout(() => setCopiedMsgId(null), 2000);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-[#151C2E] hover:text-[#E7EAF4] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
                               title="Copy response"
                             >
                               {copiedMsgId === (m.id || String(i)) ? (
@@ -1433,8 +1527,21 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                               )}
                             </button>
                             <button
+                              onClick={() => handleSpeakMessage(m.id || String(i), m.content)}
+                              className={`p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] transition-colors ${
+                                speakingMsgId === (m.id || String(i)) ? 'text-[#06B6D4]' : 'hover:text-[var(--foreground)]'
+                              }`}
+                              title={speakingMsgId === (m.id || String(i)) ? 'Stop reading' : 'Read aloud'}
+                            >
+                              {speakingMsgId === (m.id || String(i)) ? (
+                                <VolumeX size={13} />
+                              ) : (
+                                <Volume2 size={13} />
+                              )}
+                            </button>
+                            <button
                               onClick={() => regenerateMessage(m.id)}
-                              className="p-1.5 rounded-lg hover:bg-[#151C2E] hover:text-[#E7EAF4] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
                               title="Regenerate response"
                             >
                               <RotateCw size={13} />
@@ -1456,7 +1563,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                                   console.error('Failed to export PDF:', err);
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-[#151C2E] hover:text-[#E7EAF4] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
                               title="Export to PDF"
                             >
                               <FileText size={13} />
@@ -1477,7 +1584,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 <button
                   type="button"
                   onClick={() => scrollToBottom(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#151C2E] border border-[#232D45] shadow-lg text-xs text-[#E7EAF4] hover:bg-[#232D45] transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] shadow-lg text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-all"
                 >
                   <ArrowDown size={13} />
                   <span>Jump to latest</span>
@@ -1486,13 +1593,13 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             )}
 
             {/* Bottom Anchored Composer */}
-            <div className="p-4 bg-[#060911]/90 backdrop-blur-md border-t border-[#232D45] shrink-0">
+            <div className="p-4 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)] shrink-0">
               <GoalComposer
                 input={input}
                 onInputChange={setInput}
                 onSubmit={() => {
                   if (input.trim() || attachments.length > 0) {
-                    sendMessage(input);
+                    sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled);
                     setInput('');
                   }
                 }}
@@ -1509,8 +1616,13 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 onOpenImageStudio={() => setImageStudioOpen(true)}
                 selectedModel={selectedModel}
                 availableModels={availableModels}
-                onSelectModel={setSelectedModel}
+                onSelectModel={handleSelectModel}
                 onOpenModelSelector={() => setModelOpen(true)}
+                onOpenSketch={() => setSketchModalOpen(true)}
+                onOpenLibrary={() => setLibraryModalOpen(true)}
+                onOpenSlides={() => setSlideModalOpen(true)}
+                onOpenWebsite={() => setWebsiteModalOpen(true)}
+                onOpenGame={() => setGameModalOpen(true)}
               />
             </div>
           </div>
@@ -1651,6 +1763,25 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         cancelLabel={confirmDialog.cancelLabel}
         variant={confirmDialog.variant}
       />
+
+      {/* Model Selector Modal */}
+      <ModelSelectorModal
+        isOpen={modelOpen}
+        onClose={() => setModelOpen(false)}
+        models={availableModels}
+        selectedModelId={selectedModel}
+        onSelectModel={handleSelectModel}
+      />
+
+      {/* Artifact Deliverable Preview Modal */}
+      <ArtifactPreviewModal
+        isOpen={!!previewArtifact}
+        onClose={() => setPreviewArtifact(null)}
+        artifact={previewArtifact}
+      />
+
+      {/* Drag & Drop File Upload Overlay */}
+      <DragAndDropOverlay isDragging={isDraggingFile} />
 
       {/* Floating Lower-Right Suggestion & Commenting Widget */}
       <SuggestionBox user={user} />

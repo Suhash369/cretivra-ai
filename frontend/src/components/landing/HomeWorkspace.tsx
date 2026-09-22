@@ -31,6 +31,12 @@ interface HomeWorkspaceProps {
   availableModels: CretivraModel[];
   onSelectModel: (id: string) => void;
   onOpenModelSelector?: () => void;
+  // Creative modalities triggers
+  onOpenSketch?: () => void;
+  onOpenLibrary?: () => void;
+  onOpenSlides?: () => void;
+  onOpenWebsite?: () => void;
+  onOpenGame?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -84,10 +90,15 @@ export function HomeWorkspace({
   availableModels,
   onSelectModel,
   onOpenModelSelector,
+  onOpenSketch,
+  onOpenLibrary,
+  onOpenSlides,
+  onOpenWebsite,
+  onOpenGame,
 }: HomeWorkspaceProps) {
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center min-h-full px-4 py-8 overflow-y-auto z-10">
-      {/* Subtle Ambient Gradient Orbs (Part 49) */}
+    <div className="relative flex-1 flex flex-col items-center justify-center min-h-full px-4 py-8 overflow-y-auto z-10 text-[var(--foreground)]">
+      {/* Subtle Ambient Gradient Orbs */}
       <div
         className="asura-ambient-orb w-[460px] h-[460px] bg-[#06B6D4] top-[-100px] left-[20%]"
         aria-hidden="true"
@@ -112,10 +123,10 @@ export function HomeWorkspace({
           className="mb-2 space-y-1 animate-enter"
           style={{ animationDelay: '80ms' }}
         >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[#E7EAF4] tracking-tight">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-[var(--foreground)] tracking-tight">
             ASURA
           </h1>
-          <p className="text-xl sm:text-2xl font-manus-serif italic text-[#8891A8] font-normal">
+          <p className="text-xl sm:text-2xl font-manus-serif italic text-[var(--muted-foreground)] font-normal">
             Think beyond.
           </p>
         </div>
@@ -125,7 +136,7 @@ export function HomeWorkspace({
           className="mb-6 animate-enter"
           style={{ animationDelay: '160ms' }}
         >
-          <p className="text-sm sm:text-[15px] text-[#8891A8] font-medium">
+          <p className="text-sm sm:text-[15px] text-[var(--muted-foreground)] font-medium">
             What do you want Asura to accomplish?
           </p>
         </div>
@@ -154,6 +165,11 @@ export function HomeWorkspace({
             availableModels={availableModels}
             onSelectModel={onSelectModel}
             onOpenModelSelector={onOpenModelSelector}
+            onOpenSketch={onOpenSketch}
+            onOpenLibrary={onOpenLibrary}
+            onOpenSlides={onOpenSlides}
+            onOpenWebsite={onOpenWebsite}
+            onOpenGame={onOpenGame}
           />
         </div>
 
@@ -162,7 +178,7 @@ export function HomeWorkspace({
           className="w-full flex flex-wrap items-center justify-center gap-2 animate-enter"
           style={{ animationDelay: '320ms' }}
         >
-          {SUGGESTIONS.map((item, idx) => {
+          {SUGGESTIONS.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -170,10 +186,10 @@ export function HomeWorkspace({
                 onClick={() => {
                   onInputChange(item.prompt);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#151C2E]/70 border border-[#232D45] text-xs text-[#8891A8] hover:text-[#E7EAF4] hover:border-[#06B6D4]/50 hover:bg-[#151C2E] transition-all asura-btn-interactive group shadow-xs"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[#06B6D4]/50 transition-all asura-btn-interactive group shadow-xs"
                 title={item.prompt}
               >
-                <Icon size={12} className="text-[#8891A8] group-hover:text-[#06B6D4] transition-colors" />
+                <Icon size={12} className="text-[var(--muted-foreground)] group-hover:text-[#06B6D4] transition-colors" />
                 <span>{item.label}</span>
               </button>
             );

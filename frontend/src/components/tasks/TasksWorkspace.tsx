@@ -73,12 +73,12 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#060911] overflow-hidden p-6">
+    <div className="flex-1 flex flex-col h-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden p-6 transition-colors duration-200">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-[#E7EAF4] tracking-tight">Tasks</h1>
-          <p className="text-xs text-[#8891A8] mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">Tasks</h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
             Monitor and review autonomous agent execution workloads.
           </p>
         </div>
@@ -86,14 +86,14 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
         <div className="flex items-center gap-2">
           <button
             onClick={fetchRuns}
-            className="p-2 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#8891A8] hover:text-[#E7EAF4] transition-colors asura-btn-interactive"
+            className="p-2 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors asura-btn-interactive"
             title="Refresh runs"
           >
             <RotateCw size={15} />
           </button>
           <button
             onClick={onNewTask}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06B6D4] text-[#060911] text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06B6D4] text-black text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
           >
             <Plus size={14} />
             <span>New Task</span>
@@ -103,15 +103,15 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
 
       {/* Filter and Search Bar */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1 bg-[#0D121F] p-1 rounded-xl border border-[#232D45]">
+        <div className="flex items-center gap-1 bg-[var(--surface-secondary)] p-1 rounded-xl border border-[var(--border)]">
           {(['all', 'running', 'completed', 'failed'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setFilter(tab)}
               className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${
                 filter === tab
-                  ? 'bg-[#151C2E] text-[#E7EAF4] font-semibold shadow-xs border border-[#232D45]'
-                  : 'text-[#8891A8] hover:text-[#E7EAF4]'
+                  ? 'bg-[var(--surface)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border)]'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               {tab}
@@ -120,13 +120,13 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
         </div>
 
         <div className="relative w-full sm:w-64">
-          <Search size={13} className="absolute left-3 top-2.5 text-[#8891A8]" />
+          <Search size={13} className="absolute left-3 top-2.5 text-[var(--muted-foreground)]" />
           <input
             type="text"
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-[#0D121F] border border-[#232D45] rounded-xl text-xs text-[#E7EAF4] placeholder-[#8891A8] focus:outline-none focus:border-[#06B6D4]/40"
+            className="w-full pl-8 pr-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[#06B6D4]/40"
           />
         </div>
       </div>
@@ -134,9 +134,9 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
       {/* Runs Table / Grid */}
       <div className="flex-1 overflow-y-auto space-y-2.5">
         {isLoading ? (
-          <div className="p-8 text-center text-xs text-[#8891A8]">Loading tasks...</div>
+          <div className="p-8 text-center text-xs text-[var(--muted-foreground)]">Loading tasks...</div>
         ) : filteredRuns.length === 0 ? (
-          <div className="p-12 text-center text-xs text-[#8891A8] rounded-xl border border-dashed border-[#232D45]">
+          <div className="p-12 text-center text-xs text-[var(--muted-foreground)] rounded-xl border border-dashed border-[var(--border)]">
             No matching tasks found.
           </div>
         ) : (
@@ -149,10 +149,10 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
               <div
                 key={r.id}
                 onClick={() => onSelectRun(r.id)}
-                className="p-4 rounded-xl bg-[#0D121F] border border-[#232D45] hover:border-[#06B6D4]/40 transition-all cursor-pointer flex items-center justify-between gap-4 group asura-card-interactive"
+                className="p-4 rounded-xl bg-[var(--surface-secondary)] border border-[var(--border)] hover:border-[#06B6D4]/40 transition-all cursor-pointer flex items-center justify-between gap-4 group asura-card-interactive"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[#151C2E] border border-[#232D45] flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0">
                     {isRunning ? (
                       <span className="w-2.5 h-2.5 rounded-full bg-[#06B6D4] animate-ping" />
                     ) : isCompleted ? (
@@ -163,11 +163,11 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
                   </div>
 
                   <div className="min-w-0">
-                    <div className="text-sm font-medium text-[#E7EAF4] truncate group-hover:text-[#06B6D4] transition-colors">
+                    <div className="text-sm font-medium text-[var(--foreground)] truncate group-hover:text-[#06B6D4] transition-colors">
                       {r.prompt}
                     </div>
-                    <div className="text-[11px] text-[#8891A8] mt-0.5 flex items-center gap-2">
-                      <span className="font-mono text-[10px] px-1.5 py-0.2 bg-[#151C2E] rounded border border-[#232D45]">
+                    <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 flex items-center gap-2">
+                      <span className="font-mono text-[10px] px-1.5 py-0.2 bg-[var(--surface)] rounded border border-[var(--border)]">
                         {r.intent || 'TASK'}
                       </span>
                       {r.duration > 0 && <span>Duration: {r.duration.toFixed(1)}s</span>}
@@ -196,7 +196,7 @@ export function TasksWorkspace({ onSelectRun, onNewTask }: TasksWorkspaceProps) 
                   >
                     {r.status}
                   </span>
-                  <ArrowRight size={14} className="text-[#8891A8] group-hover:text-[#06B6D4] transition-colors" />
+                  <ArrowRight size={14} className="text-[var(--muted-foreground)] group-hover:text-[#06B6D4] transition-colors" />
                 </div>
               </div>
             );

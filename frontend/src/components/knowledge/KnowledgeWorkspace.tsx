@@ -93,7 +93,7 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
   });
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#060911] overflow-hidden p-6">
+    <div className="flex-1 flex flex-col h-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden p-6 transition-colors duration-200">
       <input
         ref={fileInputRef}
         type="file"
@@ -104,15 +104,15 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-[#E7EAF4] tracking-tight">Knowledge</h1>
-          <p className="text-xs text-[#8891A8] mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--foreground)] tracking-tight">Knowledge</h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-1">
             Store documents, technical papers, and data for Asura to ground its reasoning.
           </p>
         </div>
 
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06B6D4] text-[#060911] text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06B6D4] text-black text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
         >
           <UploadCloud size={14} />
           <span>Upload Document</span>
@@ -121,15 +121,15 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
 
       {/* Categories & Search */}
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1 bg-[#0D121F] p-1 rounded-xl border border-[#232D45]">
+        <div className="flex items-center gap-1 bg-[var(--surface-secondary)] p-1 rounded-xl border border-[var(--border)]">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all ${
                 activeCategory === cat
-                  ? 'bg-[#151C2E] text-[#E7EAF4] font-semibold shadow-xs border border-[#232D45]'
-                  : 'text-[#8891A8] hover:text-[#E7EAF4]'
+                  ? 'bg-[var(--surface)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border)]'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               {cat}
@@ -138,13 +138,13 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
         </div>
 
         <div className="relative w-full sm:w-64">
-          <Search size={13} className="absolute left-3 top-2.5 text-[#8891A8]" />
+          <Search size={13} className="absolute left-3 top-2.5 text-[var(--muted-foreground)]" />
           <input
             type="text"
             placeholder="Search knowledge..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 bg-[#0D121F] border border-[#232D45] rounded-xl text-xs text-[#E7EAF4] placeholder-[#8891A8] focus:outline-none focus:border-[#06B6D4]/40"
+            className="w-full pl-8 pr-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[#06B6D4]/40"
           />
         </div>
       </div>
@@ -154,19 +154,19 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
         {filtered.map((doc) => (
           <div
             key={doc.id}
-            className="p-3.5 rounded-xl bg-[#0D121F] border border-[#232D45] hover:border-[#06B6D4]/40 transition-all flex items-center justify-between gap-4 group asura-card-interactive"
+            className="p-3.5 rounded-xl bg-[var(--surface-secondary)] border border-[var(--border)] hover:border-[#06B6D4]/40 transition-all flex items-center justify-between gap-4 group asura-card-interactive"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-8 h-8 rounded-lg bg-[#151C2E] border border-[#232D45] flex items-center justify-center text-[#06B6D4] shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[#06B6D4] shrink-0">
                 <FileText size={16} />
               </div>
 
               <div className="min-w-0">
-                <div className="text-xs font-semibold text-[#E7EAF4] truncate group-hover:text-[#06B6D4] transition-colors">
+                <div className="text-xs font-semibold text-[var(--foreground)] truncate group-hover:text-[#06B6D4] transition-colors">
                   {doc.name}
                 </div>
-                <div className="text-[10px] text-[#8891A8] mt-0.5 flex items-center gap-2">
-                  <span className="font-mono uppercase px-1 py-0.2 bg-[#151C2E] rounded border border-[#232D45]">
+                <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5 flex items-center gap-2">
+                  <span className="font-mono uppercase px-1 py-0.2 bg-[var(--surface)] rounded border border-[var(--border)]">
                     {doc.type}
                   </span>
                   <span>{doc.size}</span>
@@ -185,7 +185,7 @@ export function KnowledgeWorkspace({ onAskAsura, onUploadFile }: KnowledgeWorksp
               {onAskAsura && (
                 <button
                   onClick={() => onAskAsura(`Please synthesize insights from ${doc.name}`)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#8891A8] hover:text-[#06B6D4] hover:border-[#06B6D4]/40 text-xs font-medium transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[#06B6D4] hover:border-[#06B6D4]/40 text-xs font-medium transition-colors"
                   title="Ask Asura about this document"
                 >
                   <MessageSquare size={12} />

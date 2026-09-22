@@ -1,12 +1,12 @@
 export type ThemeMode = 'dark' | 'light' | 'system';
 
 export function getStoredTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   const saved = localStorage.getItem('cretivra_theme') as ThemeMode | null;
   if (saved === 'dark' || saved === 'light' || saved === 'system') {
     return saved;
   }
-  return 'light';
+  return 'dark';
 }
 
 export function getResolvedTheme(theme: ThemeMode): 'dark' | 'light' {

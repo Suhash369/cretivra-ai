@@ -116,33 +116,33 @@ export const SearchModal: React.FC<CommandPaletteProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-start justify-center pt-24 px-4">
-      <div className="w-full max-w-xl bg-[#0D121F] border border-[#232D45] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] animate-scale">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-start justify-center pt-24 px-4 text-[var(--foreground)]">
+      <div className="w-full max-w-xl bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[75vh] animate-scale">
         {/* Search Header Input */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#232D45] bg-[#151C2E]/60">
-          <Search className="w-4 h-4 text-[#8891A8] shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)] bg-[var(--surface-secondary)]/60">
+          <Search className="w-4 h-4 text-[var(--muted-foreground)] shrink-0" />
           <input
             autoFocus
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search Asura commands, tasks, or conversations..."
-            className="w-full bg-transparent text-[#E7EAF4] placeholder-[#8891A8] text-xs sm:text-sm focus:outline-none"
+            className="w-full bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] text-xs sm:text-sm focus:outline-none"
           />
-          <kbd className="text-[10px] px-1.5 py-0.5 bg-[#060911] border border-[#232D45] rounded text-[#8891A8]">
+          <kbd className="text-[10px] px-1.5 py-0.5 bg-[var(--surface-secondary)] border border-[var(--border)] rounded text-[var(--muted-foreground)]">
             ESC
           </kbd>
-          <button onClick={onClose} className="p-1 rounded-lg text-[#8891A8] hover:text-[#E7EAF4]">
+          <button onClick={onClose} className="p-1 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)]">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Scrollable Command & History List */}
-        <div className="overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]">
+        <div className="overflow-y-auto p-3 space-y-4 scrollbar-thin scrollbar-thumb-[var(--border)]">
           {/* Actions Section */}
           {filteredActions.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-[#8891A8] uppercase tracking-wider px-2 mb-1.5">
+              <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-2 mb-1.5">
                 Actions
               </div>
               <div className="space-y-1">
@@ -152,15 +152,15 @@ export const SearchModal: React.FC<CommandPaletteProps> = ({
                     <button
                       key={act.id}
                       onClick={act.action}
-                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#151C2E] transition-colors flex items-center justify-between group asura-btn-interactive"
+                      className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-between group asura-btn-interactive"
                     >
                       <div className="flex items-center gap-2.5">
                         <Icon size={15} className={act.color} />
-                        <span className="text-xs font-medium text-[#E7EAF4] group-hover:text-[#06B6D4] transition-colors">
+                        <span className="text-xs font-medium text-[var(--foreground)] group-hover:text-[#06B6D4] transition-colors">
                           {act.label}
                         </span>
                       </div>
-                      <ArrowRight size={12} className="text-[#8891A8] group-hover:text-[#06B6D4] transition-colors" />
+                      <ArrowRight size={12} className="text-[var(--muted-foreground)] group-hover:text-[#06B6D4] transition-colors" />
                     </button>
                   );
                 })}
@@ -170,11 +170,11 @@ export const SearchModal: React.FC<CommandPaletteProps> = ({
 
           {/* Conversations Section */}
           <div>
-            <div className="text-[10px] font-semibold text-[#8891A8] uppercase tracking-wider px-2 mb-1.5">
+            <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-2 mb-1.5">
               Conversations
             </div>
             {conversations.length === 0 ? (
-              <div className="p-4 text-center text-[#8891A8] text-xs">
+              <div className="p-4 text-center text-[var(--muted-foreground)] text-xs">
                 No matching conversations found.
               </div>
             ) : (
@@ -186,23 +186,23 @@ export const SearchModal: React.FC<CommandPaletteProps> = ({
                       onSelectConversation(c.id);
                       onClose();
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#151C2E] transition-colors flex items-center justify-between group asura-btn-interactive"
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-[var(--surface-secondary)] transition-colors flex items-center justify-between group asura-btn-interactive"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="p-1.5 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#06B6D4] group-hover:border-[#06B6D4]/40 transition-colors">
+                      <div className="p-1.5 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[#06B6D4] group-hover:border-[#06B6D4]/40 transition-colors">
                         <MessageSquare className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="text-xs font-medium text-[#E7EAF4] group-hover:text-[#06B6D4] truncate">
+                        <div className="text-xs font-medium text-[var(--foreground)] group-hover:text-[#06B6D4] truncate">
                           {c.title || 'New Conversation'}
                         </div>
-                        <span className="text-[10px] text-[#8891A8] font-mono uppercase">
+                        <span className="text-[10px] text-[var(--muted-foreground)] font-mono uppercase">
                           {c.model_id}
                         </span>
                       </div>
                     </div>
                     {c.updated_at && (
-                      <div className="flex items-center gap-1 text-[10px] text-[#8891A8] shrink-0 font-mono">
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--muted-foreground)] shrink-0 font-mono">
                         <Calendar className="w-3 h-3" />
                         <span>{new Date(c.updated_at).toLocaleDateString()}</span>
                       </div>

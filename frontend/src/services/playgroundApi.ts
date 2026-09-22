@@ -226,3 +226,12 @@ export async function listArtifactsApi(projectId?: string, runId?: string): Prom
   if (!res.ok) return [];
   return res.json();
 }
+
+export async function getArtifactContentApi(downloadUrl: string): Promise<string> {
+  const url = resolveArtifactDownloadUrl(downloadUrl);
+  const res = await fetch(url, { headers: { ...getAuthHeaders() } });
+  if (!res.ok) {
+    throw new Error('Failed to load artifact content');
+  }
+  return res.text();
+}

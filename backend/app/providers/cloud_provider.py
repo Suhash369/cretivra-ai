@@ -467,12 +467,12 @@ class CloudLLMProvider:
     def _resolve_groq_model(self, model: str) -> str:
         m = (model or "").lower()
         if "fast" in m or "1.2" in m or "mini" in m or "phi" in m or "gemma" in m:
-            return "openai/gpt-oss-20b"
+            return "llama-3.1-8b-instant"
         elif "qwen" in m or "code" in m or "coder" in m:
-            return "qwen/qwen3.8-27b"
+            return "qwen-2.5-32b"
         elif "compound" in m or "reason" in m or "deepseek" in m:
-            return "groq/compound"
-        return "openai/gpt-oss-120b"
+            return "deepseek-r1-distill-llama-70b"
+        return "llama-3.3-70b-versatile"
 
     def _resolve_openrouter_models(self, model: str) -> List[str]:
         m = (model or "").lower()
@@ -613,8 +613,7 @@ class CloudLLMProvider:
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
-                    # Fallback to alternate model if primary failed
-                    fallback_model = "openai/gpt-oss-20b" if groq_model != "openai/gpt-oss-20b" else "openai/gpt-oss-120b"
+                    fallback_model = "llama-3.1-8b-instant" if groq_model != "llama-3.1-8b-instant" else "llama-3.3-70b-versatile"
                     logger.warning(f"Groq {groq_model} returned {response.status_code}, falling back to {fallback_model}")
                     payload["model"] = fallback_model
                     async with client.stream("POST", url, headers=headers, json=payload) as fb_resp:
@@ -688,11 +687,11 @@ class CloudLLMProvider:
         
         # Multi-model fallback chain for Gemini (Flash 3.7/3.6 have world-class vision & factual search grounding)
         gemini_model_candidates = [
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
-            "gemini-flash-latest",
-            "gemma-4-26b-a4b-it",
-            "gemini-pro-latest"
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash-lite",
+            "gemini-flash-latest"
         ]
 
         contents = []

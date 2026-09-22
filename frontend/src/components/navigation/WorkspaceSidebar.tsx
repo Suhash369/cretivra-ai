@@ -111,7 +111,7 @@ export function WorkspaceSidebar({
 
   return (
     <aside
-      className={`relative flex flex-col h-full bg-[#0D121F] border-r border-[#232D45] transition-all duration-300 ease-out select-none z-30 ${
+      className={`relative flex flex-col h-full bg-[var(--sidebar-bg)] border-r border-[var(--border)] text-[var(--foreground)] transition-all duration-300 ease-out select-none z-30 ${
         isCollapsed ? 'w-[64px]' : 'w-[240px]'
       }`}
       style={{
@@ -121,7 +121,7 @@ export function WorkspaceSidebar({
       aria-label="Workspace navigation"
     >
       {/* 1. Header / Brand */}
-      <div className="flex items-center justify-between h-14 px-3.5 border-b border-[#232D45]/60 overflow-hidden">
+      <div className="flex items-center justify-between h-14 px-3.5 border-b border-[var(--border)] overflow-hidden">
         <button
           onClick={() => onSelectView('home')}
           className="flex items-center gap-2.5 text-left focus:outline-none focus-visible:ring-1 focus-visible:ring-[#06B6D4] rounded-lg p-1 group"
@@ -132,10 +132,10 @@ export function WorkspaceSidebar({
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden animate-fade">
-              <span className="text-[14px] font-semibold text-[#E7EAF4] tracking-wider leading-none">
+              <span className="text-[14px] font-semibold text-[var(--foreground)] tracking-wider leading-none">
                 ASURA
               </span>
-              <span className="text-[10px] text-[#8891A8] uppercase tracking-widest mt-0.5">
+              <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
                 Cretivra
               </span>
             </div>
@@ -144,7 +144,7 @@ export function WorkspaceSidebar({
 
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded-md text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors focus:outline-none"
+          className="p-1.5 rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors focus:outline-none"
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -156,7 +156,7 @@ export function WorkspaceSidebar({
       <div className="p-2.5">
         <button
           onClick={onNewTask}
-          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] text-xs font-medium hover:border-[#06B6D4]/60 hover:text-[#06B6D4] hover:bg-[#06B6D4]/5 asura-btn-interactive shadow-sm focus:outline-none ${
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:border-[#06B6D4]/60 hover:text-[#06B6D4] hover:bg-[#06B6D4]/5 asura-btn-interactive shadow-sm focus:outline-none ${
             isCollapsed ? 'px-0 py-2' : ''
           }`}
           title="Start a new task or conversation"
@@ -178,11 +178,11 @@ export function WorkspaceSidebar({
               className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
                 isActive
                   ? 'bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 font-semibold'
-                  : 'text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E]/60 border border-transparent'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)]/60 border border-transparent'
               } ${isCollapsed ? 'justify-center px-0' : ''}`}
               title={isCollapsed ? item.label : undefined}
             >
-              <Icon size={16} className={isActive ? 'text-[#06B6D4]' : 'text-[#8891A8]'} />
+              <Icon size={16} className={isActive ? 'text-[#06B6D4]' : 'text-[var(--muted-foreground)]'} />
               {!isCollapsed && (
                 <span className="truncate text-[13px] animate-fade">{item.label}</span>
               )}
@@ -192,22 +192,22 @@ export function WorkspaceSidebar({
       </nav>
 
       {/* Divider */}
-      <div className="my-2 mx-3 border-t border-[#232D45]/60" />
+      <div className="my-2 mx-3 border-t border-[var(--border)]" />
 
       {/* 4. Conversations List (Collapses cleanly when collapsed) */}
-      <div className="flex-1 overflow-y-auto px-2 space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]">
+      <div className="flex-1 overflow-y-auto px-2 space-y-4 scrollbar-thin scrollbar-thumb-[var(--border)]">
         {!isCollapsed ? (
           <>
             {/* Quick Search Button */}
             <button
               onClick={onOpenSearch}
-              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] text-[#8891A8] bg-[#060911]/40 border border-[#232D45]/40 hover:border-[#232D45] hover:text-[#E7EAF4] transition-colors"
+              className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-[11px] text-[var(--muted-foreground)] bg-[var(--surface-secondary)]/40 border border-[var(--border)] hover:border-[#06B6D4]/40 hover:text-[var(--foreground)] transition-colors"
             >
               <span className="flex items-center gap-1.5">
                 <Search size={12} />
                 <span>Search sessions</span>
               </span>
-              <kbd className="text-[9px] px-1 py-0.5 bg-[#151C2E] border border-[#232D45] rounded text-[#8891A8]">
+              <kbd className="text-[9px] px-1 py-0.5 bg-[var(--surface-secondary)] border border-[var(--border)] rounded text-[var(--muted-foreground)]">
                 Ctrl K
               </kbd>
             </button>
@@ -215,7 +215,7 @@ export function WorkspaceSidebar({
             {/* Pinned Section */}
             {pinnedConversations.length > 0 && (
               <div className="space-y-1">
-                <div className="text-[10px] font-semibold text-[#8891A8] uppercase tracking-wider px-2">
+                <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-2">
                   Pinned
                 </div>
                 {pinnedConversations.map((c) => (
@@ -241,11 +241,11 @@ export function WorkspaceSidebar({
 
             {/* Recent Section */}
             <div className="space-y-1">
-              <div className="text-[10px] font-semibold text-[#8891A8] uppercase tracking-wider px-2">
+              <div className="text-[10px] font-semibold text-[var(--muted-foreground)] uppercase tracking-wider px-2">
                 Recent
               </div>
               {recentConversations.length === 0 ? (
-                <div className="px-2 py-3 text-[11px] text-[#8891A8]/60 text-center">
+                <div className="px-2 py-3 text-[11px] text-[var(--muted-foreground)]/60 text-center">
                   No conversations yet.
                 </div>
               ) : (
@@ -274,14 +274,14 @@ export function WorkspaceSidebar({
           <div className="flex flex-col items-center gap-2 py-2">
             <button
               onClick={onOpenSearch}
-              className="p-2 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors"
+              className="p-2 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors"
               title="Search sessions (Ctrl+K)"
             >
               <Search size={16} />
             </button>
             <button
               onClick={() => onSelectView('chat')}
-              className="p-2 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors"
+              className="p-2 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors"
               title="Recent Conversations"
             >
               <MessageSquare size={16} />
@@ -291,10 +291,10 @@ export function WorkspaceSidebar({
       </div>
 
       {/* 5. Bottom Section: Profile & Settings */}
-      <div className="p-2 border-t border-[#232D45]/60 bg-[#0A0E18] space-y-1">
+      <div className="p-2 border-t border-[var(--border)] bg-[var(--sidebar-bg)] space-y-1">
         <button
           onClick={onOpenSettings}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors ${
+          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors ${
             isCollapsed ? 'justify-center px-0' : ''
           }`}
           title="Settings"
@@ -305,12 +305,12 @@ export function WorkspaceSidebar({
 
         <button
           onClick={onOpenAuth}
-          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors ${
+          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors ${
             isCollapsed ? 'justify-center px-0' : ''
           }`}
           title={user?.email ? user.email : 'Sign in / Guest'}
         >
-          <div className="w-5 h-5 rounded-full bg-[#151C2E] border border-[#232D45] flex items-center justify-center text-[#06B6D4] shrink-0 text-[10px] font-bold">
+          <div className="w-5 h-5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] flex items-center justify-center text-[#06B6D4] shrink-0 text-[10px] font-bold">
             {user?.email ? user.email.charAt(0).toUpperCase() : <User size={11} />}
           </div>
           {!isCollapsed && (
@@ -357,7 +357,7 @@ function ConversationItem({
 }: ConversationItemProps) {
   if (isEditing) {
     return (
-      <div className="px-2 py-1 flex items-center gap-1 bg-[#151C2E] border border-[#06B6D4]/40 rounded-lg">
+      <div className="px-2 py-1 flex items-center gap-1 bg-[var(--surface-secondary)] border border-[#06B6D4]/40 rounded-lg">
         <input
           type="text"
           value={editTitle}
@@ -367,7 +367,7 @@ function ConversationItem({
             if (e.key === 'Escape') onCancelRename(e);
           }}
           autoFocus
-          className="w-full bg-transparent text-xs text-[#E7EAF4] focus:outline-none"
+          className="w-full bg-transparent text-xs text-[var(--foreground)] focus:outline-none"
         />
         <button
           onClick={onSaveRename}
@@ -392,8 +392,8 @@ function ConversationItem({
       onClick={onSelect}
       className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
         isActive
-          ? 'bg-[#151C2E] text-[#E7EAF4] font-medium border border-[#232D45]'
-          : 'text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E]/50 border border-transparent'
+          ? 'bg-[var(--surface-secondary)] text-[var(--foreground)] font-medium border border-[var(--border)]'
+          : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)]/50 border border-transparent'
       }`}
     >
       <span className="truncate pr-2 max-w-[150px]">{conversation.title || 'New Conversation'}</span>
@@ -405,14 +405,14 @@ function ConversationItem({
             e.stopPropagation();
             onPin();
           }}
-          className="p-1 rounded text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#060911]/60"
+          className="p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)]"
           title={isPinned ? 'Unpin' : 'Pin'}
         >
           {isPinned ? <PinOff size={11} /> : <Pin size={11} />}
         </button>
         <button
           onClick={onStartRename}
-          className="p-1 rounded text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#060911]/60"
+          className="p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)]"
           title="Rename"
         >
           <Edit2 size={11} />
@@ -422,7 +422,7 @@ function ConversationItem({
             e.stopPropagation();
             onShare();
           }}
-          className="p-1 rounded text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#060911]/60"
+          className="p-1 rounded text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)]"
           title="Share"
         >
           <Share2 size={11} />
@@ -432,7 +432,7 @@ function ConversationItem({
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 rounded text-[#8891A8] hover:text-[#F43F5E] hover:bg-[#060911]/60"
+          className="p-1 rounded text-[var(--muted-foreground)] hover:text-[#F43F5E] hover:bg-[var(--surface-secondary)]"
           title="Delete"
         >
           <Trash2 size={11} />

@@ -10,7 +10,9 @@ import {
   FileText,
   ChevronDown,
   Sparkles,
+  Plus,
 } from 'lucide-react';
+import { ActionMenu } from '../chat/ActionMenu';
 import type { Attachment, CretivraModel } from '../../types';
 
 interface GoalComposerProps {
@@ -30,6 +32,12 @@ interface GoalComposerProps {
   deepThinkEnabled: boolean;
   onToggleDeepThink: () => void;
   onOpenImageStudio?: () => void;
+  // Creative Modals
+  onOpenSketch?: () => void;
+  onOpenLibrary?: () => void;
+  onOpenSlides?: () => void;
+  onOpenWebsite?: () => void;
+  onOpenGame?: () => void;
   // Models
   selectedModel: string;
   availableModels: CretivraModel[];
@@ -52,6 +60,11 @@ export function GoalComposer({
   deepThinkEnabled,
   onToggleDeepThink,
   onOpenImageStudio,
+  onOpenSketch,
+  onOpenLibrary,
+  onOpenSlides,
+  onOpenWebsite,
+  onOpenGame,
   selectedModel,
   availableModels,
   onSelectModel,
@@ -60,6 +73,7 @@ export function GoalComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -93,14 +107,14 @@ export function GoalComposer({
   };
 
   const currentModelObj = availableModels.find((m) => m.id === selectedModel);
-  const modelName = currentModelObj?.display_name || 'Cretivra 1.1';
+  const modelName = currentModelObj?.display_name || 'Cretivra 1';
 
   return (
     <div
-      className={`relative w-full max-w-[840px] mx-auto rounded-2xl bg-[#0D121F] border transition-all duration-200 shadow-xl ${
+      className={`relative w-full max-w-[840px] mx-auto rounded-2xl bg-[var(--surface)] border transition-all duration-200 shadow-xl ${
         isFocused
-          ? 'border-[#06B6D4]/50 shadow-[0_0_24px_rgba(6,182,212,0.08)]'
-          : 'border-[#232D45] hover:border-[#232D45]/90'
+          ? 'border-cyan-500/60 shadow-[0_0_24px_rgba(6,182,212,0.12)]'
+          : 'border-[var(--border)] hover:border-cyan-500/30'
       }`}
     >
       {/* Hidden File Input */}
@@ -118,16 +132,17 @@ export function GoalComposer({
           {attachments.map((att) => (
             <div
               key={att.id}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#151C2E] border border-[#232D45] text-xs text-[#E7EAF4] animate-scale"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-xs text-[var(--foreground)] animate-scale"
             >
-              <FileText size={13} className="text-[#06B6D4]" />
+              <FileText size={13} className="text-cyan-500" />
               <span className="truncate max-w-[180px] font-medium">{att.filename}</span>
-              <span className="text-[10px] text-[#8891A8]">
+              <span className="text-[10px] text-[var(--muted-foreground)]">
                 {(att.size / 1024).toFixed(0)} KB
               </span>
               <button
+                type="button"
                 onClick={() => onRemoveAttachment(att.id)}
-                className="p-0.5 rounded text-[#8891A8] hover:text-[#F43F5E]"
+                className="p-0.5 rounded text-[var(--muted-foreground)] hover:text-rose-500 transition-colors"
                 title="Remove attachment"
               >
                 <X size={12} />
@@ -148,20 +163,95 @@ export function GoalComposer({
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           rows={1}
-          className="w-full bg-transparent text-[#E7EAF4] placeholder-[#8891A8]/70 text-[15px] leading-relaxed resize-none focus:outline-none"
+          className="w-full bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] text-[15px] leading-relaxed resize-none focus:outline-none"
         />
       </div>
 
       {/* 3. Toolbar Controls */}
       <div className="flex items-center justify-between px-3.5 pb-3 pt-1">
-        {/* Left: Tools & Attachments */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Left: Tools, ActionMenu (+) & Attachments */}
+        <div className="flex items-center gap-1.5 flex-wrap relative">
+          {/* Action Menu Trigger (+) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActionMenuOpen((prev) => !prev)}
+              className={`p-1.5 rounded-lg border transition-colors asura-btn-interactive ${
+                actionMenuOpen
+                  ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-500'
+                  : 'bg-[var(--surface-secondary)] border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-cyan-500/40'
+              }`}
+              title="Add tools & creative actions (Presentation, Sketch, Web, Files)"
+            >
+              <Plus size={16} />
+            </button>
+
+            {/* Action Menu Dropdown */}
+            <ActionMenu
+              isOpen={actionMenuOpen}
+              onClose={() => setActionMenuOpen(false)}
+              onUploadFile={() => {
+                fileInputRef.current?.click();
+                setActionMenuOpen(false);
+              }}
+              onOpenLibrary={() => {
+                if (onOpenLibrary) onOpenLibrary();
+                setActionMenuOpen(false);
+              }}
+              onOpenImageStudio={() => {
+                if (onOpenImageStudio) onOpenImageStudio();
+                setActionMenuOpen(false);
+              }}
+              onToggleWebSearch={onToggleWebSearch}
+              webSearchActive={webSearchEnabled}
+              onToggleDeepThink={onToggleDeepThink}
+              deepThinkActive={deepThinkEnabled}
+              onCreatePresentation={() => {
+                if (onOpenSlides) {
+                  onOpenSlides();
+                } else {
+                  onInputChange('Create a 10-slide executive presentation on ');
+                  textareaRef.current?.focus();
+                }
+                setActionMenuOpen(false);
+              }}
+              onCreatePdf={() => {
+                onInputChange('Generate a publication-grade PDF intelligence report on ');
+                textareaRef.current?.focus();
+                setActionMenuOpen(false);
+              }}
+              onOpenSketch={() => {
+                if (onOpenSketch) onOpenSketch();
+                setActionMenuOpen(false);
+              }}
+              onVisualizeData={() => {
+                onInputChange('Create an interactive chart and structured data visualization for ');
+                textareaRef.current?.focus();
+                setActionMenuOpen(false);
+              }}
+              onOpenGitHub={() => {
+                onInputChange('Analyze GitHub repository architecture and summarize recent codebase changes.');
+                textareaRef.current?.focus();
+                setActionMenuOpen(false);
+              }}
+              onOpenPlayground={() => {
+                if (onOpenWebsite) {
+                  onOpenWebsite();
+                } else {
+                  onInputChange('Build a modern responsive web app for ');
+                  textareaRef.current?.focus();
+                }
+                setActionMenuOpen(false);
+              }}
+            />
+          </div>
+
           {/* Attach file */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-1.5 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors asura-btn-interactive"
-            title="Attach documents or data (PDF, DOCX, CSV)"
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors asura-btn-interactive"
+            title="Attach documents or data (PDF, DOCX, CSV, Images)"
           >
             <Paperclip size={16} />
           </button>
@@ -172,8 +262,8 @@ export function GoalComposer({
             onClick={onToggleWebSearch}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all asura-btn-interactive ${
               webSearchEnabled
-                ? 'bg-[#06B6D4]/15 border-[#06B6D4]/40 text-[#06B6D4]'
-                : 'bg-[#151C2E]/60 border-transparent text-[#8891A8] hover:text-[#E7EAF4] hover:border-[#232D45]'
+                ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-600 dark:text-cyan-400'
+                : 'bg-[var(--surface-secondary)] border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]'
             }`}
             title={webSearchEnabled ? 'Web search enabled' : 'Toggle live Web search'}
           >
@@ -187,8 +277,8 @@ export function GoalComposer({
             onClick={onToggleDeepThink}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all asura-btn-interactive ${
               deepThinkEnabled
-                ? 'bg-[#8B5CF6]/15 border-[#8B5CF6]/40 text-[#8B5CF6]'
-                : 'bg-[#151C2E]/60 border-transparent text-[#8891A8] hover:text-[#E7EAF4] hover:border-[#232D45]'
+                ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-400'
+                : 'bg-[var(--surface-secondary)] border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]'
             }`}
             title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep reasoning'}
           >
@@ -201,7 +291,7 @@ export function GoalComposer({
             <button
               type="button"
               onClick={onOpenImageStudio}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-transparent bg-[#151C2E]/60 text-[#8891A8] hover:text-[#E7EAF4] hover:border-[#232D45] transition-all asura-btn-interactive"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-transparent bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)] transition-all asura-btn-interactive"
               title="Open Image Studio"
             >
               <ImageIcon size={13} />
@@ -217,11 +307,11 @@ export function GoalComposer({
             <button
               type="button"
               onClick={onOpenModelSelector}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] text-xs font-medium hover:border-[#06B6D4]/40 transition-colors asura-btn-interactive"
-              title="Select Cretivra model"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:border-cyan-500/50 transition-colors asura-btn-interactive"
+              title="Switch Neural Engine Model"
             >
               <span className="truncate max-w-[110px]">{modelName}</span>
-              <ChevronDown size={11} className="text-[#8891A8]" />
+              <ChevronDown size={11} className="text-[var(--muted-foreground)]" />
             </button>
           )}
 
@@ -230,7 +320,7 @@ export function GoalComposer({
             <button
               type="button"
               onClick={onStop}
-              className="w-8 h-8 rounded-xl bg-[#F43F5E] text-white flex items-center justify-center hover:bg-[#F43F5E]/90 transition-all asura-btn-interactive shadow-md"
+              className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center hover:bg-rose-500 transition-all asura-btn-interactive shadow-md"
               title="Stop execution"
             >
               <Square size={13} fill="currentColor" />
@@ -242,8 +332,8 @@ export function GoalComposer({
               disabled={!input.trim() && attachments.length === 0}
               className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all asura-btn-interactive shadow-md ${
                 input.trim() || attachments.length > 0
-                  ? 'bg-[#06B6D4] text-[#060911] hover:bg-[#06B6D4]/90 cursor-pointer'
-                  : 'bg-[#151C2E] text-[#8891A8]/50 border border-[#232D45] cursor-not-allowed'
+                  ? 'bg-cyan-500 text-slate-950 hover:bg-cyan-400 cursor-pointer'
+                  : 'bg-[var(--surface-secondary)] text-[var(--muted-foreground)] opacity-40 border border-[var(--border)] cursor-not-allowed'
               }`}
               title="Execute goal"
             >

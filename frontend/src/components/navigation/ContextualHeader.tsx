@@ -73,12 +73,12 @@ export function ContextualHeader({
   const modelDisplayName = currentModelObj?.display_name || 'Cretivra 1';
 
   return (
-    <header className="h-14 border-b border-[#232D45] bg-[#060911]/80 backdrop-blur-md px-4 flex items-center justify-between z-20 shrink-0">
+    <header className="h-14 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-md px-4 flex items-center justify-between z-20 shrink-0 text-[var(--foreground)] transition-colors duration-200">
       {/* 1. Left Section: Mobile trigger + Context Title */}
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onOpenMobileMenu}
-          className="md:hidden p-1.5 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] focus:outline-none"
+          className="md:hidden p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] focus:outline-none"
           title="Open menu"
         >
           <Menu size={18} />
@@ -86,11 +86,11 @@ export function ContextualHeader({
 
         {contextTitle ? (
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold text-[#8891A8] uppercase tracking-wider hidden sm:inline">
+            <span className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider hidden sm:inline">
               Asura
             </span>
-            <span className="text-[#232D45] hidden sm:inline">/</span>
-            <span className="text-sm font-medium text-[#E7EAF4] truncate max-w-[200px] sm:max-w-[320px]">
+            <span className="text-[var(--border)] hidden sm:inline">/</span>
+            <span className="text-sm font-medium text-[var(--foreground)] truncate max-w-[200px] sm:max-w-[320px]">
               {contextTitle}
             </span>
             {taskStatus && (
@@ -100,7 +100,7 @@ export function ContextualHeader({
                     ? 'bg-[#06B6D4]/10 text-[#06B6D4] border border-[#06B6D4]/30 animate-pulse'
                     : taskStatus === 'COMPLETED'
                     ? 'bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30'
-                    : 'bg-[#8891A8]/10 text-[#8891A8] border border-[#8891A8]/30'
+                    : 'bg-[var(--surface-secondary)] text-[var(--muted-foreground)] border border-[var(--border)]'
                 }`}
               >
                 {taskStatus}
@@ -109,10 +109,10 @@ export function ContextualHeader({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[#E7EAF4] tracking-wide">
+            <span className="text-sm font-medium text-[var(--foreground)] tracking-wide">
               ASURA
             </span>
-            <span className="text-[11px] text-[#8891A8] font-manus-serif italic hidden sm:inline">
+            <span className="text-[11px] text-[var(--muted-foreground)] font-manus-serif italic hidden sm:inline">
               Think beyond.
             </span>
           </div>
@@ -136,7 +136,7 @@ export function ContextualHeader({
             {onPlaygroundRun && (
               <button
                 onClick={onPlaygroundRun}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06B6D4] text-[#060911] text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06B6D4] text-black text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
               >
                 <Play size={12} fill="currentColor" />
                 <span>Run</span>
@@ -145,7 +145,7 @@ export function ContextualHeader({
             {onPlaygroundSave && (
               <button
                 onClick={onPlaygroundSave}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] text-xs font-medium hover:border-[#06B6D4]/40 transition-colors asura-btn-interactive"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:border-[#06B6D4]/40 transition-colors asura-btn-interactive"
               >
                 <Save size={12} />
                 <span>Save</span>
@@ -164,7 +164,7 @@ export function ContextualHeader({
             className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all asura-btn-interactive ${
               webSearchEnabled
                 ? 'bg-[#06B6D4]/15 border-[#06B6D4]/40 text-[#06B6D4]'
-                : 'bg-[#151C2E] border-[#232D45] text-[#8891A8] hover:text-[#E7EAF4]'
+                : 'bg-[var(--surface-secondary)] border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
             }`}
             title={webSearchEnabled ? 'Web search enabled' : 'Enable live web search'}
           >
@@ -180,7 +180,7 @@ export function ContextualHeader({
             className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all asura-btn-interactive ${
               deepThinkEnabled
                 ? 'bg-[#8B5CF6]/15 border-[#8B5CF6]/40 text-[#8B5CF6]'
-                : 'bg-[#151C2E] border-[#232D45] text-[#8891A8] hover:text-[#E7EAF4]'
+                : 'bg-[var(--surface-secondary)] border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
             }`}
             title={deepThinkEnabled ? 'Reasoning mode enabled' : 'Enable deep reasoning'}
           >
@@ -193,13 +193,13 @@ export function ContextualHeader({
         {onOpenModelSelector && (
           <button
             onClick={onOpenModelSelector}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] text-xs font-medium hover:border-[#06B6D4]/50 transition-colors asura-btn-interactive"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:border-[#06B6D4]/50 transition-colors asura-btn-interactive"
             title="Switch Cretivra Neural Engine model"
           >
             <span className="truncate max-w-[100px] sm:max-w-[130px]">
               {modelDisplayName}
             </span>
-            <ChevronDown size={12} className="text-[#8891A8]" />
+            <ChevronDown size={12} className="text-[var(--muted-foreground)]" />
           </button>
         )}
 
@@ -207,7 +207,7 @@ export function ContextualHeader({
         {onOpenSearch && (
           <button
             onClick={onOpenSearch}
-            className="p-1.5 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors"
             title="Command Palette (Ctrl+K)"
           >
             <Search size={15} />
@@ -218,7 +218,7 @@ export function ContextualHeader({
         {onOpenHealth && (
           <button
             onClick={onOpenHealth}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#8891A8] hover:text-[#E7EAF4] text-[11px] transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-[11px] transition-colors"
             title="System Telemetry & Health"
           >
             <span
@@ -236,7 +236,7 @@ export function ContextualHeader({
         {onToggleTheme && (
           <button
             onClick={onToggleTheme}
-            className="p-1.5 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}

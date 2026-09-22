@@ -137,8 +137,8 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
         category="Omni Intelligence",
         is_available=True
     ),
-    "cretivra-vision": CretivraModel(
-        id="cretivra-vision",
+    "cretivra-multimodal": CretivraModel(
+        id="cretivra-multimodal",
         display_name="Cretivra Vision 3.6",
         description="Next-generation multimodal visual perception, screenshot analysis, OCR, and diagram reasoning",
         provider="cloud",
