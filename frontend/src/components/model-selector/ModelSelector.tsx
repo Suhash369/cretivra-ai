@@ -24,6 +24,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     description: 'General AI Assistant',
     category: 'Balanced',
     capabilities: ['chat'],
+    is_available: true,
   };
 
   useEffect(() => {
@@ -36,26 +37,37 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Keyboard navigation
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   const isImageModel = (m: CretivraModel) => {
     return m.category === 'Image Studio' || m.capabilities?.includes('image') || m.provider === 'pollinations';
   };
 
   const getCategoryIcon = (category: string, isImage = false) => {
     if (isImage || category?.toLowerCase().includes('image')) {
-      return <Palette className="w-4 h-4 text-purple-400" />;
+      return <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
     }
     switch (category?.toLowerCase()) {
       case 'reasoning':
-        return <Brain className="w-4 h-4 text-purple-400" />;
+        return <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
       case 'fast':
-        return <Zap className="w-4 h-4 text-amber-400" />;
+        return <Zap className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
       case 'code & fast':
       case 'code':
-        return <Code className="w-4 h-4 text-emerald-400" />;
+        return <Code className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
       case 'creative':
-        return <Wand2 className="w-4 h-4 text-pink-400" />;
+        return <Wand2 className="w-4 h-4 text-pink-600 dark:text-pink-400" />;
       default:
-        return <Sparkles className="w-4 h-4 text-cyan-400" />;
+        return <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />;
     }
   };
 
@@ -70,112 +82,133 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-medium transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:opacity-50 ${
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-sm font-medium transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:opacity-50 cursor-pointer ${
           isCurrentImg
-            ? 'bg-purple-950/40 hover:bg-purple-900/50 border-purple-500/40 text-purple-200'
-            : 'bg-gray-900/80 hover:bg-gray-800 border-gray-700/80 text-gray-200'
+            ? 'bg-purple-500/10 hover:bg-purple-500/15 border-purple-500/30 text-purple-700 dark:text-purple-300'
+            : 'bg-[var(--surface)] hover:bg-[var(--surface-secondary)] border-[var(--border)] text-[var(--foreground)]'
         }`}
       >
         {getCategoryIcon(selectedModel.category, isCurrentImg)}
-        <span className="font-semibold">{selectedModel.display_name}</span>
+        <span className="font-semibold text-xs sm:text-sm">{selectedModel.display_name}</span>
         <span
-          className={`text-[10px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider ${
+          className={`text-[10px] px-1.5 py-0.5 rounded font-mono uppercase tracking-wider font-semibold ${
             isCurrentImg
-              ? 'bg-purple-900/60 text-purple-300 border border-purple-700/60'
-              : 'bg-cyan-950/60 text-cyan-300 border border-cyan-800/60'
+              ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+              : 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30'
           }`}
         >
           {selectedModel.category || 'AI'}
         </span>
-        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-gray-950/95 border border-gray-800 shadow-2xl z-50 overflow-hidden backdrop-blur-2xl animate-in fade-in zoom-in-95">
-          <div className="p-3 border-b border-gray-800/80 bg-gray-900/80 flex items-center justify-between">
-            <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider">
+        <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-[var(--modal-background)] border border-[var(--border)] shadow-2xl z-50 overflow-hidden backdrop-blur-2xl animate-modal-content-enter">
+          <div className="p-3 border-b border-[var(--border)] bg-[var(--surface-secondary)]/60 flex items-center justify-between">
+            <p className="text-[11px] font-bold text-[var(--foreground)] uppercase tracking-wider">
               Cretivra Model Registry
             </p>
-            <span className="text-[10px] text-gray-500 font-mono">100% Free & Local</span>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">● Available</span>
           </div>
 
           <div className="max-h-96 overflow-y-auto p-2 space-y-3">
             {/* Language & Reasoning Models Section */}
             {languageModels.length > 0 && (
               <div>
-                <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-cyan-400">
+                <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-cyan-700 dark:text-cyan-300">
                   <Brain className="w-3 h-3" />
                   <span>Language & Reasoning Models</span>
                 </div>
                 <div className="space-y-1 mt-1">
-                  {languageModels.map((model) => (
-                    <button
-                      key={model.id}
-                      onClick={() => {
-                        onSelectModel(model.id);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all ${
-                        model.id === selectedModelId
-                          ? 'bg-cyan-950/50 border border-cyan-500/50 text-white'
-                          : 'hover:bg-gray-900/80 text-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5">{getCategoryIcon(model.category, false)}</div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-xs">{model.display_name}</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-800/90 text-gray-400 font-mono">
-                              {model.category}
-                            </span>
+                  {languageModels.map((model) => {
+                    const isAvailable = model.is_available !== false;
+                    const isSelected = model.id === selectedModelId;
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          if (isAvailable) {
+                            onSelectModel(model.id);
+                            setIsOpen(false);
+                          }
+                        }}
+                        className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/15 border border-cyan-500/40 text-[var(--foreground)]'
+                            : 'hover:bg-[var(--surface-secondary)] text-[var(--foreground)] border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <div className="mt-0.5 shrink-0">{getCategoryIcon(model.category, false)}</div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-xs text-[var(--foreground)]">{model.display_name}</span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--surface-secondary)] text-[var(--muted-foreground)] font-mono border border-[var(--border)]">
+                                {model.category || 'Balanced'}
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium">
+                                <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                <span className={isAvailable ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                                  {isAvailable ? 'Available' : 'Unavailable'}
+                                </span>
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 line-clamp-1">{model.description}</p>
                           </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{model.description}</p>
                         </div>
-                      </div>
-                      {model.id === selectedModelId && <Check className="w-4 h-4 text-cyan-400 mt-1 shrink-0" />}
-                    </button>
-                  ))}
+                        {isSelected && <Check className="w-4 h-4 text-cyan-600 dark:text-cyan-400 mt-1 shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Image Generation Studio Section */}
             {imageModels.length > 0 && (
-              <div className="pt-2 border-t border-gray-800/80">
-                <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-purple-400">
+              <div className="pt-2 border-t border-[var(--border)]">
+                <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-purple-700 dark:text-purple-300">
                   <ImageIcon className="w-3 h-3" />
                   <span>🎨 AI Image Generation Studio</span>
                 </div>
                 <div className="space-y-1 mt-1">
-                  {imageModels.map((model) => (
-                    <button
-                      key={model.id}
-                      onClick={() => {
-                        onSelectModel(model.id);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all ${
-                        model.id === selectedModelId
-                          ? 'bg-purple-950/50 border border-purple-500/50 text-white'
-                          : 'hover:bg-purple-950/20 text-gray-300'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5">{getCategoryIcon(model.category, true)}</div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-xs text-purple-200">{model.display_name}</span>
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-950 border border-purple-800/60 text-purple-300 font-mono">
-                              Visual AI
-                            </span>
+                  {imageModels.map((model) => {
+                    const isSelected = model.id === selectedModelId;
+                    return (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => {
+                          onSelectModel(model.id);
+                          setIsOpen(false);
+                        }}
+                        className={`w-full flex items-start justify-between p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-purple-500/15 border border-purple-500/40 text-[var(--foreground)]'
+                            : 'hover:bg-[var(--surface-secondary)] text-[var(--foreground)] border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5 min-w-0">
+                          <div className="mt-0.5 shrink-0">{getCategoryIcon(model.category, true)}</div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-xs text-[var(--foreground)]">{model.display_name}</span>
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 font-mono">
+                                Visual AI
+                              </span>
+                              <span className="flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                <span>Available</span>
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5 line-clamp-1">{model.description}</p>
                           </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{model.description}</p>
                         </div>
-                      </div>
-                      {model.id === selectedModelId && <Check className="w-4 h-4 text-purple-400 mt-1 shrink-0" />}
-                    </button>
-                  ))}
+                        {isSelected && <Check className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-1 shrink-0" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

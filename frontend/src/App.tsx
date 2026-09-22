@@ -53,7 +53,7 @@ import {
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
 import { exportPdf, fetchCurrentUserProfileApi, getAuthToken, updateConversation } from './services/api';
-import { initTheme, applyTheme, type ThemeMode } from './services/theme';
+import { initTheme, applyTheme, getResolvedTheme, getStoredTheme, type ThemeMode } from './services/theme';
 import { SearchModal } from './components/sidebar/SearchModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { ShareModal } from './components/settings/ShareModal';
@@ -343,10 +343,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   const [healthOpen, setHealthOpen] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof document !== 'undefined' && document.documentElement.classList.contains('light')) {
-      return 'light';
-    }
-    return 'dark';
+    return getResolvedTheme(getStoredTheme());
   });
 
   const handleToggleTheme = () => {
@@ -1667,6 +1664,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           }
           if (newSettings.theme) {
             applyTheme(newSettings.theme as ThemeMode);
+            setTheme(getResolvedTheme(newSettings.theme as ThemeMode));
           }
         }}
       />

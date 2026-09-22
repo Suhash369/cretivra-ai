@@ -10,8 +10,26 @@ interface UseChatOptions {
 export function useChat(options?: UseChatOptions) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('cretivra-1');
   const [availableModels, setAvailableModels] = useState<CretivraModel[]>([]);
+  const [selectedModel, setSelectedModelState] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('cretivra_selected_model');
+      if (stored) return stored;
+      const settings = localStorage.getItem('cretivra_system_settings');
+      if (settings) {
+        const parsed = JSON.parse(settings);
+        if (parsed.default_model) return parsed.default_model;
+      }
+    } catch {}
+    return 'cretivra-1';
+  });
+
+  const setSelectedModel = useCallback((modelId: string) => {
+    setSelectedModelState(modelId);
+    try {
+      localStorage.setItem('cretivra_selected_model', modelId);
+    } catch {}
+  }, []);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reasoningStatus, setReasoningStatus] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);

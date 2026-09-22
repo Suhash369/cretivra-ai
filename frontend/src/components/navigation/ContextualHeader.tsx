@@ -214,21 +214,15 @@ export function ContextualHeader({
           </button>
         )}
 
-        {/* System Health Status Indicator */}
+        {/* System Diagnostics & Platform Health Trigger */}
         {onOpenHealth && (
           <button
             onClick={onOpenHealth}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] text-[11px] transition-colors"
-            title="System Telemetry & Health"
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
+            title="Platform Diagnostics & Health"
+            aria-label="Platform Diagnostics & Health"
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                healthStatus?.status === 'healthy'
-                  ? 'bg-[#10B981]'
-                  : 'bg-[#F59E0B]'
-              }`}
-            />
-            <span className="hidden md:inline">Operational</span>
+            <Activity size={15} />
           </button>
         )}
 
