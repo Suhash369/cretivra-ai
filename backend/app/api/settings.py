@@ -25,7 +25,7 @@ def get_settings(db: Session = Depends(get_db)):
 
 @router.patch("")
 def update_settings(payload: SystemSettingsSchema, db: Session = Depends(get_db)):
-    updates = payload.dict(exclude_unset=True)
+    updates = payload.model_dump(exclude_unset=True)
     for key, val in updates.items():
         if val is not None:
             db_item = db.query(SystemSettingDB).filter(SystemSettingDB.key == key).first()

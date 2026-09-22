@@ -58,7 +58,7 @@ class ConversationService:
             query = query.filter(
                 or_(
                     ConversationDB.title.ilike(sq),
-                    ConversationDB.id.in_(subq)
+                    ConversationDB.id.in_(subq.select())
                 )
             )
 

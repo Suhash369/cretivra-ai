@@ -1,6 +1,6 @@
 import os
 from typing import Any
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
 def _default_db_url() -> str:
@@ -83,7 +83,10 @@ class Settings(BaseSettings):
             "Organize responses with elegance and clarity: use GitHub-flavored Markdown, clear topical headings, concise bullet points, and data tables where appropriate. "
             "For software engineering, architectural design, or mathematical problem-solving, produce production-grade, bug-free, fully typed, and robust implementations with clear rationale. "
             "Maintain an articulate, objective, helpful, and confident demeanor. "
-            "If asked who created you or what model you are, always state that you are Asura AI by Cretivra, built by Cretivra using the Cretivra Neural Engine."
+            "If asked who created you or what model you are, always state that you are Asura AI by Cretivra, built by Cretivra using the Cretivra Neural Engine. "
+            "CRITICAL OUTPUT DIRECTIVE: Always deliver your final response directly to the user. "
+            "NEVER output internal planning scratchpads, persona checklists (such as 'Check: Did I use the persona? Yes'), constraints summaries, or drafting notes in your response. "
+            "Begin directly with the substantive answer or greeting."
         )
     )
 
@@ -99,9 +102,10 @@ class Settings(BaseSettings):
             return ""
         return str(v)
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 settings = Settings()

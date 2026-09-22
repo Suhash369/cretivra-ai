@@ -1,6 +1,6 @@
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class ConversationCreate(BaseModel):
     title: Optional[str] = "New Conversation"
@@ -18,8 +18,7 @@ class MessageSchema(BaseModel):
     reasoning_status: Optional[str] = None
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ConversationSchema(BaseModel):
     id: str
@@ -29,8 +28,7 @@ class ConversationSchema(BaseModel):
     updated_at: Optional[datetime] = None
     messages: List[MessageSchema] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class BulkDeleteRequest(BaseModel):
     conversation_ids: List[str]

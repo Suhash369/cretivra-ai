@@ -14,6 +14,7 @@ from app.services.image_service import image_service
 from app.services.presentation_service import presentation_service
 from app.services.pdf_service import pdf_service
 from app.services.web_search_service import web_search_service
+from app.providers.cloud_provider import clean_ai_response
 from app.core.logging import logger
 
 class ChatService:
@@ -470,12 +471,13 @@ class ChatService:
 
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': last_reasoning_status, 'sources': sources})}\n\n"
 
-            # Save assistant response to DB
+            # Save sanitized assistant response to DB
+            cleaned_reply = clean_ai_response(full_assistant_reply)
             conversation_service.add_message(
                 db=db,
                 conversation_id=conversation_id,
                 role="assistant",
-                content=full_assistant_reply
+                content=cleaned_reply
             )
 
         except Exception as e:

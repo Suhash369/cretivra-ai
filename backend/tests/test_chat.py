@@ -44,3 +44,56 @@ def test_message_editing_and_regeneration(client):
     # Test editing user message
     edit_res = client.patch(f"/api/messages/{user_msg_id}", json={"message": "Edited message prompt"}, headers=headers)
     assert edit_res.status_code == 200
+
+def test_clean_ai_response_and_stream_filter():
+    from app.providers.cloud_provider import clean_ai_response, StreamFilter
+
+    # 1. Test clean_ai_response with <think> tag and planning scaffold
+    raw_leaked_response = (
+        "<think>\n"
+        "Topic: Dengue Fever.\n"
+        "Persona: Asura AI by Cretivra\n"
+        "Constraints: Use GitHub-flavored Markdown\n"
+        "Check: Did I use the persona? Yes.\n"
+        "</think>\n"
+        "# Dengue Fever: Comprehensive Clinical Overview\n\n"
+        "Dengue fever is a mosquito-borne viral infection."
+    )
+    cleaned = clean_ai_response(raw_leaked_response)
+    assert "<think>" not in cleaned
+    assert "</think>" not in cleaned
+    assert "Check: Did I use" not in cleaned
+    assert cleaned.startswith("# Dengue Fever: Comprehensive Clinical Overview")
+
+    # 2. Test StreamFilter with streaming chunks
+    sf = StreamFilter()
+    chunks = [
+        "<think>\nPlanning the ",
+        "response internally...\n",
+        "Check: Persona verified.\n",
+        "</think>\n",
+        "# Quantum Computing\n\n",
+        "Quantum computing harnesses qubits."
+    ]
+
+    emitted_content = []
+    reasoning_events = []
+
+    for c in chunks:
+        for evt in sf.process(c):
+            if evt.get("content"):
+                emitted_content.append(evt["content"])
+            if evt.get("reasoning_status"):
+                reasoning_events.append(evt["reasoning_status"])
+
+    for evt in sf.flush():
+        if evt.get("content"):
+            emitted_content.append(evt["content"])
+
+    full_text = "".join(emitted_content)
+    assert "Planning the response" not in full_text
+    assert "<think>" not in full_text
+    assert "</think>" not in full_text
+    assert full_text.startswith("# Quantum Computing")
+    assert len(reasoning_events) > 0
+

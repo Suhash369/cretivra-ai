@@ -234,18 +234,30 @@ export function normalizeLinkUrl(rawHref?: string, fallbackLabel?: string): stri
   return url;
 }
 
-// Preprocessor to normalize LaTeX math expressions and encode URL spaces from AI responses
+// Preprocessor to normalize LaTeX math expressions, strip internal thinking tags, and encode URL spaces from AI responses
 function preprocessMarkdown(raw: string): string {
   if (!raw) return '';
   let text = raw;
 
-  // 1. Convert standard LaTeX \[ ... \] display math to $$ ... $$
+  // 1. Strip internal reasoning/thinking tags (DeepSeek-R1, QwQ, Gemini Thinking)
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  text = text.replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '');
+  // Strip unclosed <think> during active stream
+  text = text.replace(/<think>[\s\S]*$/gi, '');
+
+  // 2. Strip accidental meta-planning checklist prefix if present
+  text = text.replace(
+    /^(?:Topic:.*?\n+)?(?:Persona:.*?\n+)?(?:Constraints:.*?\n+)?(?:Definition:.*?\n+)?(?:Check:.*?Did I.*?Yes[\s\S]*?)(?=#|\n\n)/i,
+    ''
+  );
+
+  // 3. Convert standard LaTeX \[ ... \] display math to $$ ... $$
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$\n$1\n$$');
 
-  // 2. Convert standard LaTeX \( ... \) inline math to $ ... $
+  // 4. Convert standard LaTeX \( ... \) inline math to $ ... $
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
 
-  // 3. Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
+  // 5. Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
   // Matches standalone `[` followed by typical LaTeX math commands ending with `]`
   text = text.replace(
     /^\s*\[\s*(\\boxed\{[\s\S]*?\}|\\frac\{[\s\S]*?\}|[\w\s=+\-*/(),.]*?\\[a-zA-Z]+[\s\S]*?)\s*\]\s*$/gm,
@@ -258,7 +270,7 @@ function preprocessMarkdown(raw: string): string {
     }
   );
 
-  // 4. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
+  // 6. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)\n\r]+)\)/g, (fullMatch, label, urlPart) => {
     if (urlPart.includes(' ')) {
       const encodedUrl = urlPart.replace(/ /g, '%20');
@@ -267,7 +279,7 @@ function preprocessMarkdown(raw: string): string {
     return fullMatch;
   });
 
-  return text;
+  return text.trim();
 }
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({

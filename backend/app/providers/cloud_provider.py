@@ -6,6 +6,126 @@ from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
 
+def clean_ai_response(content: str) -> str:
+    """
+    Cleans assistant text responses before database persistence.
+    Strips out <think>...</think>, [THINKING]...[/THINKING], and accidental planning scaffolds.
+    """
+    if not content:
+        return ""
+    cleaned = re.sub(r'<think>[\s\S]*?<\/think>', '', content, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\[thinking\][\s\S]*?\[\/thinking\]', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<think>[\s\S]*$', '', cleaned, flags=re.IGNORECASE)
+    
+    # Check for meta-planning checklist prefix (e.g. Topic: ... Check: Did I use the persona? Yes ... # Header)
+    scaffold_match = re.match(
+        r'^(?:Topic:.*?\n+)?(?:Persona:.*?\n+)?(?:Constraints:.*?\n+)?(?:Definition:.*?\n+)?(?:Check:.*?Did I.*?Yes[\s\S]*?)(?=#|\n\n)',
+        cleaned,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+    if scaffold_match:
+        cleaned = cleaned[scaffold_match.end():]
+
+    return cleaned.strip()
+
+class StreamFilter:
+    """
+    Sanitizes streaming chunks from reasoning LLMs (such as DeepSeek-R1, QwQ,
+    Gemini Thinking, or OpenRouter free models).
+    1. Intercepts <think>...</think> and [THINKING]...[/THINKING] tags so internal
+       chain-of-thought is not emitted into the user-facing text stream.
+    2. Emits a clean 'reasoning_status' event while thinking is occurring.
+    3. Strips prompt scaffolding artifacts (e.g., if a model echoes
+       'Topic: ... Persona: ... Check: Did I use persona? Yes') before the real answer starts.
+    """
+    def __init__(self):
+        self.inside_think = False
+        self.scaffold_checked = False
+        self.scaffold_buffer = ""
+
+    def process(self, chunk: str) -> List[Dict[str, Any]]:
+        events = []
+        if not chunk:
+            return events
+
+        text = chunk
+        while text:
+            if not self.inside_think:
+                lower = text.lower()
+                open_idx = -1
+                tag_len = 0
+                for tag in ["<think>", "[thinking]"]:
+                    idx = lower.find(tag)
+                    if idx != -1 and (open_idx == -1 or idx < open_idx):
+                        open_idx = idx
+                        tag_len = len(tag)
+
+                if open_idx != -1:
+                    pre_text = text[:open_idx]
+                    if pre_text:
+                        events.extend(self._handle_content(pre_text))
+                    self.inside_think = True
+                    events.append({"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False})
+                    text = text[open_idx + tag_len:]
+                else:
+                    events.extend(self._handle_content(text))
+                    text = ""
+            else:
+                lower = text.lower()
+                close_idx = -1
+                tag_len = 0
+                for tag in ["</think>", "[/thinking]"]:
+                    idx = lower.find(tag)
+                    if idx != -1 and (close_idx == -1 or idx < close_idx):
+                        close_idx = idx
+                        tag_len = len(tag)
+
+                if close_idx != -1:
+                    self.inside_think = False
+                    events.append({"content": "", "reasoning_status": None, "done": False})
+                    text = text[close_idx + tag_len:].lstrip("\r\n")
+                else:
+                    text = ""
+
+        return events
+
+    def _handle_content(self, text: str) -> List[Dict[str, Any]]:
+        if not self.scaffold_checked:
+            self.scaffold_buffer += text
+            first_line = self.scaffold_buffer.strip().split("\n")[0]
+            is_scaffold = any(first_line.startswith(prefix) for prefix in [
+                "Topic:", "Persona:", "Constraints:", "Check:", "Heading 1:", "Self-Correction"
+            ])
+            if is_scaffold:
+                match = re.search(r'(#+\s+[^\n]+)', self.scaffold_buffer)
+                if match:
+                    clean_start = self.scaffold_buffer[match.start():]
+                    self.scaffold_checked = True
+                    self.scaffold_buffer = ""
+                    return [{"content": clean_start, "done": False}]
+                elif len(self.scaffold_buffer) > 1500:
+                    self.scaffold_checked = True
+                    buf = self.scaffold_buffer
+                    self.scaffold_buffer = ""
+                    return [{"content": buf, "done": False}]
+                else:
+                    return []
+            else:
+                self.scaffold_checked = True
+                buf = self.scaffold_buffer
+                self.scaffold_buffer = ""
+                return [{"content": buf, "done": False}]
+
+        return [{"content": text, "done": False}]
+
+    def flush(self) -> List[Dict[str, Any]]:
+        if not self.scaffold_checked and self.scaffold_buffer:
+            self.scaffold_checked = True
+            buf = self.scaffold_buffer
+            self.scaffold_buffer = ""
+            return [{"content": buf, "done": False}]
+        return []
+
 class CloudLLMProvider:
     """
     Universal High-Performance Cloud AI Provider supporting:
@@ -421,6 +541,7 @@ class CloudLLMProvider:
                     logger.warning(f"{url} API error ({response.status_code}): {err.decode('utf-8', errors='ignore')}")
                     return
 
+                filter = StreamFilter()
                 try:
                     async for line in response.aiter_lines():
                         if not line:
@@ -428,20 +549,24 @@ class CloudLLMProvider:
                         if line.startswith("data: "):
                             data_str = line[6:].strip()
                             if data_str == "[DONE]":
+                                for evt in filter.flush():
+                                    yield evt
                                 yield {"content": "", "done": True}
                                 return
                             try:
                                 data = json.loads(data_str)
                                 delta = data.get("choices", [{}])[0].get("delta", {})
                                 content = delta.get("content", "")
-                                # Stream reasoning status if provided by DeepSeek / o1
-                                reasoning = delta.get("reasoning_content", "")
+                                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
                                 if reasoning:
-                                    yield {"content": "", "reasoning_status": "Thinking...", "done": False}
+                                    yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
                                 if content:
-                                    yield {"content": content, "done": False}
+                                    for evt in filter.process(content):
+                                        yield evt
                             except Exception:
                                 continue
+                    for evt in filter.flush():
+                        yield evt
                 except GeneratorExit:
                     return
 
@@ -497,24 +622,34 @@ class CloudLLMProvider:
                             err = await fb_resp.aread()
                             logger.error(f"Groq fallback failed: {err.decode('utf-8', errors='ignore')}")
                             return
+                        filter_fb = StreamFilter()
                         async for line in fb_resp.aiter_lines():
                             if not line:
                                 continue
                             if line.startswith("data: "):
                                 data_str = line[6:].strip()
                                 if data_str == "[DONE]":
+                                    for evt in filter_fb.flush():
+                                        yield evt
                                     yield {"content": "", "done": True}
                                     break
                                 try:
                                     data = json.loads(data_str)
                                     delta = data.get("choices", [{}])[0].get("delta", {})
                                     content = delta.get("content", "")
+                                    reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                                    if reasoning:
+                                        yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
                                     if content:
-                                        yield {"content": content, "done": False}
+                                        for evt in filter_fb.process(content):
+                                            yield evt
                                 except Exception:
                                     continue
+                        for evt in filter_fb.flush():
+                            yield evt
                     return
 
+                filter_main = StreamFilter()
                 try:
                     async for line in response.aiter_lines():
                         if not line:
@@ -522,16 +657,24 @@ class CloudLLMProvider:
                         if line.startswith("data: "):
                             data_str = line[6:].strip()
                             if data_str == "[DONE]":
+                                for evt in filter_main.flush():
+                                    yield evt
                                 yield {"content": "", "done": True}
                                 return
                             try:
                                 data = json.loads(data_str)
                                 delta = data.get("choices", [{}])[0].get("delta", {})
                                 content = delta.get("content", "")
+                                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                                if reasoning:
+                                    yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
                                 if content:
-                                    yield {"content": content, "done": False}
+                                    for evt in filter_main.process(content):
+                                        yield evt
                             except Exception:
                                 continue
+                    for evt in filter_main.flush():
+                        yield evt
                 except GeneratorExit:
                     return
 
@@ -616,6 +759,7 @@ class CloudLLMProvider:
                 try:
                     async with client.stream("POST", url, json=payload) as response:
                         if response.status_code == 200:
+                            filter_gem = StreamFilter()
                             async for line in response.aiter_lines():
                                 if not line:
                                     continue
@@ -627,11 +771,17 @@ class CloudLLMProvider:
                                         if candidates:
                                             parts = candidates[0].get("content", {}).get("parts", [])
                                             for p in parts:
+                                                if p.get("thought", False):
+                                                    yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
+                                                    continue
                                                 text = p.get("text", "")
                                                 if text:
-                                                    yield {"content": text, "done": False}
+                                                    for evt in filter_gem.process(text):
+                                                        yield evt
                                     except Exception:
                                         continue
+                            for evt in filter_gem.flush():
+                                yield evt
                             yield {"content": "", "done": True}
                             return
                         else:

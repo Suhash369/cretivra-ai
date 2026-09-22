@@ -116,9 +116,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </button>
               </div>
             </div>
-          ) : (
-            <MarkdownRenderer content={message.content || (isGenerating ? 'Thinking...' : '')} />
-          )}
+          ) : message.content ? (
+            <MarkdownRenderer content={message.content} />
+          ) : isGenerating ? (
+            <div className="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+              <span>{message.reasoning_status || 'Formulating response...'}</span>
+            </div>
+          ) : null}
 
           {/* Assistant / User Action Toolbar */}
           {!isEditing && (
