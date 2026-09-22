@@ -22,6 +22,14 @@
     --rose: #f43f5e;
     --text: #e7eaf4;
     --text-dim: #8891a8;
+
+    /* Centralized Motion Tokens */
+    --motion-fast: 150ms;
+    --motion-normal: 250ms;
+    --motion-slow: 400ms;
+    --motion-workspace: 500ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   :root[data-theme="light"],
@@ -1044,11 +1052,190 @@ html.light .cv-skeleton-shimmer {
   }
 }
 
-.animate-materialize {
-  animation: materialization-reveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* =============================================================================
+   ASURA AI — CENTRALIZED MOTION SYSTEM & REUSABLE ANIMATIONS (PART 48)
+   ============================================================================= */
+
+@keyframes asura-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes asura-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes asura-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes asura-panel-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes asura-pulse-soft {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes asura-shimmer-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes asura-success-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes asura-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+@keyframes asura-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Reusable Motion Classes */
+.animate-enter {
+  animation: asura-slide-up var(--motion-slow) var(--ease-out) forwards;
+}
+
+.animate-fade {
+  animation: asura-fade-in var(--motion-normal) var(--ease-out) forwards;
+}
+
+.animate-slide-up {
+  animation: asura-slide-up var(--motion-normal) var(--ease-out) forwards;
+}
+
+.animate-scale {
+  animation: asura-scale-in var(--motion-normal) var(--ease-out) forwards;
+}
+
+.animate-panel {
+  animation: asura-panel-slide var(--motion-normal) var(--ease-out) forwards;
+}
+
+.animate-pulse-soft {
+  animation: asura-pulse-soft 2.4s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(21, 28, 46, 0.6) 0%,
+    rgba(6, 182, 212, 0.12) 50%,
+    rgba(21, 28, 46, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: asura-shimmer-sweep 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+html.light .animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 245, 249, 0.8) 0%,
+    rgba(2, 132, 199, 0.12) 50%,
+    rgba(241, 245, 249, 0.8) 100%
+  );
+  background-size: 200% 100%;
+}
+
+.animate-stream {
+  display: inline-block;
+  animation: asura-cursor-blink 850ms ease-in-out infinite;
+}
+
+.animate-success {
+  animation: asura-success-pop var(--motion-normal) var(--ease-spring) forwards;
+}
+
+.animate-error {
+  animation: asura-error-shake var(--motion-normal) ease-in-out forwards;
+}
+
+/* Micro-Interactions (Part 47) */
+.asura-btn-interactive {
+  transition: all var(--motion-fast) var(--ease-out);
+}
+.asura-btn-interactive:hover {
+  filter: brightness(1.1);
+}
+.asura-btn-interactive:active {
+  transform: scale(0.98);
+}
+
+.asura-card-interactive {
+  transition: border-color var(--motion-normal) var(--ease-out), box-shadow var(--motion-normal) var(--ease-out);
+}
+.asura-card-interactive:hover {
+  border-color: rgba(6, 182, 212, 0.35);
+  box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.08);
+}
+
+/* Ambient Background (Part 49) */
+.asura-ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  filter: blur(110px);
+  opacity: 0.06;
+  transition: opacity 1s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor, .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button, .animate-stitch-laser, .cv-blueprint-grid, .cv-wireframe-box, .cv-skeleton-shimmer, .animate-materialize { animation: none !important; }
+  .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor,
+  .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button,
+  .animate-stitch-laser, .cv-blueprint-grid, .cv-wireframe-box, .cv-skeleton-shimmer, .animate-materialize,
+  .animate-enter, .animate-fade, .animate-slide-up, .animate-scale, .animate-panel,
+  .animate-pulse-soft, .animate-shimmer, .animate-stream, .animate-success, .animate-error,
+  .asura-btn-interactive, .asura-card-interactive, .asura-ambient-orb {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 

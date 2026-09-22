@@ -195,4 +195,34 @@ export async function refineUiApi(prompt: string, instruction: string, currentHt
   return res.json();
 }
 
+export async function listProjectsApi(): Promise<any[]> {
+  const res = await fetch(`${API_BASE}/projects`, { headers: { ...getAuthHeaders() } });
+  if (!res.ok) return [];
+  return res.json();
+}
 
+export async function createProjectApi(payload: { name: string; description?: string }): Promise<any> {
+  const res = await fetch(`${API_BASE}/projects`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to create project');
+  }
+  return res.json();
+}
+
+export async function listArtifactsApi(projectId?: string, runId?: string): Promise<any[]> {
+  const params = new URLSearchParams();
+  if (projectId) params.set('project_id', projectId);
+  if (runId) params.set('run_id', runId);
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/artifacts${query}`, { headers: { ...getAuthHeaders() } });
+  if (!res.ok) return [];
+  return res.json();
+}
