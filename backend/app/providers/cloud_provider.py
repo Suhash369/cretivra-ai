@@ -268,11 +268,23 @@ class CloudLLMProvider:
         )
 
         if is_news_or_search:
-            logger.info("Current affairs / world news query detected — prioritizing OpenRouter OpenAI and Google Gemini APIs for state-of-the-art results")
+            logger.info("Current affairs / world news query detected — prioritizing Gemini, OpenRouter, and Groq APIs")
 
-            # A. OpenAI via OpenRouter API (gpt-4o-mini and gpt-4o)
+            # A. Google Gemini API (High-speed factual grounding & live world knowledge)
+            if self.gemini_api_key:
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_gemini(model, messages, images=images):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.warning(f"Google Gemini stream error for news/search: {e}")
+
+            # B. OpenAI / Frontier via OpenRouter API
             if self.openrouter_api_key:
-                for or_oa_model in ["openai/gpt-4o-mini", "openai/gpt-4o"]:
+                for or_oa_model in ["openai/gpt-4o-mini", "nex-agi/nex-n2.5-pro:free", "openai/gpt-4o"]:
                     try:
                         has_yielded = False
                         async for chunk in self._stream_openai_compatible(
@@ -290,38 +302,7 @@ class CloudLLMProvider:
                     except Exception as e:
                         logger.warning(f"OpenRouter OpenAI ({or_oa_model}) stream error for news/search: {e}")
 
-            # B. Google Gemini API (High-speed factual grounding & live world knowledge)
-            if self.gemini_api_key:
-                try:
-                    has_yielded = False
-                    async for chunk in self._stream_gemini(model, messages, images=images):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.warning(f"Google Gemini stream error for news/search: {e}")
-
-            # C. Direct OpenAI API (if configured)
-            if self.openai_api_key:
-                for oa_model in ["gpt-4o", "gpt-4o-mini"]:
-                    try:
-                        has_yielded = False
-                        async for chunk in self._stream_openai_compatible(
-                            url="https://api.openai.com/v1/chat/completions",
-                            api_key=self.openai_api_key,
-                            model=oa_model,
-                            messages=messages,
-                            images=images
-                        ):
-                            has_yielded = True
-                            yield chunk
-                        if has_yielded:
-                            return
-                    except Exception as e:
-                        logger.warning(f"Direct OpenAI ({oa_model}) stream error for news/search: {e}")
-
-            # D. Groq API (High-speed fallback)
+            # C. Groq API (High-speed fallback)
             if self.groq_api_key:
                 try:
                     has_yielded = False
@@ -333,7 +314,51 @@ class CloudLLMProvider:
                 except Exception as e:
                     logger.warning(f"Groq stream error for news/search: {e}")
 
-        # 2. Try DeepSeek API if model is reasoning or deepseek
+        # 1. Primary Engine: Google Gemini API (High-fidelity frontier reasoning & multimodal)
+        if self.gemini_api_key:
+            try:
+                has_yielded = False
+                async for chunk in self._stream_gemini(model, messages, images=images):
+                    has_yielded = True
+                    yield chunk
+                if has_yielded:
+                    return
+            except Exception as e:
+                logger.error(f"Gemini stream error: {e}")
+
+        # 2. Secondary Engine: OpenRouter API (Frontier model routing)
+        if self.openrouter_api_key:
+            for or_model in self._resolve_openrouter_models(model):
+                try:
+                    has_yielded = False
+                    async for chunk in self._stream_openai_compatible(
+                        url="https://openrouter.ai/api/v1/chat/completions",
+                        api_key=self.openrouter_api_key,
+                        model=or_model,
+                        messages=messages,
+                        images=images,
+                        extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
+                    ):
+                        has_yielded = True
+                        yield chunk
+                    if has_yielded:
+                        return
+                except Exception as e:
+                    logger.warning(f"OpenRouter ({or_model}) stream error: {e}")
+
+        # 3. Tertiary Engine: Groq API (Ultra-fast inference: GPT-OSS-120B, GPT-OSS-20B, Qwen 3.8)
+        if self.groq_api_key:
+            try:
+                has_yielded = False
+                async for chunk in self._stream_groq(model, messages, images=images):
+                    has_yielded = True
+                    yield chunk
+                if has_yielded:
+                    return
+            except Exception as e:
+                logger.error(f"Groq stream error: {e}")
+
+        # 4. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
             try:
                 has_yielded = False
@@ -351,39 +376,7 @@ class CloudLLMProvider:
             except Exception as e:
                 logger.error(f"DeepSeek stream error: {e}")
 
-        # 2. Try Groq API (ultra-fast inference with active key)
-        if self.groq_api_key:
-            try:
-                has_yielded = False
-                async for chunk in self._stream_groq(model, messages, images=images):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.error(f"Groq stream error: {e}")
-
-        # 3. Try OpenRouter API if configured
-        if self.openrouter_api_key:
-            for or_model in self._resolve_openrouter_models(model):
-                try:
-                    has_yielded = False
-                    async for chunk in self._stream_openai_compatible(
-                        url="https://openrouter.ai/api/v1/chat/completions",
-                        api_key=self.openrouter_api_key,
-                        model=or_model,
-                        messages=messages,
-                        images=images,
-                        extra_headers={"HTTP-Referer": "https://ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
-                    ):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.warning(f"OpenRouter ({or_model}) stream error: {e}")
-
-        # 4. Try OpenAI API if configured
+        # 5. Try OpenAI API if configured
         if self.openai_api_key:
             try:
                 oa_model = "gpt-4o" if "omni" in model.lower() or "4o" in model.lower() else "gpt-4o-mini"
@@ -401,18 +394,6 @@ class CloudLLMProvider:
                     return
             except Exception as e:
                 logger.error(f"OpenAI stream error: {e}")
-
-        # 5. Try Gemini API
-        if self.gemini_api_key:
-            try:
-                has_yielded = False
-                async for chunk in self._stream_gemini(model, messages, images=images):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.error(f"Gemini stream error: {e}")
 
         # 6. Fallback to Autonomous Cretivra Engine Synthesizer
         async for chunk in self._stream_synthesized_response(messages, images=images):
@@ -485,14 +466,14 @@ class CloudLLMProvider:
     def _resolve_openrouter_models(self, model: str) -> List[str]:
         m = (model or "").lower()
         if "reason" in m or "deepseek" in m:
-            return ["deepseek/deepseek-r1", "meta-llama/llama-3.3-70b-instruct"]
+            return ["deepseek/deepseek-r1", "nex-agi/nex-n2.5-pro:free", "meta-llama/llama-3.3-70b-instruct"]
         elif "coder" in m or "code" in m:
-            return ["qwen/qwen-2.5-coder-32b-instruct", "meta-llama/llama-3.3-70b-instruct"]
+            return ["qwen/qwen-2.5-coder-32b-instruct", "nex-agi/nex-n2.5-mini:free", "cohere/north-mini-code:free"]
         elif "omni" in m or "4o" in m:
-            return ["openai/gpt-4o", "meta-llama/llama-3.3-70b-instruct"]
+            return ["openai/gpt-4o", "openai/gpt-4o-mini", "nex-agi/nex-n2.5-pro:free"]
         elif "claude" in m:
-            return ["anthropic/claude-3.5-sonnet", "meta-llama/llama-3.3-70b-instruct"]
-        return ["meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]
+            return ["anthropic/claude-3.5-sonnet", "nex-agi/nex-n2.5-pro:free"]
+        return ["nex-agi/nex-n2.5-mini:free", "nex-agi/nex-n2.5-pro:free", "openai/gpt-4o-mini", "meta-llama/llama-3.3-70b-instruct"]
 
     async def _stream_openai_compatible(
         self,
@@ -691,13 +672,13 @@ class CloudLLMProvider:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
         
-        # Multi-model fallback chain for Gemini (Flash 3.7/3.6 have world-class vision & factual search grounding)
+        # Multi-model fallback chain for Gemini (Flash 3.6/3.7 have world-class vision & factual search grounding)
         gemini_model_candidates = [
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "gemini-2.0-flash-lite",
-            "gemini-flash-latest"
+            "gemini-3.6-flash",
+            "gemini-flash-latest",
+            "gemini-3-flash-preview",
+            "gemini-2.5-flash-lite",
+            "gemini-pro-latest"
         ]
 
         contents = []
