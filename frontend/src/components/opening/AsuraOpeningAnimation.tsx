@@ -74,7 +74,7 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
         setIsDismissed(true);
         onCompleteRef.current?.();
         onReplayHandledRef.current?.();
-      }, 180);
+      }, 260);
     },
   });
 
@@ -106,13 +106,13 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   return (
     <div
       onClick={skip}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-700 ease-out cursor-pointer ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-800 ease-out cursor-pointer ${
         isTransitioning
           ? 'opacity-0 scale-125 pointer-events-none'
           : 'opacity-100 scale-100'
       }`}
       style={{
-        transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
       }}
       aria-label="Asura AI Consciousness Awakening"
     >

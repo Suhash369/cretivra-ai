@@ -19,18 +19,17 @@ export function useOpeningReadiness({
   const isAppReadyRef = useRef(isAppReady);
   isAppReadyRef.current = isAppReady;
 
+  // We only signal readiness if the timeline reaches READY or requests complete transition
   useEffect(() => {
-    // When animation reaches TRANSITION, check if essential app is ready
-    if (stage === 'TRANSITION') {
+    if (stage === 'READY') {
       if (isAppReadyRef.current) {
         onCanTransitionRef.current?.();
       }
     }
   }, [stage]);
 
-  // When app becomes ready after slow backend during transition hold
   useEffect(() => {
-    if (isAppReady && stage === 'TRANSITION') {
+    if (isAppReady && stage === 'READY') {
       onCanTransitionRef.current?.();
     }
   }, [isAppReady, stage]);

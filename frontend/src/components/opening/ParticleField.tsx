@@ -109,7 +109,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
       if (currentStage === 'SIGNAL') {
         const cx = width / 2;
         const cy = height / 2;
-        const tNorm = Math.min(1, elapsed / 0.30);
+        const tNorm = Math.min(1, elapsed / 0.60);
 
         // Cardiac breathe rhythm: 0.4 -> 1.0 -> 0.7
         const breath = Math.sin(tNorm * Math.PI) * 0.6 + 0.4;
@@ -118,14 +118,14 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
         // Radiant multi-stop bloom
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 32 * breath);
+        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 36 * breath);
         bloom.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
         bloom.addColorStop(0.3, 'rgba(6, 182, 212, 0.65)');
         bloom.addColorStop(0.65, 'rgba(139, 92, 246, 0.35)');
         bloom.addColorStop(1, 'rgba(6, 182, 212, 0)');
         ctx.fillStyle = bloom;
         ctx.beginPath();
-        ctx.arc(cx, cy, 32 * breath, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 36 * breath, 0, Math.PI * 2);
         ctx.fill();
 
         // Hot white core
@@ -159,10 +159,10 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
       // Master fade multiplier
       const globalAlpha =
         currentStage === 'TRANSITION'
-          ? Math.max(0, 1 - (elapsed - 2.35) / 0.45)
+          ? Math.max(0, 1 - (elapsed - 4.70) / 0.60)
           : currentStage === 'READY'
           ? 0
-          : Math.min(1, (elapsed - 0.20) / 0.35);
+          : Math.min(1, (elapsed - 0.40) / 0.50);
 
       if (globalAlpha <= 0) {
         animationFrameId = requestAnimationFrame(render);

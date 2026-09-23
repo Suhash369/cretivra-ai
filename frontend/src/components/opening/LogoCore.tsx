@@ -18,7 +18,7 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
     stage === 'TRANSITION';
 
   const showSurface =
-    stage === 'FORMATION' ? elapsedTime > 1.15 :
+    stage === 'FORMATION' ? elapsedTime > 2.35 :
     stage === 'STABILIZE' ||
     stage === 'CONSCIOUS' ||
     stage === 'IDENTITY' ||
@@ -27,9 +27,9 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
   // Camera scale progression
   const cameraScale =
     stage === 'SIGNAL' || stage === 'FIELD' || stage === 'FLOW'
-      ? 0.90
+      ? 0.92
       : stage === 'FORMATION'
-      ? 0.95 + Math.min(0.05, (elapsedTime - 1.05) * 0.15)
+      ? 0.96 + Math.min(0.04, (elapsedTime - 2.20) * 0.06)
       : stage === 'TRANSITION'
       ? 2.65
       : 1.0;
@@ -38,12 +38,12 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
 
   return (
     <div
-      className={`relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center transition-all duration-700 select-none ${
+      className={`relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center transition-all duration-800 select-none ${
         isHeartbeat ? 'asura-animate-heartbeat' : ''
       }`}
       style={{
         transform: `scale(${cameraScale})`,
-        transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {/* Authentic CRETIVRA Core Logo Image Surface with Caustic Radiant Glow */}

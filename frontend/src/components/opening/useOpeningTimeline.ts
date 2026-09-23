@@ -4,15 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export type AwakeningStage =
   | 'IDLE'
-  | 'SIGNAL'       // 0.00 – 0.30s: The Void & Microscopic Signal
-  | 'FIELD'        // 0.30 – 0.65s: Volumetric Energy Field Awakens
-  | 'FLOW'         // 0.65 – 1.05s: Procedural Gravitational Wells (Subconscious Infinity)
-  | 'FORMATION'    // 1.05 – 1.45s: Progressive Structure & Energy Path Travel
-  | 'STABILIZE'    // 1.45 – 1.60s: 150ms Stillness
-  | 'CONSCIOUS'    // 1.60 – 1.90s: Consciousness Heartbeat & Environmental Pulse
-  | 'IDENTITY'     // 1.90 – 2.35s: ASURA Materialization & Letterform Sweep
-  | 'TRANSITION'   // 2.35 – 2.85s: Lens-Through Core Expansion & App Emergence
-  | 'READY';       // 2.85s+: Fully Unmounted & Interactive
+  | 'SIGNAL'       // 0.00 – 0.60s: The Void & Microscopic Signal
+  | 'FIELD'        // 0.60 – 1.40s: Volumetric Energy Field Awakens
+  | 'FLOW'         // 1.40 – 2.20s: Procedural Gravitational Wells (Subconscious Infinity)
+  | 'FORMATION'    // 2.20 – 2.90s: Progressive Structure & Energy Path Travel
+  | 'STABILIZE'    // 2.90 – 3.20s: 300ms Chamber Stillness & Anticipation
+  | 'CONSCIOUS'    // 3.20 – 3.70s: Consciousness Heartbeat & Environmental Pulse
+  | 'IDENTITY'     // 3.70 – 4.70s: ASURA Materialization, Optical Tracking & Letterform Sweep
+  | 'TRANSITION'   // 4.70 – 5.40s: Lens-Through Core Expansion & App Emergence
+  | 'READY';       // 5.40s+: Fully Unmounted & Interactive
 
 interface UseOpeningTimelineOptions {
   isReturningUser?: boolean;
@@ -40,8 +40,8 @@ export function useOpeningTimeline({
   const pauseStartRef = useRef<number | null>(null);
   const isFinishedRef = useRef(false);
 
-  // Full cinematic timeline duration = 2.85s, Fast-track = 0.65s
-  const totalDuration = reducedMotion ? 0.4 : isReturningUser && !forceReplay ? 0.65 : 2.85;
+  // Cinema-grade timeline duration = 5.40s (Allows every phase to breathe with majestic pacing)
+  const totalDuration = reducedMotion ? 0.4 : 5.40;
 
   const finish = useCallback(() => {
     if (isFinishedRef.current) return;
@@ -97,37 +97,26 @@ export function useOpeningTimeline({
       const norm = Math.min(1, t / totalDuration);
       setProgress(norm);
 
-      if (isReturningUser && !forceReplay) {
-        // Fast-track micro-awakening (0.65s total)
-        if (t < 0.15) setStage('FLOW');
-        else if (t < 0.32) setStage('CONSCIOUS');
-        else if (t < 0.50) setStage('TRANSITION');
-        else {
-          finish();
-          return;
-        }
+      // Full Master-Class Cinematic Awakening (5.40s total)
+      if (t < 0.60) {
+        setStage('SIGNAL');
+      } else if (t < 1.40) {
+        setStage('FIELD');
+      } else if (t < 2.20) {
+        setStage('FLOW');
+      } else if (t < 2.90) {
+        setStage('FORMATION');
+      } else if (t < 3.20) {
+        setStage('STABILIZE');
+      } else if (t < 3.70) {
+        setStage('CONSCIOUS');
+      } else if (t < 4.70) {
+        setStage('IDENTITY');
+      } else if (t < 5.40) {
+        setStage('TRANSITION');
       } else {
-        // Full Cinematic Awakening (2.85s total)
-        if (t < 0.30) {
-          setStage('SIGNAL');
-        } else if (t < 0.65) {
-          setStage('FIELD');
-        } else if (t < 1.05) {
-          setStage('FLOW');
-        } else if (t < 1.45) {
-          setStage('FORMATION');
-        } else if (t < 1.60) {
-          setStage('STABILIZE');
-        } else if (t < 1.90) {
-          setStage('CONSCIOUS');
-        } else if (t < 2.35) {
-          setStage('IDENTITY');
-        } else if (t < 2.85) {
-          setStage('TRANSITION');
-        } else {
-          finish();
-          return;
-        }
+        finish();
+        return;
       }
 
       animationFrameRef.current = requestAnimationFrame(tick);

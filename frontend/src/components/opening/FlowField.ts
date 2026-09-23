@@ -117,34 +117,34 @@ export class FlowFieldEngine {
     }
 
     if (stage === 'STABILIZE') {
-      // 4. Stillness deceleration (150ms quiet breath)
-      fx *= 0.1;
-      fy *= 0.1;
-      p.vx *= 0.72;
-      p.vy *= 0.72;
+      // 4. Stillness deceleration (300ms quiet breath)
+      fx *= 0.06;
+      fy *= 0.06;
+      p.vx *= 0.65;
+      p.vy *= 0.65;
     }
 
-    if (pulseActive && pulseTime < 0.65) {
+    if (pulseActive && pulseTime < 0.95) {
       // 5. Visceral double-heartbeat shockwave outward blast
       const dx = p.x - cx;
       const dy = p.y - cy;
       const dist = Math.hypot(dx, dy) || 1;
 
       // Two pulse wavefronts (double heartbeat)
-      const wave1Dist = pulseTime * 520;
-      const wave2Dist = Math.max(0, (pulseTime - 0.12) * 580);
+      const wave1Dist = pulseTime * 480;
+      const wave2Dist = Math.max(0, (pulseTime - 0.16) * 520);
 
       const diff1 = Math.abs(dist - wave1Dist);
       const diff2 = Math.abs(dist - wave2Dist);
 
-      if (diff1 < 50) {
-        const blast1 = (1 - diff1 / 50) * (1 - pulseTime / 0.65) * 5.2;
+      if (diff1 < 55) {
+        const blast1 = (1 - diff1 / 55) * (1 - pulseTime / 0.95) * 5.5;
         fx += (dx / dist) * blast1;
         fy += (dy / dist) * blast1;
       }
 
-      if (diff2 < 45 && pulseTime > 0.12) {
-        const blast2 = (1 - diff2 / 45) * (1 - pulseTime / 0.65) * 4.4;
+      if (diff2 < 50 && pulseTime > 0.16) {
+        const blast2 = (1 - diff2 / 50) * (1 - pulseTime / 0.95) * 4.6;
         fx += (dx / dist) * blast2;
         fy += (dy / dist) * blast2;
       }

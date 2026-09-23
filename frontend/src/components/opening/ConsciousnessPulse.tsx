@@ -13,34 +13,34 @@ export const ConsciousnessPulse: React.FC<ConsciousnessPulseProps> = ({ stage })
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-15">
-      {/* 1. Pre-Heartbeat Stillness Aura (150ms quiet chamber) */}
+      {/* 1. Pre-Heartbeat Stillness Aura (300ms quiet chamber) */}
       {isStabilizing && (
         <div
-          className="w-40 h-40 rounded-full bg-gradient-to-r from-cyan-400/20 via-white/30 to-violet-400/20 filter blur-2xl animate-pulse-soft"
+          className="w-48 h-48 rounded-full bg-gradient-to-r from-cyan-400/25 via-white/35 to-violet-400/25 filter blur-3xl animate-pulse-soft"
           aria-hidden="true"
         />
       )}
 
-      {/* 2. Double Heartbeat Shockwave Ripples (Wave 1 and Wave 2) */}
+      {/* 2. Double Heartbeat Shockwave Ripples (Wave 1, Wave 2, and Wave 3) */}
       {isConscious && (
         <>
           {/* Wave 1: Immediate primary high-intensity blast */}
           <div
-            className="absolute top-1/2 left-1/2 w-48 h-48 rounded-full border-2 border-white asura-animate-ripple pointer-events-none filter drop-shadow-[0_0_12px_rgba(6,182,212,0.9)]"
+            className="absolute top-1/2 left-1/2 w-48 h-48 rounded-full border-2 border-white asura-animate-ripple pointer-events-none filter drop-shadow-[0_0_14px_rgba(6,182,212,0.95)]"
             aria-hidden="true"
           />
 
           {/* Wave 2: Staggered secondary cosmic violet ripple */}
           <div
-            className="absolute top-1/2 left-1/2 w-64 h-64 rounded-full border border-cyan-400/80 asura-animate-ripple pointer-events-none filter drop-shadow-[0_0_16px_rgba(139,92,246,0.7)]"
-            style={{ animationDelay: '120ms' }}
+            className="absolute top-1/2 left-1/2 w-64 h-64 rounded-full border border-cyan-400/80 asura-animate-ripple pointer-events-none filter drop-shadow-[0_0_18px_rgba(139,92,246,0.75)]"
+            style={{ animationDelay: '160ms' }}
             aria-hidden="true"
           />
 
           {/* Wave 3: Wide ambient atmospheric dissipation ring */}
           <div
-            className="absolute top-1/2 left-1/2 w-80 h-80 rounded-full border border-violet-400/40 asura-animate-ripple pointer-events-none"
-            style={{ animationDelay: '220ms' }}
+            className="absolute top-1/2 left-1/2 w-88 h-88 rounded-full border border-violet-400/40 asura-animate-ripple pointer-events-none"
+            style={{ animationDelay: '300ms' }}
             aria-hidden="true"
           />
         </>
@@ -49,7 +49,7 @@ export const ConsciousnessPulse: React.FC<ConsciousnessPulseProps> = ({ stage })
       {/* 3. Center Node Consciousness Flare */}
       {isConscious && (
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-gradient-to-r from-cyan-300 via-white to-violet-400 filter blur-md opacity-95 animate-ping"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full bg-gradient-to-r from-cyan-300 via-white to-violet-400 filter blur-lg opacity-90 asura-animate-signal"
           aria-hidden="true"
         />
       )}

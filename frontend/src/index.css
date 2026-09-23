@@ -1495,29 +1495,63 @@ html.light .animate-shimmer {
   0% {
     transform: scale(1);
     opacity: 1;
+    filter: blur(0px);
   }
-  60% {
-    transform: scale(1.5);
-    opacity: 0.8;
+  50% {
+    transform: scale(1.6);
+    opacity: 0.85;
+    filter: blur(2px);
   }
   100% {
     transform: scale(2.8);
     opacity: 0;
+    filter: blur(12px);
   }
 }
 
 @keyframes asura-laser-beam {
   0% {
-    transform: scaleX(0);
+    width: 0%;
     opacity: 0;
   }
-  40% {
-    transform: scaleX(1);
+  30% {
     opacity: 1;
   }
   100% {
-    transform: scaleX(1);
-    opacity: 0.75;
+    width: 100%;
+    opacity: 0.85;
+  }
+}
+
+@keyframes asura-wordmark-reveal {
+  0% {
+    letter-spacing: 0.38em;
+    filter: blur(16px);
+    opacity: 0;
+    transform: translateY(16px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    filter: blur(2px);
+  }
+  100% {
+    letter-spacing: 0.16em;
+    filter: blur(0px);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes asura-subtitle-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    letter-spacing: 0.35em;
+  }
+  100% {
+    opacity: 0.85;
+    transform: translateY(0);
+    letter-spacing: 0.25em;
   }
 }
 
@@ -1540,27 +1574,35 @@ html.light .animate-shimmer {
 }
 
 .asura-animate-heartbeat {
-  animation: asura-double-heartbeat 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: asura-double-heartbeat 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .asura-animate-sweep {
-  animation: asura-opening-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: asura-opening-sweep 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .asura-animate-laser {
-  animation: asura-laser-beam 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: asura-laser-beam 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.asura-animate-wordmark {
+  animation: asura-wordmark-reveal 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.asura-animate-subtitle {
+  animation: asura-subtitle-reveal 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
 }
 
 .asura-animate-ripple {
-  animation: asura-opening-ripple 0.85s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+  animation: asura-opening-ripple 1.1s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
 }
 
 .asura-animate-signal {
-  animation: asura-opening-signal-bloom 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: asura-opening-signal-bloom 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .asura-animate-aperture {
-  animation: asura-aperture-zoom 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: asura-aperture-zoom 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

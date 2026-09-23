@@ -50,16 +50,16 @@ There are no segmented cutoffs or disjointed stages. Every frame naturally emerg
 
 ## 3. Scene Breakdown & Visual Choreography
 
-### Scene 01 — The Void (0.00s – 0.30s)
+### Scene 01 — The Void (0.00s – 0.60s)
 * **Canvas**: Pristine light backdrop (`#FFFFFF` with subtle radial atmospheric tone).
 * **Signal**: A microscopic luminous point ($0.8\text{px} - 1.5\text{px}$) awakens at the exact viewport center.
 * **Heartbeat Breathing**: The point expands and contracts gently:
   $$\text{scale: } 0.4 \longrightarrow 1.0 \longrightarrow 0.7$$
   Soft dual-layer cyan and violet bloom emanates from the focal point.
 
-### Scene 02 — The Field (0.30s – 0.65s)
+### Scene 02 — The Field (0.60s – 1.40s)
 * **Volumetric Presence**: Particles do not explode; they materialize as if an invisible field has suddenly become illuminated.
-* **Density**: 68 volumetric particles (desktop) / 38 (mobile).
+* **Density**: 300 dense photon sparks (desktop) / 150 (mobile).
 * **Layer Stratification**:
   - **Layer A (Fine)**: $0.5\text{px} - 1.0\text{px}$, subtle ambient drift, opacity $0.35$.
   - **Layer B (Medium)**: $1.0\text{px} - 2.0\text{px}$, moderate drift and energy trails, opacity $0.60$.
@@ -68,14 +68,14 @@ There are no segmented cutoffs or disjointed stages. Every frame naturally emerg
   - Closer particles ($z > 0$): Larger, brighter, sharper, higher parallax velocity.
   - Distant particles ($z < 0$): Smaller, fainter, softened with depth blur.
 
-### Scene 03 — The Field Starts Thinking (0.65s – 1.05s)
+### Scene 03 — The Field Starts Thinking (1.40s – 2.20s)
 * **Subconscious Infinity**: Before any logo lines appear, the procedural flow field establishes two invisible gravitational wells:
   - **Left Well** ($x \approx 0.34$): Royal Blue (`#2563eb`).
   - **Right Well** ($x \approx 0.66$): Bright Cyan (`#06b6d4`).
   - **Center Crossover Saddle** ($x = 0.50$): Violet (`#8b5cf6`).
 * **Kinetics**: Particles curve around these wells in opposing rotations (left clockwise, right counter-clockwise), crossing through the center saddle. The viewer instinctively perceives $\infty$ before the logo geometry forms.
 
-### Scene 04 — Energy Threads & Path Travel (1.05s – 1.45s)
+### Scene 04 — Energy Threads & Path Travel (2.20s – 2.90s)
 * **Progressive 3-Layer Structural Formation**:
   - **Layer 1 (Nodes)**: The 11 geometric node positions ignite with staggered pulses.
   - **Layer 2 (Energy Threads)**: Proximity-based SVG geodesic lines connect the nodes, stabilizing into the structural lattice.
@@ -85,39 +85,35 @@ There are no segmented cutoffs or disjointed stages. Every frame naturally emerg
   $$\text{Left Loop} \longrightarrow \text{Center Cross} \longrightarrow \text{Right Loop} \longrightarrow \text{Center Cross}$$
   The pulse temporarily illuminates the path, excites nodes as it passes, and leaves an authentic afterglow.
 
-### Scene 05 — The Consciousness Moment (1.45s – 1.90s)
-* **100–150ms Stillness (1.45s – 1.60s)**:
-  All particle velocities dramatically dampen. The chamber becomes quiet and poised.
-* **Heartbeat & Environmental Reaction (1.60s – 1.90s)**:
-  - The center of the core pulses with an organic heartbeat:
-    $$\text{scale: } 1.00 \longrightarrow 1.025 \longrightarrow 1.00$$
-  - The center node ignites with a high-energy flare.
-  - A concentric light wave expands outward.
-  - **Physical Displacement**: As the wave travels outward, nearby particles physically respond to the impulse force, moving outward and settling naturally with inertia.
+### Scene 05 — The Consciousness Moment (2.90s – 3.70s)
+* **300ms Sacred Stillness (2.90s – 3.20s)**:
+  All particle velocities dramatically dampen. The chamber becomes quiet and poised with anticipation.
+* **Cardiac Heartbeat & Blast Wave (3.20s – 3.70s)**:
+  - The center of the core pulses with an organic dual-heartbeat:
+    $$\text{scale: } 1.00 \longrightarrow 1.05 \longrightarrow 0.98 \longrightarrow 1.03 \longrightarrow 1.00$$
+  - The center node ignites with a brilliant white-cyan flare.
+  - Two concentric shockwave rings expand outward with natural inertia.
+  - Nearby photons physically respond to the impulse force, rippling outward and settling smoothly.
 
-### Scene 06 — Asura Identity Materialization (1.90s – 2.35s)
-* **No Generic "AI Pill" Badge**: Removed all SaaS pill badges.
-* **Horizontal Light Field**: The core generates a thin horizontal light line that expands outward.
-* **Typography Materialization**:
-  - **ASURA** emerges with confident, precision typography (`Inter`, `system-ui`).
-  - Transition: `opacity: 0 -> 1`, `blur: 8px -> 0`, `translateY: 6px -> 0`.
-  - A subtle horizontal light sweep glides across the letterforms.
-  - Subtitle: `BY CRETIVRA` ($0.2\text{em}$ letter spacing, muted slate).
+### Scene 06 — Asura Identity Materialization (3.70s – 4.70s)
+* **Full Dedicated 1000ms Hero Reveal**:
+  - High-intensity horizontal laser line of pure cyan-white energy expands from the core.
+  - **ASURA** wordmark materializes with optical tracking reduction (`0.38em` $\rightarrow$ `0.16em`) and Gaussian unblur (`16px` $\rightarrow$ `0px`).
+  - A specular chromatic light sweep cascades smoothly across the letterforms.
+  - Subtitle emerges: `FRONTIER INTELLIGENCE • BY CRETIVRA` ($0.28\text{em}$ letter spacing, elegant uppercase).
+  - The user has ample time to absorb the brand prestige without any rushed cutoff.
 
-### Scene 07 — The World Opens (2.35s – 2.85s)
-* **Camera Lens Gateway**: The camera moves through the intelligence core:
-  $$\text{scale: } 1.00 \longrightarrow 1.85+$$
-  The core blooms and radially dissolves into background atmosphere.
-* **Application Emergence**:
-  - Sidebar: `translateX(-8px) -> 0`, `opacity: 0 -> 1`
-  - Header: `opacity: 0 -> 1`
-  - Chat Workspace: `opacity: 0 -> 1`, `scale: 0.995 -> 1`
-  - Composer Input: `translateY(6px) -> 0`, `opacity: 0 -> 1`
+### Scene 07 — The World Opens (4.70s – 5.40s)
+* **Camera Lens Gateway Dive**:
+  - Camera dives through the intelligence core:
+    $$\text{scale: } 1.00 \longrightarrow 1.60 \longrightarrow 2.65$$
+  - Soft-edge aperture dissolution with `cubic-bezier(0.16, 1, 0.3, 1)`.
+  - Live workspace (sidebar, header, chat) emerges with synchronized spatial un-zoom (`0.96` $\rightarrow$ `1.0`).
 
-### Scene 08 — Ready State (2.85s+)
+### Scene 08 — Ready State (5.40s+)
 * The opening overlay is completely unmounted (`isDismissed: true`).
 * The composer textarea is immediately focused (`textarea.focus()`).
-* Zero delay, zero spinners, immediate typing capability.
+* Instant responsiveness and interaction readiness.
 
 ---
 

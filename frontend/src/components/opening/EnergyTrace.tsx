@@ -31,13 +31,13 @@ export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage, elapsedTime }) 
     stage === 'CONSCIOUS' ||
     stage === 'IDENTITY';
 
-  // Energy pulse timing: triggers during formation around 1.15s – 1.45s
+  // Energy pulse timing: triggers during formation around 2.30s – 2.85s
   const isPulseActive =
-    stage === 'FORMATION' && elapsedTime >= 1.15 && elapsedTime <= 1.45;
+    stage === 'FORMATION' && elapsedTime >= 2.30 && elapsedTime <= 2.85;
 
   const pulseOffset =
     isPulseActive
-      ? ((elapsedTime - 1.15) / 0.30) * 200 // travels along stroke
+      ? ((elapsedTime - 2.30) / 0.55) * 200 // travels smoothly along stroke
       : 200;
 
   return (
