@@ -2,7 +2,7 @@ export { AsuraOpeningAnimation, type AwakeningStage } from './AsuraOpeningAnimat
 export { useOpeningTimeline } from './useOpeningTimeline';
 export { useOpeningReadiness } from './useOpeningReadiness';
 export { ParticleField } from './ParticleField';
-export { FlowFieldEngine, type VolumetricParticle, type Vector2D } from './FlowField';
+export { FlowFieldEngine, type PhotonSpark, type PhotonSpark as VolumetricParticle, type Vector2D } from './FlowField';
 export { LogoCore } from './LogoCore';
 export { EnergyTrace } from './EnergyTrace';
 export { ConsciousnessPulse } from './ConsciousnessPulse';

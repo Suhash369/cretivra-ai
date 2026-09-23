@@ -10,7 +10,6 @@ interface LogoCoreProps {
 }
 
 export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
-  // Layer visibility checks
   const showNodes =
     stage === 'FORMATION' ||
     stage === 'STABILIZE' ||
@@ -19,41 +18,40 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
     stage === 'TRANSITION';
 
   const showSurface =
-    stage === 'FORMATION' ? elapsedTime > 1.20 :
+    stage === 'FORMATION' ? elapsedTime > 1.15 :
     stage === 'STABILIZE' ||
     stage === 'CONSCIOUS' ||
     stage === 'IDENTITY' ||
     stage === 'TRANSITION';
 
-  // Camera scale progression (Section 23)
-  // Formation: 0.92 -> 1.0, Conscious: 1.025, Transition: 1.8+
+  // Camera scale progression
   const cameraScale =
     stage === 'SIGNAL' || stage === 'FIELD' || stage === 'FLOW'
-      ? 0.92
+      ? 0.90
       : stage === 'FORMATION'
-      ? 0.96 + Math.min(0.04, (elapsedTime - 1.05) * 0.1)
-      : stage === 'CONSCIOUS'
-      ? 1.025
+      ? 0.95 + Math.min(0.05, (elapsedTime - 1.05) * 0.15)
       : stage === 'TRANSITION'
-      ? 1.85
+      ? 2.65
       : 1.0;
 
-  const isConsciousPulse = stage === 'CONSCIOUS';
+  const isHeartbeat = stage === 'CONSCIOUS';
 
   return (
     <div
-      className="relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center transition-all duration-500 ease-out select-none"
+      className={`relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center transition-all duration-700 select-none ${
+        isHeartbeat ? 'asura-animate-heartbeat' : ''
+      }`}
       style={{
         transform: `scale(${cameraScale})`,
         transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
       }}
     >
-      {/* Authentic CRETIVRA Core Logo Image Surface (Layer 3) */}
+      {/* Authentic CRETIVRA Core Logo Image Surface with Caustic Radiant Glow */}
       <div
-        className={`relative w-full h-full transition-all duration-600 ease-out ${
+        className={`relative w-full h-full transition-all duration-700 ease-out ${
           showSurface
-            ? 'opacity-100 filter drop-shadow-[0_4px_22px_rgba(6,182,212,0.3)]'
-            : 'opacity-0 scale-95'
+            ? 'opacity-100 filter drop-shadow-[0_4px_30px_rgba(6,182,212,0.45)] drop-shadow-[0_0_50px_rgba(139,92,246,0.35)]'
+            : 'opacity-0 scale-90'
         }`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -63,34 +61,34 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage, elapsedTime }) => {
           className="w-full h-full object-contain pointer-events-none"
         />
 
-        {/* Luminous Light Sweep Traveling Across Path */}
-        {showSurface && stage === 'FORMATION' && (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Luminous Light Sweep Across Infinity Ribbon */}
+        {showSurface && (stage === 'FORMATION' || stage === 'CONSCIOUS') && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl">
             <div
-              className="w-1/3 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/45 to-transparent blur-xs"
+              className="w-2/5 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/60 to-transparent blur-xs"
               aria-hidden="true"
             />
           </div>
         )}
       </div>
 
-      {/* Layer 1 — The 11 Geometric Nodes with Staggered Activation Bloom */}
+      {/* Layer 1 — The 11 Geometric Nodes with High-Intensity Photon Flares */}
       {showNodes && (
         <div className="absolute inset-0 pointer-events-none z-20">
           {CRETIVRA_NODES.map((node, i) => {
             const isCenterNode = i === 0;
             return (
               <div
-                key={`core-node-${i}`}
-                className="absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-300"
+                key={`photon-node-${i}`}
+                className="absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-300"
                 style={{
                   left: `${node.x * 100}%`,
                   top: `${node.y * 100}%`,
-                  background: `radial-gradient(circle, #ffffff 25%, ${node.color} 80%)`,
-                  boxShadow: isCenterNode && isConsciousPulse
-                    ? `0 0 20px 6px ${node.color}, 0 0 35px 12px rgba(139, 92, 246, 0.6)`
-                    : `0 0 10px 2px ${node.color}99`,
-                  transform: `scale(${isCenterNode && isConsciousPulse ? 1.5 : 1})`,
+                  background: `radial-gradient(circle, #ffffff 30%, ${node.color} 80%)`,
+                  boxShadow: isCenterNode && isHeartbeat
+                    ? `0 0 25px 8px #ffffff, 0 0 45px 16px ${node.color}, 0 0 70px 24px rgba(139, 92, 246, 0.8)`
+                    : `0 0 12px 3px ${node.color}, 0 0 20px 6px rgba(6, 182, 212, 0.5)`,
+                  transform: `scale(${isCenterNode && isHeartbeat ? 1.8 : 1})`,
                 }}
               />
             );

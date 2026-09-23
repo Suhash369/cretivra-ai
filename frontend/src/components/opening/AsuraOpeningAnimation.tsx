@@ -74,7 +74,7 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
         setIsDismissed(true);
         onCompleteRef.current?.();
         onReplayHandledRef.current?.();
-      }, 150);
+      }, 180);
     },
   });
 
@@ -106,9 +106,9 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   return (
     <div
       onClick={skip}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-600 ease-out cursor-pointer ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-700 ease-out cursor-pointer ${
         isTransitioning
-          ? 'opacity-0 scale-110 pointer-events-none'
+          ? 'opacity-0 scale-125 pointer-events-none'
           : 'opacity-100 scale-100'
       }`}
       style={{
@@ -116,29 +116,35 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
       }}
       aria-label="Asura AI Consciousness Awakening"
     >
-      {/* 1. Volumetric Particle Field with Procedural Lemniscate Physics */}
+      {/* 1. Deep Atmospheric Radial Aura (Apple Intelligence / Astra depth) */}
+      <div
+        className="absolute w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full pointer-events-none filter blur-3xl opacity-60 bg-gradient-to-tr from-cyan-200/50 via-blue-100/40 to-violet-200/50 animate-pulse-soft"
+        aria-hidden="true"
+      />
+
+      {/* 2. Volumetric Particle Field with Additive Glow & Procedural Lemniscate Physics */}
       {!reducedMotion && (
         <ParticleField stage={stage} elapsedTime={elapsedTime} />
       )}
 
-      {/* 2. Central Chamber: Consciousness Core, Energy Paths, and Pulse */}
+      {/* 3. Central Chamber: Consciousness Core, Energy Paths, and Pulse */}
       <div className="relative w-full max-w-xl mx-auto flex flex-col items-center justify-center p-6 z-20">
         <div className="relative flex items-center justify-center">
-          {/* Geodesic Energy Traces */}
+          {/* Geodesic Energy Traces & Infinity Path Pulse */}
           <EnergyTrace stage={stage} elapsedTime={elapsedTime} />
 
-          {/* Authentic CRETIVRA Core Mark with 3-Layer Formation & Camera Scaling */}
+          {/* Authentic CRETIVRA Core Mark with Caustic Glow & Camera Scaling */}
           <LogoCore stage={stage} elapsedTime={elapsedTime} />
 
-          {/* Consciousness Stillness & Environmental Pulse */}
+          {/* Consciousness Stillness & Double Heartbeat Pulse */}
           <ConsciousnessPulse stage={stage} />
         </div>
 
-        {/* 3. ASURA Identity Emergence (Light field & Letterform Sweep) */}
+        {/* 4. ASURA Identity Emergence (Laser line & Prismatic Sweep) */}
         <AsuraIdentity stage={stage} />
       </div>
 
-      {/* Non-intrusive skip hint for power users */}
+      {/* 5. Non-intrusive skip hint for power users */}
       <div className="absolute bottom-6 text-[11px] text-slate-400 font-medium tracking-wide opacity-50 hover:opacity-100 transition-opacity z-30">
         {isReturningUser ? 'Press Esc or click to enter' : 'Press Esc to skip'}
       </div>

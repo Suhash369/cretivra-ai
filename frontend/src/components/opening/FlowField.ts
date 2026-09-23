@@ -1,6 +1,6 @@
 /**
- * FlowField.ts - Procedural Vector Physics & Gravitational Wells
- * Calculates continuous forces for the Asura Intelligence Awakening.
+ * FlowField.ts - Procedural Vector Physics & Fluid Gravitational Wells
+ * Astra-level kinetic simulation for ASURA AI Intelligence Awakening.
  */
 
 export interface Vector2D {
@@ -8,133 +8,145 @@ export interface Vector2D {
   y: number;
 }
 
-export interface VolumetricParticle {
+export interface PhotonSpark {
   id: number;
   x: number;
   y: number;
   z: number;              // -1 (deep background) to +1 (foreground)
   vx: number;
   vy: number;
-  vz: number;
   baseRadius: number;
-  layer: 'A' | 'B' | 'C'; // A: 0.5-1px, B: 1-2px, C: 2-3px rare bright
+  layer: 'fine' | 'medium' | 'star';
   baseOpacity: number;
   color: string;
   glowColor: string;
   targetNodeIndex: number;
-  hasTrail: boolean;
-  trailHistory: { x: number; y: number; alpha: number }[];
+  trail: { x: number; y: number }[];
+  maxTrailLength: number;
+  phaseOffset: number;
   settled: boolean;
 }
 
-// Simple pseudo-noise function for deterministic organic motion
-export function pseudoNoise(x: number, y: number, time: number): number {
-  const sin1 = Math.sin(x * 0.015 + time * 1.2);
-  const cos1 = Math.cos(y * 0.015 - time * 0.8);
-  const sin2 = Math.sin((x + y) * 0.008 + time * 0.6);
-  return (sin1 + cos1 + sin2) / 3;
+// Procedural curl-noise approximation for silky fluid streams
+export function curlNoise(x: number, y: number, time: number): Vector2D {
+  const eps = 1.0;
+  const n1 = Math.sin(x * 0.008 + time * 1.4) + Math.cos(y * 0.008 - time * 1.1);
+  const n2 = Math.sin((x + eps) * 0.008 + time * 1.4) + Math.cos(y * 0.008 - time * 1.1);
+  const n3 = Math.sin(x * 0.008 + time * 1.4) + Math.cos((y + eps) * 0.008 - time * 1.1);
+
+  const dy = (n3 - n1) / eps;
+  const dx = (n2 - n1) / eps;
+  // Perpendicular gradient produces non-divergent fluid curl
+  return { x: dy * 1.8, y: -dx * 1.8 };
 }
 
-export interface FlowFieldParams {
+export interface FlowEngineParams {
   width: number;
   height: number;
   time: number;
-  pulseTriggered: boolean;
-  pulseTime: number; // time since pulse
+  stage: string;
+  pulseActive: boolean;
+  pulseTime: number; // time in seconds since pulse trigger
 }
 
 export class FlowFieldEngine {
-  // Gravitational wells forming subconscious infinity
-  static computeForces(
-    p: VolumetricParticle,
-    params: FlowFieldParams,
-    targetNodePos?: Vector2D,
-    stage?: string
+  static updatePhotonForces(
+    p: PhotonSpark,
+    params: FlowEngineParams,
+    targetPos?: Vector2D
   ): Vector2D {
-    const { width, height, time, pulseTriggered, pulseTime } = params;
+    const { width, height, time, stage, pulseActive, pulseTime } = params;
     const cx = width / 2;
     const cy = height / 2;
-
-    // Twin gravitational well centers matching the twin infinity lobes
-    const wellDistX = width * 0.16;
-    const leftWell: Vector2D = { x: cx - wellDistX, y: cy };
-    const rightWell: Vector2D = { x: cx + wellDistX, y: cy };
 
     let fx = 0;
     let fy = 0;
 
-    // 1. Organic noise force
-    const noiseAngle = pseudoNoise(p.x, p.y, time) * Math.PI * 2;
-    const noiseMag = stage === 'STABILIZE' ? 0.02 : 0.14;
-    fx += Math.cos(noiseAngle) * noiseMag;
-    fy += Math.sin(noiseAngle) * noiseMag;
+    // 1. Fluid curl noise field
+    const curl = curlNoise(p.x, p.y, time);
+    const noiseScale = stage === 'STABILIZE' ? 0.04 : 0.22;
+    fx += curl.x * noiseScale;
+    fy += curl.y * noiseScale;
+
+    // Twin gravitational well coordinates (left loop: cyan/blue, right loop: violet/cyan)
+    const wellDistX = Math.min(width * 0.16, 120);
+    const isLeft = p.x < cx;
+    const wellX = isLeft ? cx - wellDistX : cx + wellDistX;
+    const wellY = cy;
 
     if (stage === 'FIELD' || stage === 'FLOW') {
-      // 2. Gravitational well orbital forces
-      // Assign particle to left or right well based on position or id
-      const well = p.x < cx ? leftWell : rightWell;
-      const dx = p.x - well.x;
-      const dy = p.y - well.y;
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      // 2. Gravitational well orbital circulation
+      const dx = p.x - wellX;
+      const dy = p.y - wellY;
+      const dist = Math.hypot(dx, dy) || 1;
 
-      // Centripetal attraction force toward well
-      const idealOrbitRadius = Math.min(width, height) * 0.18;
-      const distDiff = dist - idealOrbitRadius;
-      const attractMag = -distDiff * 0.0008;
-      fx += (dx / dist) * attractMag;
-      fy += (dy / dist) * attractMag;
+      // Desired orbital radius
+      const targetRadius = Math.min(width, height) * 0.16;
+      const radiusDelta = dist - targetRadius;
+      const attract = -radiusDelta * 0.0012;
 
-      // Tangential orbital velocity (clockwise for left, counter-clockwise for right)
-      const orbitDir = p.x < cx ? 1 : -1;
-      const orbitSpeed = 0.55 * (0.8 + 0.4 * p.z);
-      fx += (-dy / dist) * orbitSpeed * orbitDir;
-      fy += (dx / dist) * orbitSpeed * orbitDir;
+      fx += (dx / dist) * attract;
+      fy += (dy / dist) * attract;
 
-      // Figure-eight crossover bridge force near center saddle
-      const centerDist = Math.hypot(p.x - cx, p.y - cy);
-      if (centerDist < width * 0.12) {
-        // Accelerate through center to transition across lobes
-        fx += (p.x < cx ? 0.4 : -0.4);
+      // Silky tangential swirl (Left well clockwise, Right well counter-clockwise)
+      const orbitDir = isLeft ? 1 : -1;
+      const speed = 0.85 * (0.8 + 0.4 * p.z);
+      fx += (-dy / dist) * speed * orbitDir;
+      fy += (dx / dist) * speed * orbitDir;
+
+      // Infinity cross-over bridge force near center saddle
+      const distToCenter = Math.hypot(p.x - cx, p.y - cy);
+      if (distToCenter < 70) {
+        fx += (isLeft ? 0.75 : -0.75);
       }
     }
 
-    if (stage === 'FORMATION' && targetNodePos) {
-      // 3. Target attraction with smooth inertia & slight overshoot
-      const dx = targetNodePos.x - p.x;
-      const dy = targetNodePos.y - p.y;
+    if (stage === 'FORMATION' && targetPos) {
+      // 3. Magnetic target attraction toward 11 CRETIVRA nodes with natural spring overshoot
+      const dx = targetPos.x - p.x;
+      const dy = targetPos.y - p.y;
       const dist = Math.hypot(dx, dy);
 
-      const spring = 0.065;
+      const spring = 0.085;
       fx += dx * spring;
       fy += dy * spring;
 
-      // Damping velocity near target
-      if (dist < 4) {
+      if (dist < 3) {
         p.settled = true;
       }
     }
 
     if (stage === 'STABILIZE') {
-      // 4. Stillness damping (100-150ms pause before heartbeat)
-      fx *= 0.15;
-      fy *= 0.15;
-      p.vx *= 0.75;
-      p.vy *= 0.75;
+      // 4. Stillness deceleration (150ms quiet breath)
+      fx *= 0.1;
+      fy *= 0.1;
+      p.vx *= 0.72;
+      p.vy *= 0.72;
     }
 
-    if (pulseTriggered && pulseTime < 0.6) {
-      // 5. Consciousness Heartbeat pulse wave displacing particles outward
+    if (pulseActive && pulseTime < 0.65) {
+      // 5. Visceral double-heartbeat shockwave outward blast
       const dx = p.x - cx;
       const dy = p.y - cy;
       const dist = Math.hypot(dx, dy) || 1;
-      const pulseSpeed = 480; // px/sec
-      const waveDist = pulseTime * pulseSpeed;
-      const waveDiff = Math.abs(dist - waveDist);
 
-      if (waveDiff < 45) {
-        const blastFactor = (1 - waveDiff / 45) * (1 - pulseTime / 0.6) * 3.8;
-        fx += (dx / dist) * blastFactor;
-        fy += (dy / dist) * blastFactor;
+      // Two pulse wavefronts (double heartbeat)
+      const wave1Dist = pulseTime * 520;
+      const wave2Dist = Math.max(0, (pulseTime - 0.12) * 580);
+
+      const diff1 = Math.abs(dist - wave1Dist);
+      const diff2 = Math.abs(dist - wave2Dist);
+
+      if (diff1 < 50) {
+        const blast1 = (1 - diff1 / 50) * (1 - pulseTime / 0.65) * 5.2;
+        fx += (dx / dist) * blast1;
+        fy += (dy / dist) * blast1;
+      }
+
+      if (diff2 < 45 && pulseTime > 0.12) {
+        const blast2 = (1 - diff2 / 45) * (1 - pulseTime / 0.65) * 4.4;
+        fx += (dx / dist) * blast2;
+        fy += (dy / dist) * blast2;
       }
     }
 
