@@ -1,5 +1,10 @@
-export { AsuraOpeningAnimation, type AnimationStage } from './AsuraOpeningAnimation';
-export { EnergyParticles, type ParticleStage, CRETIVRA_NODES } from './EnergyParticles';
-export { LogoFormation } from './LogoFormation';
-export { AsuraReveal } from './AsuraReveal';
-export { AppTransition } from './AppTransition';
+export { AsuraOpeningAnimation, type AwakeningStage } from './AsuraOpeningAnimation';
+export { useOpeningTimeline } from './useOpeningTimeline';
+export { useOpeningReadiness } from './useOpeningReadiness';
+export { ParticleField } from './ParticleField';
+export { FlowFieldEngine, type VolumetricParticle, type Vector2D } from './FlowField';
+export { LogoCore } from './LogoCore';
+export { EnergyTrace } from './EnergyTrace';
+export { ConsciousnessPulse } from './ConsciousnessPulse';
+export { AsuraIdentity } from './AsuraIdentity';
+export { CoreTransition } from './CoreTransition';
