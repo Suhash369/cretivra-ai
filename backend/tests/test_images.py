@@ -9,9 +9,19 @@ def test_image_intent_detection():
     assert image_service.detect_image_intent("/image futuristic hypercar in matte black") == "futuristic hypercar in matte black"
     assert image_service.detect_image_intent("paint a serene watercolor landscape") == "a serene watercolor landscape"
     
+    # Technical diagrams and schematics
+    assert image_service.detect_image_intent("i need circuit diagram") == "circuit diagram"
+    assert image_service.detect_image_intent("circuit diagram") == "circuit diagram"
+    assert image_service.detect_image_intent("give me a circuit diagram") == "circuit diagram"
+    assert image_service.detect_image_intent("diagram of binary to bcd converter") == "binary to bcd converter"
+    assert image_service.detect_image_intent("schematic diagram of 555 timer") == "schematic diagram of 555 timer"
+    assert image_service.detect_image_intent("i need a diagram of 3-bit binary to BCD converter") == "3-bit binary to BCD converter"
+    assert image_service.detect_image_intent("can you draw a circuit diagram of binary to bcd converter") == "binary to bcd converter"
+    
     # Non-image query should return None
     assert image_service.detect_image_intent("What is the capital of France?") is None
     assert image_service.detect_image_intent("Write a Python sorting algorithm") is None
+    assert image_service.detect_image_intent("Explain how a circuit works") is None
 
 def test_image_dimension_resolution():
     w, h = image_service.resolve_dimensions("16:9")

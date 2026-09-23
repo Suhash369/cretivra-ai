@@ -9,6 +9,7 @@ class ChatRequest(BaseModel):
     system_prompt: Optional[str] = None
     web_search: Optional[bool] = None
     deep_research: Optional[bool] = None
+    image_mode: Optional[bool] = None
 
 class EditMessageRequest(BaseModel):
     message: str

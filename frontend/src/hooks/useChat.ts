@@ -113,7 +113,7 @@ export function useChat(options?: UseChatOptions) {
 
   // Send message
   const sendMessage = useCallback(
-    async (content: string, modelId = selectedModel, forceSearch = false, forceReason = false) => {
+    async (content: string, modelId = selectedModel, forceSearch = false, forceReason = false, forceImage = false) => {
       if (!content.trim() || isGenerating) return;
 
       if (!getAuthToken()) {
@@ -124,7 +124,7 @@ export function useChat(options?: UseChatOptions) {
       setError(null);
       setIsGenerating(true);
       const isReasoning = forceReason || modelId === 'cretivra-reason';
-      setReasoningStatus(isReasoning ? 'Thinking...' : null);
+      setReasoningStatus(isReasoning ? 'Thinking...' : (forceImage ? 'Synthesizing visual...' : null));
 
       const tempUserMsgId = `user-${Date.now()}`;
       const tempAssistantMsgId = `assistant-${Date.now()}`;
@@ -142,7 +142,7 @@ export function useChat(options?: UseChatOptions) {
         conversation_id: activeConversationId || '',
         role: 'assistant',
         content: '',
-        reasoning_status: isReasoning ? 'Thinking...' : null,
+        reasoning_status: isReasoning ? 'Thinking...' : (forceImage ? 'Synthesizing visual...' : null),
       };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -165,6 +165,7 @@ export function useChat(options?: UseChatOptions) {
             system_prompt: forceSearch ? '[REAL-TIME SEARCH]: Search web cache for up-to-date facts.' : undefined,
             web_search: forceSearch,
             deep_research: isReasoning,
+            image_mode: forceImage,
           },
           signal: controller.signal,
           onChunk: (chunk) => {

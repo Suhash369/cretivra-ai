@@ -65,33 +65,55 @@ class ImageService:
         "fantasy": "high fantasy illustration, magical ethereal atmosphere, glowing particles, detailed digital painting",
         "minimalist": "minimalist art, clean lines, elegant composition, subtle color palette, modern design",
         "digital-art": "digital concept art, intricate details, dynamic composition, trending on ArtStation",
+        "diagram": "clear technical schematic diagram, labeled pins and logic gates, crisp lines, clean white background, professional engineering blueprint, high contrast, legible vector style, 8k resolution",
+        "schematic": "clear electronic circuit schematic, labeled components, crisp lines, clean white background, professional engineering blueprint, legible vector style, 8k resolution",
+        "blueprint": "clean engineering blueprint, crisp architectural lines, high detail, technical schematic, labeled components",
     }
 
     IMAGE_TRIGGER_PATTERNS = [
-        r"^generate\s+(?:(?:for\s+)?me\s+)?(?:an?\s+)?image(?:\s+of)?\s+(.+)",
-        r"^create\s+(?:(?:for\s+)?me\s+)?(?:an?\s+)?image(?:\s+of)?\s+(.+)",
-        r"^draw\s+(?:(?:for\s+)?me\s+)?(?:(?:an?\s+)?(?:picture|image|art|painting)\s+(?:of\s+)?)?(.+)",
-        r"^make\s+(?:(?:for\s+)?me\s+)?(?:an?\s+)?image(?:\s+of)?\s+(.+)",
-        r"^generate\s+(?:(?:for\s+)?me\s+)?picture(?:\s+of)?\s+(.+)",
-        r"^paint\s+(?:(?:for\s+)?me\s+)?(?:(?:an?\s+)?(?:picture|image|art|painting)\s+(?:of\s+)?)?(.+)",
-        r"^show\s+me\s+(?:an?\s+)?(?:picture|image|visual|photo)(?:\s+of)?\s+(.+)",
-        r"^render\s+(?:(?:for\s+)?me\s+)?(?:(?:a\s+)?(?:3d\s+)?(?:image|scene|picture)\s+(?:of\s+)?)?(.+)",
+        # Explicit user requests with "i need", "i want", "give me", "show me", "can you", "please"
+        r"^(?:(?:i\s+(?:need|want|would\s+like)|give\s+me|show\s+me|send\s+me|provide\s+me|can\s+you\s+(?:give\s+me|show\s+me|provide|draw|generate|make|create)|could\s+you\s+(?:give\s+me|show\s+me|provide|draw|generate|make|create)|please\s+(?:give\s+me|show\s+me|draw|generate|make|create)))\s+(?:(?:an?|the)\s+)?(?:image|picture|photo|visual|illustration|drawing|sketch|artwork|diagram|circuit\s+diagram|schematic(?:\s+diagram)?|wiring\s+diagram|flowchart|blueprint)\s+(?:of|for|showing)?\s*(.+)",
+
+        # "i need circuit diagram", "i need a diagram", "need circuit diagram", "give me circuit diagram"
+        r"^(?:(?:i\s+)?(?:need|want)|give\s+me|show\s+me|provide)\s+(?:(?:an?|the)\s+)?((?:circuit\s+diagram|schematic(?:\s+diagram)?|wiring\s+diagram|logic\s+diagram|block\s+diagram|pinout(?:\s+diagram)?|timing\s+diagram|flowchart|architecture\s+diagram|diagram)(?:\s+(?:of|for|about)\s+.+)?)",
+
+        # "generate an image/diagram", "create a circuit diagram", "make a schematic"
+        r"^(?:generate|create|make|produce|render|synthesize)\s+(?:(?:for\s+)?me\s+)?(?:(?:an?|the)\s+)?((?:circuit\s+diagram|schematic(?:\s+diagram)?|wiring\s+diagram|logic\s+diagram|block\s+diagram|pinout(?:\s+diagram)?|timing\s+diagram|flowchart|architecture\s+diagram|blueprint|diagram)(?:\s+(?:of|for|about)\s+.+)?)",
+        r"^(?:generate|create|make|produce|render|synthesize)\s+(?:(?:for\s+)?me\s+)?(?:(?:an?|the)\s+)?(?:image|picture|photo|visual|illustration|artwork|drawing|sketch)(?:\s+(?:of|for)\s+|\s+)(.+)",
+
+        # "draw [me] ...", "paint [me] ...", "sketch [me] ...", "illustrate [me] ..."
+        r"^(?:draw|paint|sketch|illustrate)\s+(?:(?:for\s+)?me\s+)?(?:(?:an?\s+)?(?:picture|image|art|painting|drawing|sketch|illustration|diagram|circuit\s+diagram|schematic)\s+(?:of|for)\s+)?(.+)",
+
+        # "show me [an] [image/picture/diagram/schematic] of..."
+        r"^show\s+me\s+(?:(?:an?|the)\s+)?(?:picture|image|visual|photo|drawing|illustration|diagram|circuit\s+diagram|schematic(?:\s+diagram)?)(?:\s+(?:of|for)\s+|\s+)(.+)",
+
+        # "can you draw/generate...", "please draw/generate..."
+        r"^(?:can\s+you|could\s+you|please)\s+(?:draw|paint|sketch|generate|create|make|illustrate)\s+(?:(?:for\s+)?me\s+)?(?:(?:an?\s+)?(?:picture|image|art|painting|drawing|illustration|diagram|circuit\s+diagram|schematic)\s+(?:of|for)\s+)?(.+)",
+
+        # Standalone technical diagram / schematic queries
+        r"^((?:circuit\s+diagram|schematic(?:\s+diagram)?|wiring\s+diagram|logic\s+diagram|block\s+diagram|pinout(?:\s+diagram)?|timing\s+diagram|flowchart|architecture\s+diagram)(?:\s+(?:of|for|about)\s+.+)?)",
+        r"^diagram\s+(?:of|for|about)\s+(.+)",
+
+        # Render / visualize
+        r"^render\s+(?:(?:for\s+)?me\s+)?(?:(?:a\s+)?(?:3d\s+)?(?:image|scene|picture|model|render)\s+(?:of\s+)?)?(.+)",
         r"^visualize\s+(.+)",
-        r"^photo\s+of\s+(.+)",
-        r"^picture\s+of\s+(.+)",
+
+        # "photo of ...", "picture of ...", "image of ..."
+        r"^(?:photo|picture|image|illustration|drawing|sketch)\s+of\s+(.+)",
         r"^image:\s*(.+)",
-        r"^/image\s+(.+)",
-        r"^/draw\s+(.+)",
-        r"^/art\s+(.+)",
-        r"^/flux\s+(.+)",
+
+        # Slash commands
+        r"^/(?:image|draw|art|flux|diagram|schematic|visual)\s+(.+)",
     ]
 
     def detect_image_intent(self, text: str) -> Optional[str]:
         trimmed = text.strip()
+        clean_text = re.sub(r"[?!.]+$", "", trimmed).strip()
         for pattern in self.IMAGE_TRIGGER_PATTERNS:
-            match = re.search(pattern, trimmed, re.IGNORECASE)
+            match = re.search(pattern, clean_text, re.IGNORECASE)
             if match:
                 extracted = match.group(1).strip()
+                extracted = re.sub(r"[?!.]+$", "", extracted).strip()
                 if extracted:
                     return extracted
         return None
@@ -119,16 +141,20 @@ class ImageService:
 
         if style and style.lower() in self.STYLE_PROMPT_MODIFIERS:
             additions.append(self.STYLE_PROMPT_MODIFIERS[style.lower()])
-        elif model:
-            eng = self.resolve_engine(model)
-            if eng == "flux-anime" and "anime" not in clean.lower():
-                additions.append("masterpiece anime visual, crisp digital art")
-            elif eng == "flux-3d" and "3d" not in clean.lower():
-                additions.append("3D Octane render, raytracing, cinematic lighting")
-            elif eng == "flux-realism" and "photo" not in clean.lower():
-                additions.append("photorealistic 8k uhd, 35mm lens, natural studio lighting")
-            elif eng == "nanobanana2" and not any(w in clean.lower() for w in ["8k", "photorealistic", "masterpiece"]):
-                additions.append("masterpiece visual, 8k uhd, cinematic lighting, ultra-detailed")
+        else:
+            is_technical = bool(re.search(r"\b(circuit|schematic|wiring|diagram|pinout|flowchart|architecture|blueprint|logic\s+gate|truth\s+table)\b", clean, re.IGNORECASE))
+            if is_technical:
+                additions.append("clear technical schematic diagram, labeled pins and logic gates, crisp lines, clean white background, professional engineering blueprint, high contrast, legible vector style, 8k resolution")
+            elif model:
+                eng = self.resolve_engine(model)
+                if eng == "flux-anime" and "anime" not in clean.lower():
+                    additions.append("masterpiece anime visual, crisp digital art")
+                elif eng == "flux-3d" and "3d" not in clean.lower():
+                    additions.append("3D Octane render, raytracing, cinematic lighting")
+                elif eng == "flux-realism" and "photo" not in clean.lower():
+                    additions.append("photorealistic 8k uhd, 35mm lens, natural studio lighting")
+                elif eng == "nanobanana2" and not any(w in clean.lower() for w in ["8k", "photorealistic", "masterpiece"]):
+                    additions.append("masterpiece visual, 8k uhd, cinematic lighting, ultra-detailed")
 
         if additions:
             return f"{clean}, {', '.join(additions)}"

@@ -212,6 +212,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   // Feature toggles for Tough Composer
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [deepThinkEnabled, setDeepThinkEnabled] = useState(false);
+  const [imageModeEnabled, setImageModeEnabled] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [sketchModalOpen, setSketchModalOpen] = useState(false);
   const [libraryModalOpen, setLibraryModalOpen] = useState(false);
@@ -413,12 +414,12 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
       } catch (e) {
         console.warn('Fallback to chat execution:', e);
         setWorkspaceView('chat');
-        sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled);
+        sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled);
       }
     } else {
       setInput('');
       setWorkspaceView('chat');
-      sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled);
+      sendMessage(cleanPrompt, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled);
     }
   };
 
@@ -1331,7 +1332,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             <button
               onClick={() => {
                 const lastUser = [...messages].reverse().find((msg) => msg.role === 'user');
-                if (lastUser) sendMessage(lastUser.content, selectedModel, webSearchEnabled, deepThinkEnabled);
+                if (lastUser) sendMessage(lastUser.content, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled);
               }}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#F43F5E]/20 hover:bg-[#F43F5E]/30 text-white font-medium cursor-pointer"
             >
@@ -1356,6 +1357,8 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
             deepThinkEnabled={deepThinkEnabled}
             onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+            imageModeEnabled={imageModeEnabled}
+            onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
             onOpenImageStudio={() => setImageStudioOpen(true)}
             selectedModel={selectedModel}
             availableModels={availableModels}
@@ -1610,7 +1613,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 onInputChange={setInput}
                 onSubmit={() => {
                   if (input.trim() || attachments.length > 0) {
-                    sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled);
+                    sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled);
                     setInput('');
                   }
                 }}
@@ -1624,6 +1627,8 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
                 deepThinkEnabled={deepThinkEnabled}
                 onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                imageModeEnabled={imageModeEnabled}
+                onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
                 onOpenImageStudio={() => setImageStudioOpen(true)}
                 selectedModel={selectedModel}
                 availableModels={availableModels}

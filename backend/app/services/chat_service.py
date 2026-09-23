@@ -27,7 +27,8 @@ class ChatService:
         attachments: Optional[List[Dict[str, Any]]] = None,
         system_prompt: Optional[str] = None,
         web_search: Optional[bool] = False,
-        deep_research: Optional[bool] = False
+        deep_research: Optional[bool] = False,
+        image_mode: Optional[bool] = False
     ) -> AsyncGenerator[str, None]:
         """
         Builds conversation context, calls model provider stream, yields SSE lines,
@@ -55,44 +56,135 @@ class ChatService:
             generated_title = user_message_content.strip()[:30] + ("..." if len(user_message_content.strip()) > 30 else "")
             conversation_service.update_conversation(db, conversation_id, title=generated_title)
 
-        # 2. Check if the selected model is an image generation model or if user expressed image intent
+        # 2. Check if the selected model is an image generation model, image_mode is forced, or user expressed image/diagram intent
         is_dedicated_image_model = registry.is_image_model(model_id)
         detected_image_prompt = image_service.detect_image_intent(user_message_content)
 
-        if is_dedicated_image_model or detected_image_prompt:
-            image_prompt = detected_image_prompt if detected_image_prompt else user_message_content.strip()
-            model_info = registry.get_model(model_id)
-            engine_name = model_info.display_name if model_info else "Cretivra Vision Engine"
+        if is_dedicated_image_model or detected_image_prompt or image_mode:
+            raw_image_prompt = detected_image_prompt if detected_image_prompt else user_message_content.strip()
 
-            # Stream generation status
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': f'Synthesizing visual with {engine_name}...'})}\n\n"
+            clean_image_prompt = re.sub(
+                r"^/(?:image|draw|art|flux|diagram|schematic|visual)\s*",
+                "",
+                raw_image_prompt,
+                flags=re.IGNORECASE
+            ).strip()
+            if not clean_image_prompt:
+                clean_image_prompt = raw_image_prompt
+
+            # Contextual resolution: If user prompt is generic or referential (e.g. "circuit diagram", "a circuit diagram", "diagram", "schematic", "this", "it")
+            # Check conversation title or recent messages for context
+            context_topic = ""
+            if len(clean_image_prompt.split()) <= 3 and any(w in clean_image_prompt.lower() for w in ["circuit", "diagram", "schematic", "this", "it", "wiring", "flowchart"]):
+                if conv and conv.title and not conv.title.lower().startswith("new") and not conv.title.lower().startswith("circuit") and not conv.title.lower().startswith("i need"):
+                    context_topic = conv.title.strip()
+                elif len(messages_db) > 1:
+                    for prev_msg in reversed(messages_db[:-1]):
+                        if prev_msg.role == "user" and prev_msg.content:
+                            prev_text = prev_msg.content.strip()
+                            if len(prev_text) > 3 and not any(w == prev_text.lower() for w in ["hi", "hello", "circuit diagram", "diagram"]):
+                                context_topic = prev_text[:60]
+                                break
+
+            if context_topic and context_topic.lower() not in clean_image_prompt.lower():
+                final_image_prompt = f"{context_topic} {clean_image_prompt}".strip()
+            else:
+                final_image_prompt = clean_image_prompt
+
+            is_technical_diagram = bool(re.search(
+                r"\b(circuit|schematic|wiring|logic|pinout|flowchart|architecture|blueprint|block\s+diagram|timing\s+diagram|converter|processor|amplifier|gate|hardware|diagram)\b",
+                user_message_content,
+                re.IGNORECASE
+            ))
+
+            model_info = registry.get_model(model_id)
+            engine_name = model_info.display_name if (model_info and is_dedicated_image_model) else "Cretivra Vision Engine"
+
+            status_text = f"Synthesizing visual diagram with {engine_name}..." if is_technical_diagram else f"Synthesizing visual with {engine_name}..."
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': status_text})}\n\n"
             await asyncio.sleep(0.3)
 
-            # Determine target engine: default to nanobanana2 architecture
             target_engine = "nanobanana2"
             if model_id in ["cretivra-anime", "cretivra-3d", "cretivra-turbo", "cretivra-diffusion", "cretivra-flux"]:
                 target_engine = model_id
 
+            target_aspect = "16:9" if is_technical_diagram else "1:1"
+
             img_data = image_service.generate_image_url(
-                prompt=image_prompt,
+                prompt=final_image_prompt,
+                aspect_ratio=target_aspect,
                 model=target_engine,
                 enhance=True
             )
-            # Use proxy_url to ensure watermark removal, zero logos, and Turnstile bypass
             rendered_url = img_data.get("proxy_url") or img_data["image_url"]
+            display_title = final_image_prompt.title()
 
-            image_reply = f"Here is your generated visual for: **{image_prompt}**\n\n![{image_prompt}]({rendered_url})"
-            
-            # Stream final result
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': image_reply, 'full_content': image_reply, 'done': True, 'reasoning_status': None})}\n\n"
-            
-            conversation_service.add_message(
-                db=db,
-                conversation_id=conversation_id,
-                role="assistant",
-                content=image_reply
+            image_card = f"![{display_title}]({rendered_url})\n\n"
+
+            if not is_technical_diagram and not is_dedicated_image_model and not any(w in user_message_content.lower() for w in ["explain", "how", "what", "tell", "describe", "details"]):
+                image_reply = f"Here is your generated visual for: **{display_title}**\n\n{image_card}"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': image_reply, 'full_content': image_reply, 'done': True, 'reasoning_status': None})}\n\n"
+                conversation_service.add_message(
+                    db=db,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=image_reply
+                )
+                return
+
+            # Technical diagram or request with explanation:
+            full_assistant_reply = image_card
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': image_card, 'full_content': full_assistant_reply, 'done': False, 'reasoning_status': 'Analyzing circuit connections & formulating technical breakdown...'})}\n\n"
+
+            diag_sys_prompt = (
+                f"{settings.SYSTEM_PROMPT}\n\n"
+                f"[TECHNICAL VISUAL DIRECTIVE]: A high-resolution visual schematic diagram for '{final_image_prompt}' has been generated and rendered at the very top of the response. "
+                f"Now provide a thorough, publication-grade technical explanation of the diagram. "
+                f"Structure your response with:\n"
+                f"1. **Overview & Functional Description**: Clear summary of the circuit/system and how it operates.\n"
+                f"2. **Key Connections & Pin Mapping**: Bulleted list of connections (e.g., • A → D2).\n"
+                f"3. **Truth Table / Logic Equations**: Use clean, standard Markdown tables for input/output truth tables and Boolean expressions.\n"
+                f"4. **Practical Hardware Implementation**: Components needed (e.g., ICs, buffers, logic gates, pull-ups), voltage levels, and best practices.\n"
+                f"CRITICAL: Do NOT output crude ASCII-art wire boxes or text schematics, since the high-resolution visual diagram is already rendered above."
             )
-            return
+
+            diag_messages = [
+                {"role": "system", "content": diag_sys_prompt},
+            ]
+            for m in messages_db[-settings.MAX_CONTEXT_MESSAGES:]:
+                diag_messages.append({"role": m.role, "content": m.content})
+
+            try:
+                async for chunk in ollama_provider.stream_chat(
+                    underlying_model,
+                    diag_messages,
+                    is_search=False
+                ):
+                    content = chunk.get("content", "")
+                    done = chunk.get("done", False)
+                    if content:
+                        full_assistant_reply += content
+                    yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': None})}\n\n"
+
+                cleaned_reply = clean_ai_response(full_assistant_reply)
+                conversation_service.add_message(
+                    db=db,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=cleaned_reply
+                )
+                return
+            except Exception as e:
+                logger.error(f"Error streaming technical explanation: {e}")
+                fallback_reply = f"{image_card}\n\nHere is your generated schematic for: **{display_title}**."
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': fallback_reply, 'full_content': fallback_reply, 'done': True, 'reasoning_status': None})}\n\n"
+                conversation_service.add_message(
+                    db=db,
+                    conversation_id=conversation_id,
+                    role="assistant",
+                    content=fallback_reply
+                )
+                return
 
         # 3. Check if user requested presentation creation
         if presentation_service.detect_presentation_request(user_message_content):
@@ -323,10 +415,16 @@ class ChatService:
             )
 
         vis_directive = ""
-        if re.search(r"\b(chart|visualize|visualization|graph|diagram|table)\b", user_message_content, re.IGNORECASE):
+        if re.search(r"\b(chart|visualize|visualization|graph|table)\b", user_message_content, re.IGNORECASE):
             vis_directive = (
                 "\n\n[VISUALIZATION DIRECTIVE]: Format data using clean Markdown tables, comparative breakdown cards, and visual structures to make the insights immediately clear."
             )
+
+        diagram_directive = (
+            "\n\n[DIAGRAM & SCHEMATIC DIRECTIVE]: "
+            "Never output crude ASCII art wire diagrams, ASCII circuit boxes, or monospace terminal art (such as +----+ or |----->) because users require clean modern presentations. "
+            "Instead, use structured Markdown tables, bulleted connection mappings (e.g. • Input A -> Output D2), and clear technical explanations."
+        )
 
         # Collect image attachments vs document attachments
         image_attachments = []
@@ -380,6 +478,7 @@ class ChatService:
             f"You possess real-time intelligence and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Refer to your real-time verified intelligence."
             f"{deep_directive}"
             f"{vis_directive}"
+            f"{diagram_directive}"
             f"{vision_directive}"
             f"{youtube_directive}"
             f"{map_directive}"

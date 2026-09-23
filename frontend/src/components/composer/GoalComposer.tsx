@@ -31,6 +31,8 @@ interface GoalComposerProps {
   onToggleWebSearch: () => void;
   deepThinkEnabled: boolean;
   onToggleDeepThink: () => void;
+  imageModeEnabled?: boolean;
+  onToggleImageMode?: () => void;
   onOpenImageStudio?: () => void;
   // Creative Modals
   onOpenSketch?: () => void;
@@ -59,6 +61,8 @@ export function GoalComposer({
   onToggleWebSearch,
   deepThinkEnabled,
   onToggleDeepThink,
+  imageModeEnabled = false,
+  onToggleImageMode,
   onOpenImageStudio,
   onOpenSketch,
   onOpenLibrary,
@@ -286,13 +290,17 @@ export function GoalComposer({
             <span>Reason</span>
           </button>
 
-          {/* Image Studio shortcut */}
-          {onOpenImageStudio && (
+          {/* Image generation toggle / Image Studio shortcut */}
+          {(onToggleImageMode || onOpenImageStudio) && (
             <button
               type="button"
-              onClick={onOpenImageStudio}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border border-transparent bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)] transition-all asura-btn-interactive"
-              title="Open Image Studio"
+              onClick={onToggleImageMode || onOpenImageStudio}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all asura-btn-interactive ${
+                imageModeEnabled
+                  ? 'bg-purple-500/15 border-purple-500/40 text-purple-600 dark:text-purple-400'
+                  : 'bg-[var(--surface-secondary)] border-transparent text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[var(--border)]'
+              }`}
+              title={imageModeEnabled ? 'AI Visual generation active' : 'Toggle AI Visual / Image generation'}
             >
               <ImageIcon size={13} />
               <span>Image</span>

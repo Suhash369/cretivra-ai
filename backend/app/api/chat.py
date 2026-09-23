@@ -57,7 +57,8 @@ async def chat_stream(
         attachments=payload.attachments,
         system_prompt=payload.system_prompt,
         web_search=payload.web_search,
-        deep_research=payload.deep_research
+        deep_research=payload.deep_research,
+        image_mode=payload.image_mode
     )
 
     return StreamingResponse(generator, media_type="text/event-stream")

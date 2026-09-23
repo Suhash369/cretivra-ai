@@ -26,6 +26,8 @@ interface HomeWorkspaceProps {
   onToggleWebSearch: () => void;
   deepThinkEnabled: boolean;
   onToggleDeepThink: () => void;
+  imageModeEnabled?: boolean;
+  onToggleImageMode?: () => void;
   onOpenImageStudio?: () => void;
   selectedModel: string;
   availableModels: CretivraModel[];
@@ -85,6 +87,8 @@ export function HomeWorkspace({
   onToggleWebSearch,
   deepThinkEnabled,
   onToggleDeepThink,
+  imageModeEnabled,
+  onToggleImageMode,
   onOpenImageStudio,
   selectedModel,
   availableModels,
@@ -160,6 +164,8 @@ export function HomeWorkspace({
             onToggleWebSearch={onToggleWebSearch}
             deepThinkEnabled={deepThinkEnabled}
             onToggleDeepThink={onToggleDeepThink}
+            imageModeEnabled={imageModeEnabled}
+            onToggleImageMode={onToggleImageMode}
             onOpenImageStudio={onOpenImageStudio}
             selectedModel={selectedModel}
             availableModels={availableModels}
