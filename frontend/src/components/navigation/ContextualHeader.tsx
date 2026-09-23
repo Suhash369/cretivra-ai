@@ -221,17 +221,6 @@ export function ContextualHeader({
           </button>
         )}
 
-        {/* System Diagnostics & Platform Health Trigger */}
-        {onOpenHealth && (
-          <button
-            onClick={onOpenHealth}
-            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
-            title="Platform Diagnostics & Health"
-            aria-label="Platform Diagnostics & Health"
-          >
-            <Activity size={15} />
-          </button>
-        )}
 
         {/* Replay Cinematic Awakening Sequence */}
         {onReplayAnimation && (

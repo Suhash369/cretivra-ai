@@ -83,7 +83,6 @@ import { TasksWorkspace } from './components/tasks/TasksWorkspace';
 import { ProjectsWorkspace } from './components/projects/ProjectsWorkspace';
 import { KnowledgeWorkspace } from './components/knowledge/KnowledgeWorkspace';
 import { ArtifactsWorkspace } from './components/artifacts/ArtifactsWorkspace';
-import { HealthModal } from './components/settings/HealthModal';
 import { fetchHealth } from './services/api';
 import { startPlaygroundRunApi, type Artifact } from './services/playgroundApi';
 import { ModelSelectorModal } from './components/model-selector/ModelSelectorModal';
@@ -996,7 +995,12 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   };
 
   const isImageModel = (m: CretivraModel) => {
-    return m.category === 'Image Studio' || m.capabilities?.includes('image') || m.provider === 'pollinations';
+    return (
+      m.category === 'Image Studio' ||
+      m.capabilities?.includes('image') ||
+      m.provider === 'pollinations' ||
+      m.provider === 'vision_studio'
+    );
   };
 
   const currentModelObj = availableModels.find((m) => m.id === selectedModel) || availableModels[0] || {
@@ -1313,7 +1317,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           theme={theme}
           onToggleTheme={handleToggleTheme}
           healthStatus={healthStatus}
-          onOpenHealth={() => setHealthOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMobileMenu={() => setSidebarOpen(true)}
           onReplayAnimation={() => setReplayOpening(true)}
@@ -1660,13 +1663,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         onNewTask={handleNewTask}
         onOpenSettings={() => setSettingsOpen(true)}
         onOpenImageStudio={() => setImageStudioOpen(true)}
-      />
-
-      <HealthModal
-        isOpen={healthOpen}
-        onClose={() => setHealthOpen(false)}
-        health={healthStatus}
-        onRefresh={loadHealth}
       />
 
       <SettingsModal

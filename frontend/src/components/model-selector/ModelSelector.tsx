@@ -49,7 +49,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, [isOpen]);
 
   const isImageModel = (m: CretivraModel) => {
-    return m.category === 'Image Studio' || m.capabilities?.includes('image') || m.provider === 'pollinations';
+    return (
+      m.category === 'Image Studio' ||
+      m.capabilities?.includes('image') ||
+      m.provider === 'pollinations' ||
+      m.provider === 'vision_studio'
+    );
   };
 
   const getCategoryIcon = (category: string, isImage = false) => {

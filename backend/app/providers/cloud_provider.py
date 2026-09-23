@@ -17,6 +17,10 @@ def clean_ai_response(content: str) -> str:
     cleaned = re.sub(r'\[thinking\][\s\S]*?\[\/thinking\]', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'<think>[\s\S]*$', '', cleaned, flags=re.IGNORECASE)
     
+    # Strip guardrail / safety classifier outputs
+    cleaned = re.sub(r'(?:User|Response|Prompt)\s+Safety:\s*(?:safe|unsafe|neutral|none|harmful|unspecified)[^\n]*\n?', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'\bUser Safety:\s*\w+\s*Response Safety:\s*\w+\b', '', cleaned, flags=re.IGNORECASE)
+
     # Check for meta-planning checklist prefix (e.g. Topic: ... Check: Did I use the persona? Yes ... # Header)
     scaffold_match = re.match(
         r'^(?:Topic:.*?\n+)?(?:Persona:.*?\n+)?(?:Constraints:.*?\n+)?(?:Definition:.*?\n+)?(?:Check:.*?Did I.*?Yes[\s\S]*?)(?=#|\n\n)',
@@ -90,6 +94,10 @@ class StreamFilter:
         return events
 
     def _handle_content(self, text: str) -> List[Dict[str, Any]]:
+        # Strip safety classifier text from stream chunks
+        text = re.sub(r'(?:User|Response|Prompt)\s+Safety:\s*(?:safe|unsafe|neutral|none|harmful|unspecified)[^\n]*\n?', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\bUser Safety:\s*\w+\s*Response Safety:\s*\w+\b', '', text, flags=re.IGNORECASE)
+
         if not self.scaffold_checked:
             self.scaffold_buffer += text
             first_line = self.scaffold_buffer.strip().split("\n")[0]
@@ -102,21 +110,21 @@ class StreamFilter:
                     clean_start = self.scaffold_buffer[match.start():]
                     self.scaffold_checked = True
                     self.scaffold_buffer = ""
-                    return [{"content": clean_start, "done": False}]
+                    return [{"content": clean_start, "done": False}] if clean_start else []
                 elif len(self.scaffold_buffer) > 1500:
                     self.scaffold_checked = True
                     buf = self.scaffold_buffer
                     self.scaffold_buffer = ""
-                    return [{"content": buf, "done": False}]
+                    return [{"content": buf, "done": False}] if buf else []
                 else:
                     return []
             else:
                 self.scaffold_checked = True
                 buf = self.scaffold_buffer
                 self.scaffold_buffer = ""
-                return [{"content": buf, "done": False}]
+                return [{"content": buf, "done": False}] if buf else []
 
-        return [{"content": text, "done": False}]
+        return [{"content": text, "done": False}] if text else []
 
     def flush(self) -> List[Dict[str, Any]]:
         if not self.scaffold_checked and self.scaffold_buffer:
@@ -467,26 +475,24 @@ class CloudLLMProvider:
     def _resolve_groq_model(self, model: str) -> str:
         m = (model or "").lower()
         if "fast" in m or "1.2" in m or "mini" in m or "phi" in m or "gemma" in m:
-            return "llama-3.1-8b-instant"
+            return "openai/gpt-oss-20b"
         elif "qwen" in m or "code" in m or "coder" in m:
-            return "qwen-2.5-32b"
+            return "qwen/qwen3.8-27b"
         elif "compound" in m or "reason" in m or "deepseek" in m:
-            return "deepseek-r1-distill-llama-70b"
-        return "llama-3.3-70b-versatile"
+            return "openai/gpt-oss-120b"
+        return "openai/gpt-oss-120b"
 
     def _resolve_openrouter_models(self, model: str) -> List[str]:
         m = (model or "").lower()
-        if "free" in m:
-            return [model, "openrouter/free"]
         if "reason" in m or "deepseek" in m:
-            return ["deepseek/deepseek-r1", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "openrouter/free"]
+            return ["deepseek/deepseek-r1", "meta-llama/llama-3.3-70b-instruct"]
         elif "coder" in m or "code" in m:
-            return ["qwen/qwen-2.5-coder-32b-instruct", "cohere/north-mini-code:free", "openrouter/free"]
+            return ["qwen/qwen-2.5-coder-32b-instruct", "meta-llama/llama-3.3-70b-instruct"]
         elif "omni" in m or "4o" in m:
-            return ["openai/gpt-4o", "openrouter/free"]
+            return ["openai/gpt-4o", "meta-llama/llama-3.3-70b-instruct"]
         elif "claude" in m:
-            return ["anthropic/claude-3.5-sonnet", "openrouter/free"]
-        return ["meta-llama/llama-3.3-70b-instruct", "openrouter/free"]
+            return ["anthropic/claude-3.5-sonnet", "meta-llama/llama-3.3-70b-instruct"]
+        return ["meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct"]
 
     async def _stream_openai_compatible(
         self,
@@ -613,7 +619,7 @@ class CloudLLMProvider:
         async with httpx.AsyncClient(timeout=60.0) as client:
             async with client.stream("POST", url, headers=headers, json=payload) as response:
                 if response.status_code != 200:
-                    fallback_model = "llama-3.1-8b-instant" if groq_model != "llama-3.1-8b-instant" else "llama-3.3-70b-versatile"
+                    fallback_model = "openai/gpt-oss-20b" if groq_model != "openai/gpt-oss-20b" else "qwen/qwen3.8-27b"
                     logger.warning(f"Groq {groq_model} returned {response.status_code}, falling back to {fallback_model}")
                     payload["model"] = fallback_model
                     async with client.stream("POST", url, headers=headers, json=payload) as fb_resp:

@@ -92,7 +92,7 @@ export default function GenerativeAiPage() {
           <p className="text-xs text-gray-400 leading-relaxed">
             Intelligently route low-latency queries to lightweight edge models and
             deep multi-step reasoning to frontier models (DeepSeek R1, GPT, Claude,
-            Ollama local) while minimizing token expenditure.
+            edge neural cores) while minimizing token expenditure.
           </p>
         </div>
 

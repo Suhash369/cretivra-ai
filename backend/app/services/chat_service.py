@@ -163,6 +163,9 @@ class ChatService:
                     content = chunk.get("content", "")
                     done = chunk.get("done", False)
                     if content:
+                        content = re.sub(r'(?:User|Response|Prompt)\s+Safety:\s*(?:safe|unsafe|neutral|none|harmful|unspecified)[^\n]*\n?', '', content, flags=re.IGNORECASE)
+                        content = re.sub(r'\bUser Safety:\s*\w+\s*Response Safety:\s*\w+\b', '', content, flags=re.IGNORECASE)
+                    if content:
                         full_assistant_reply += content
                     yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': None})}\n\n"
 

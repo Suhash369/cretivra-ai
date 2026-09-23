@@ -58,7 +58,8 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
     return (
       m.category === 'Image Studio' ||
       m.capabilities?.includes('image') ||
-      m.provider === 'pollinations'
+      m.provider === 'pollinations' ||
+      m.provider === 'vision_studio'
     );
   };
 
@@ -77,7 +78,6 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
         !search.trim() ||
         m.display_name.toLowerCase().includes(search.toLowerCase()) ||
         m.description.toLowerCase().includes(search.toLowerCase()) ||
-        m.provider.toLowerCase().includes(search.toLowerCase()) ||
         m.capabilities?.some((c) => c.toLowerCase().includes(search.toLowerCase()));
 
       const matchesCat =
@@ -90,21 +90,34 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
 
   if (!isOpen) return null;
 
-  const getProviderBadge = (provider: string) => {
-    const p = (provider || '').toLowerCase();
-    if (p.includes('gemini') || p.includes('google')) {
-      return { label: 'Google Gemini', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' };
+  const getModelTierBadge = (m: CretivraModel) => {
+    const cat = (m.category || '').toLowerCase();
+    const id = (m.id || '').toLowerCase();
+    if (
+      m.category === 'Image Studio' ||
+      m.capabilities?.includes('image') ||
+      id.includes('vision') ||
+      id.includes('flux') ||
+      id.includes('diffusion') ||
+      id.includes('turbo') ||
+      id.includes('anime') ||
+      id.includes('3d')
+    ) {
+      return { label: 'Vision Studio', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' };
     }
-    if (p.includes('groq')) {
-      return { label: 'Groq Cloud', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20' };
+    if (cat.includes('reason') || id.includes('reason') || id.includes('deepseek') || id.includes('r1')) {
+      return { label: 'Reasoning Engine', color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' };
     }
-    if (p.includes('openrouter')) {
-      return { label: 'OpenRouter', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' };
+    if (cat.includes('code') || id.includes('code') || id.includes('coder') || id.includes('qwen')) {
+      return { label: 'Code Engine', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' };
     }
-    if (p.includes('pollinations') || p.includes('image')) {
-      return { label: 'Pollinations Art', color: 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' };
+    if (cat.includes('fast') || id.includes('fast') || id.includes('1.2') || id.includes('instant')) {
+      return { label: 'Ultra Fast', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' };
     }
-    return { label: 'Ollama / Local', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' };
+    if (cat.includes('advanced') || id.includes('1.1') || id.includes('omni') || id.includes('pro')) {
+      return { label: 'Frontier Core', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' };
+    }
+    return { label: 'Neural Core', color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20' };
   };
 
   const getCategoryIcon = (category: string, isImg: boolean) => {
@@ -166,7 +179,7 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by model name, provider, or capability (e.g. reasoning, code, vision)..."
+              placeholder="Search by model name or capability (e.g. reasoning, code, vision)..."
               className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-cyan-500 transition-colors"
             />
             {search && (
@@ -217,7 +230,7 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
             filteredModels.map((m) => {
               const isSelected = m.id === selectedModelId;
               const isImg = isImageModel(m);
-              const providerBadge = getProviderBadge(m.provider);
+              const tierBadge = getModelTierBadge(m);
               const isAvailable = m.is_available !== false;
 
               return (
@@ -253,9 +266,9 @@ export const ModelSelectorModal: React.FC<ModelSelectorModalProps> = ({
                           </span>
                         )}
                         <span
-                          className={`text-[10px] px-2 py-0.2 rounded-full border font-medium ${providerBadge.color}`}
+                          className={`text-[10px] px-2 py-0.2 rounded-full border font-medium ${tierBadge.color}`}
                         >
-                          {providerBadge.label}
+                          {tierBadge.label}
                         </span>
                       </div>
 
