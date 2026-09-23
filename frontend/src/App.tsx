@@ -222,6 +222,17 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [replayOpening, setReplayOpening] = useState(false);
 
+  const handleOpeningComplete = useCallback(() => {
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea');
+      if (textarea) textarea.focus();
+    }, 60);
+  }, []);
+
+  const handleReplayHandled = useCallback(() => {
+    setReplayOpening(false);
+  }, []);
+
   // Artifact preview & Drag-and-drop file upload state
   const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -1791,13 +1802,8 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
       <AsuraOpeningAnimation
         isAppReady={availableModels.length > 0}
         forceReplay={replayOpening}
-        onReplayHandled={() => setReplayOpening(false)}
-        onComplete={() => {
-          setTimeout(() => {
-            const textarea = document.querySelector('textarea');
-            if (textarea) textarea.focus();
-          }, 60);
-        }}
+        onReplayHandled={handleReplayHandled}
+        onComplete={handleOpeningComplete}
       />
     </div>
   );

@@ -22,20 +22,43 @@ interface AsuraOpeningAnimationProps {
   onReplayHandled?: () => void;
 }
 
+const SESSION_KEY = 'asura_opening_played_session';
+const VISITED_KEY = 'cretivra_asura_visited';
+
 export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   isAppReady = true,
   onComplete,
   forceReplay = false,
   onReplayHandled,
 }) => {
+  // Check whether animation should be skipped immediately on mount
+  const [isDismissed, setIsDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    if (forceReplay) return false;
+    try {
+      // If already played in this browser session, do not replay
+      return sessionStorage.getItem(SESSION_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [stage, setStage] = useState<AnimationStage>('INITIALIZING');
-  const [isDismissed, setIsDismissed] = useState(false);
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
-  const timersRef = useRef<number[]>([]);
+  // Stabilize callbacks and props in refs so re-renders in parent NEVER re-trigger animation
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const onReplayHandledRef = useRef(onReplayHandled);
+  onReplayHandledRef.current = onReplayHandled;
   const isAppReadyRef = useRef(isAppReady);
   isAppReadyRef.current = isAppReady;
+
+  const timersRef = useRef<number[]>([]);
+  const hasStartedRef = useRef(false);
+  const isFinishedRef = useRef(false);
+  const prevForceReplayRef = useRef(forceReplay);
 
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach((id) => clearTimeout(id));
@@ -43,57 +66,66 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   }, []);
 
   const finishAnimation = useCallback(() => {
+    if (isFinishedRef.current) return;
+    isFinishedRef.current = true;
     clearAllTimers();
     setStage('READY');
+
     try {
-      localStorage.setItem('cretivra_asura_visited', 'true');
+      sessionStorage.setItem(SESSION_KEY, 'true');
+      localStorage.setItem(VISITED_KEY, 'true');
     } catch {
       // ignore
     }
+
+    // Smooth exit
     setTimeout(() => {
       setIsDismissed(true);
-      onComplete?.();
-      onReplayHandled?.();
-    }, 200);
-  }, [clearAllTimers, onComplete, onReplayHandled]);
+      onCompleteRef.current?.();
+      onReplayHandledRef.current?.();
+    }, 180);
+  }, [clearAllTimers]);
 
-  // Main animation orchestrator
+  // Main animation sequence
   const startSequence = useCallback(() => {
     clearAllTimers();
+    isFinishedRef.current = false;
     setIsDismissed(false);
 
-    // Check prefers-reduced-motion
+    // 1. Reduced motion preference
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setReducedMotion(true);
       setStage('LOGO_READY');
-      const t1 = window.setTimeout(() => setStage('TRANSITIONING'), 350);
-      const t2 = window.setTimeout(() => finishAnimation(), 550);
+      const t1 = window.setTimeout(() => setStage('TRANSITIONING'), 300);
+      const t2 = window.setTimeout(() => finishAnimation(), 500);
       timersRef.current.push(t1, t2);
       return;
     }
 
-    // Check returning user
-    const hasVisited =
-      !forceReplay &&
-      typeof window !== 'undefined' &&
-      localStorage.getItem('cretivra_asura_visited') === 'true';
+    // 2. Returning visitor check
+    let hasVisited = false;
+    try {
+      hasVisited = localStorage.getItem(VISITED_KEY) === 'true';
+    } catch {
+      hasVisited = false;
+    }
 
-    setIsReturningUser(hasVisited);
+    // Only use returning-user fast track if not an explicit manual replay
+    const useFastTrack = !forceReplay && hasVisited;
+    setIsReturningUser(useFastTrack);
 
-    if (hasVisited) {
-      // Returning user fast-track (~0.75s)
+    if (useFastTrack) {
+      // Returning user fast-track (~0.65s)
       setStage('AWAKENING');
-      const t1 = window.setTimeout(() => setStage('LOGO_READY'), 180);
-      const t2 = window.setTimeout(() => setStage('ASURA_ACTIVE'), 380);
-      const t3 = window.setTimeout(() => setStage('TRANSITIONING'), 580);
-      const t4 = window.setTimeout(() => {
-        if (isAppReadyRef.current) finishAnimation();
-      }, 760);
+      const t1 = window.setTimeout(() => setStage('LOGO_READY'), 150);
+      const t2 = window.setTimeout(() => setStage('ASURA_ACTIVE'), 320);
+      const t3 = window.setTimeout(() => setStage('TRANSITIONING'), 500);
+      const t4 = window.setTimeout(() => finishAnimation(), 680);
       timersRef.current.push(t1, t2, t3, t4);
       return;
     }
 
-    // Full Cinematic Sequence (2.3–2.6s)
+    // 3. Full Cinematic Experience (2.4s)
     // Scene 01: 0.00s – 0.25s: The First Signal
     setStage('INITIALIZING');
 
@@ -122,17 +154,15 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
       setStage('ASURA_REVEAL');
     }, 1750);
 
-    // Scene 07: 2.05s – 2.45s: Core Expands into Application
+    // Scene 07: 2.05s – 2.40s: Core Expands into Application
     const tTransition = window.setTimeout(() => {
       setStage('TRANSITIONING');
     }, 2050);
 
-    // Final State: 2.45s: Transition complete
+    // Final State: 2.40s: Transition complete
     const tFinal = window.setTimeout(() => {
-      if (isAppReadyRef.current) {
-        finishAnimation();
-      }
-    }, 2450);
+      finishAnimation();
+    }, 2400);
 
     timersRef.current.push(
       tAwaken,
@@ -145,19 +175,40 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
     );
   }, [clearAllTimers, finishAnimation, forceReplay]);
 
-  // When app becomes ready after slow backend, seamlessly finalize
+  // Single-run on initial mount
   useEffect(() => {
-    if (isAppReady && stage === 'TRANSITIONING') {
-      const t = window.setTimeout(() => finishAnimation(), 250);
-      timersRef.current.push(t);
+    // If already dismissed via sessionStorage check, do nothing
+    let alreadyDone = false;
+    try {
+      alreadyDone = !forceReplay && sessionStorage.getItem(SESSION_KEY) === 'true';
+    } catch {
+      alreadyDone = false;
     }
-  }, [isAppReady, stage, finishAnimation]);
 
-  // Trigger on mount or when forceReplay changes
-  useEffect(() => {
-    startSequence();
+    if (alreadyDone) {
+      setIsDismissed(true);
+      return;
+    }
+
+    if (!hasStartedRef.current) {
+      hasStartedRef.current = true;
+      startSequence();
+    }
+
     return () => clearAllTimers();
-  }, [startSequence, clearAllTimers, forceReplay]);
+  }, []); // Run strictly ONCE on mount
+
+  // Handle explicit manual forceReplay (e.g. user clicked "Replay Asura Awakening")
+  useEffect(() => {
+    if (forceReplay && !prevForceReplayRef.current) {
+      prevForceReplayRef.current = true;
+      hasStartedRef.current = true;
+      isFinishedRef.current = false;
+      startSequence();
+    } else if (!forceReplay) {
+      prevForceReplayRef.current = false;
+    }
+  }, [forceReplay, startSequence]);
 
   // Allow instant skip on click or Escape key
   useEffect(() => {
@@ -203,7 +254,7 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   return (
     <div
       onClick={finishAnimation}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-500 ease-out cursor-pointer ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-400 ease-out cursor-pointer ${
         isTransitioning
           ? 'opacity-0 scale-105 pointer-events-none'
           : 'opacity-100 scale-100'
