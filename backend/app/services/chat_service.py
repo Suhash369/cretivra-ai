@@ -108,16 +108,50 @@ class ChatService:
             if model_id in ["cretivra-anime", "cretivra-3d", "cretivra-turbo", "cretivra-diffusion", "cretivra-flux"]:
                 target_engine = model_id
 
-            target_aspect = "16:9" if is_technical_diagram else "1:1"
+            if is_technical_diagram:
+                clean_core = re.sub(
+                    r"\b(?:generate|draw|show|create|make|give\s+me|i\s+need|a|an|the|circuit\s+diagram|schematic(?:\s+diagram)?|wiring\s+diagram|logic\s+diagram|diagram|of|for|about)\b",
+                    "",
+                    final_image_prompt,
+                    flags=re.IGNORECASE
+                ).strip()
+
+                if not clean_core or clean_core.lower() in ["circuit", "schematic", "logic", "electronics", "wiring", "visual"]:
+                    circuit_topic = "3-Bit Binary to BCD Converter (0 - 7)"
+                else:
+                    circuit_topic = clean_core.title()
+
+                final_image_prompt = (
+                    f"A clean textbook-style electrical engineering schematic diagram of a {circuit_topic}. "
+                    f"Crisp 2D vector schematic illustration on a clean white background. "
+                    f"In the center: a clearly labeled logic block box '{circuit_topic}'. "
+                    f"On the left: clearly labeled input pins A, B, C with signal lines. "
+                    f"On the right: clearly labeled output pins D3, D2, D1, D0 with signal lines. "
+                    f"Includes an integrated truth table chart with clear binary columns and values, "
+                    f"a callout box with logic equations, and a circuit explanation notes box. "
+                    f"Crisp solid black and navy lines, sharp legible sans-serif typography, "
+                    f"professional educational textbook publication, academic electrical engineering diagram, "
+                    f"flat 2D vector graphic, high contrast, clean white backdrop, strictly no 3D, no neon, no dark background, no glowing effects"
+                )
+                target_aspect = "16:9"
+                enhance_flag = False
+                diagram_style = "diagram"
+                display_title = f"{circuit_topic} Circuit Diagram"
+            else:
+                circuit_topic = final_image_prompt
+                enhance_flag = True
+                diagram_style = None
+                target_aspect = "1:1"
+                display_title = final_image_prompt.title()
 
             img_data = image_service.generate_image_url(
                 prompt=final_image_prompt,
                 aspect_ratio=target_aspect,
                 model=target_engine,
-                enhance=True
+                style=diagram_style,
+                enhance=enhance_flag
             )
             rendered_url = img_data.get("proxy_url") or img_data["image_url"]
-            display_title = final_image_prompt.title()
 
             image_card = f"![{display_title}]({rendered_url})\n\n"
 
@@ -138,14 +172,19 @@ class ChatService:
 
             diag_sys_prompt = (
                 f"{settings.SYSTEM_PROMPT}\n\n"
-                f"[TECHNICAL VISUAL DIRECTIVE]: A high-resolution visual schematic diagram for '{final_image_prompt}' has been generated and rendered at the very top of the response. "
-                f"Now provide a thorough, publication-grade technical explanation of the diagram. "
+                f"[TECHNICAL VISUAL DIRECTIVE]: A high-resolution visual schematic diagram for '{circuit_topic}' has been generated and rendered at the very top of the response.\n"
+                f"Now provide a thorough, publication-grade technical explanation of the circuit.\n"
                 f"Structure your response with:\n"
                 f"1. **Overview & Functional Description**: Clear summary of the circuit/system and how it operates.\n"
-                f"2. **Key Connections & Pin Mapping**: Bulleted list of connections (e.g., • A → D2).\n"
-                f"3. **Truth Table / Logic Equations**: Use clean, standard Markdown tables for input/output truth tables and Boolean expressions.\n"
-                f"4. **Practical Hardware Implementation**: Components needed (e.g., ICs, buffers, logic gates, pull-ups), voltage levels, and best practices.\n"
-                f"CRITICAL: Do NOT output crude ASCII-art wire boxes or text schematics, since the high-resolution visual diagram is already rendered above."
+                f"2. **Key Connections & Pin Mapping**: Bulleted list of connections (e.g., • A → D2, • B → D1, • C → D0, • D3 → Ground/0).\n"
+                f"3. **Truth Table**: A clean Markdown table with headers and rows. CRITICAL: Every single table row MUST be on its own line. Use plain text (0, 1, A, B, C, D) inside table cells without dollar signs ($) or LaTeX macros so table rendering is pristine.\n"
+                f"4. **Logic Equations**: Clean Boolean equations (e.g., D3 = 0, D2 = A, D1 = B, D0 = C).\n"
+                f"5. **Practical Hardware Implementation**: Components needed (e.g., ICs, buffers, logic gates, pull-ups), voltage levels, and best practices.\n\n"
+                f"CRITICAL FORMATTING RULES FOR TABLES & EQUATIONS:\n"
+                f"- Every single Markdown table row MUST be on its own separate line with a newline character. Never join multiple table rows or '||' on the same line.\n"
+                f"- In Markdown table cells, use plain clean text (e.g., '0', '1', 'A', 'B', 'X', 'D2', 'XOR', 'AND') without LaTeX math delimiters like '$' or LaTeX commands like '\\text{{}}', '\\oplus', or '\\mu'. Plain text in tables ensures perfect formatting.\n"
+                f"- For standalone equations outside tables, write them simply (e.g., D3 = 0, D2 = A, D1 = B, D0 = C) or use standard clean code blocks or LaTeX without breaking table syntax.\n"
+                f"- Do NOT output crude ASCII-art wire boxes or text schematics, since the high-resolution visual diagram is already rendered above."
             )
 
             diag_messages = [

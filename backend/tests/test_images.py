@@ -138,4 +138,17 @@ def test_vision_generate_api(client):
     assert "nologo=true" in data["image_url"]
     assert "proxy_url" in data
 
+def test_circuit_diagram_image_generation():
+    data = image_service.generate_image_url(
+        prompt="circuit diagram",
+        style="diagram"
+    )
+    assert data["success"] is True
+    # Verify external enhance is disabled so Pollinations doesn't mutate into glowing neon cyberpunk art
+    assert "enhance=true" not in data["image_url"]
+    # Verify prompt includes textbook schematic details
+    assert "textbook" in data["enhanced_prompt"].lower() or "schematic" in data["enhanced_prompt"].lower()
+    assert "white background" in data["enhanced_prompt"].lower()
+
+
 

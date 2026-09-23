@@ -279,6 +279,13 @@ function preprocessMarkdown(raw: string): string {
     return fullMatch;
   });
 
+  // 7. Fix collapsed markdown table rows joined by || or | | without newlines (e.g. || **0** | `0 0 0 0` | ...)
+  text = text.replace(/\|\s*\|\s*/g, '|\n| ');
+  text = text.replace(/(\|\s*:[-\s:]+\|)\s*(\|)/g, '$1\n$2');
+
+  // 8. Ensure newline before table headers if glued to narrative paragraph text
+  text = text.replace(/([^\n|])\s*(\|[\w\s()$#*_\-.,]+(?:\|[\w\s()$#*_\-.,]+)+\|)\s*\n\s*(\|[\s:-]+\|)/g, '$1\n\n$2\n$3');
+
   return text.trim();
 }
 
@@ -292,7 +299,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     <div className={`chat-markdown prose-asura text-slate-900 dark:text-slate-100 text-[15.5px] sm:text-[16px] leading-[1.78] font-sans ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, errorColor: 'inherit', strict: false }]]}
         components={{
           // Tables (ChatGPT / Claude / Gemini card-styled with perfect Light & Dark theme contrast)
           table({ children }) {

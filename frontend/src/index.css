@@ -7,6 +7,14 @@
   letter-spacing: -0.015em;
 }
 
+/* KaTeX error suppression: never render text in bright red #cc0000 on math parse errors */
+.katex-error {
+  color: inherit !important;
+  background: transparent !important;
+  border: none !important;
+  font-family: inherit !important;
+}
+
 @layer base {
   :root {
     --background: #f8fafc;

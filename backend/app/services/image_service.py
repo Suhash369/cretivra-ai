@@ -65,9 +65,9 @@ class ImageService:
         "fantasy": "high fantasy illustration, magical ethereal atmosphere, glowing particles, detailed digital painting",
         "minimalist": "minimalist art, clean lines, elegant composition, subtle color palette, modern design",
         "digital-art": "digital concept art, intricate details, dynamic composition, trending on ArtStation",
-        "diagram": "clear technical schematic diagram, labeled pins and logic gates, crisp lines, clean white background, professional engineering blueprint, high contrast, legible vector style, 8k resolution",
-        "schematic": "clear electronic circuit schematic, labeled components, crisp lines, clean white background, professional engineering blueprint, legible vector style, 8k resolution",
-        "blueprint": "clean engineering blueprint, crisp architectural lines, high detail, technical schematic, labeled components",
+        "diagram": "textbook electrical engineering schematic diagram, labeled logic block in center, labeled input pins on left, labeled output pins on right, truth table chart, logic equations callout box, crisp black and navy lines, clean white background, professional engineering publication, high contrast, legible 2D vector style, no 3D, no neon, no dark background",
+        "schematic": "textbook electronic circuit schematic diagram, labeled components and logic gates, truth table, crisp black lines, clean white background, professional engineering blueprint, legible 2D vector style, no 3D, no neon, no dark background",
+        "blueprint": "clean engineering blueprint schematic, labeled components, crisp lines, clean white background, technical schematic, high contrast 2D vector",
     }
 
     IMAGE_TRIGGER_PATTERNS = [
@@ -142,9 +142,9 @@ class ImageService:
         if style and style.lower() in self.STYLE_PROMPT_MODIFIERS:
             additions.append(self.STYLE_PROMPT_MODIFIERS[style.lower()])
         else:
-            is_technical = bool(re.search(r"\b(circuit|schematic|wiring|diagram|pinout|flowchart|architecture|blueprint|logic\s+gate|truth\s+table)\b", clean, re.IGNORECASE))
+            is_technical = bool(re.search(r"\b(circuit|schematic|wiring|diagram|pinout|flowchart|architecture|blueprint|logic\s+gate|truth\s+table|converter)\b", clean, re.IGNORECASE))
             if is_technical:
-                additions.append("clear technical schematic diagram, labeled pins and logic gates, crisp lines, clean white background, professional engineering blueprint, high contrast, legible vector style, 8k resolution")
+                additions.append("textbook electrical engineering schematic diagram, labeled logic block in center, labeled input pins on left, labeled output pins on right, truth table, crisp lines, clean white background, professional engineering publication, high contrast, legible 2D vector style, no 3D, no neon, no dark background")
             elif model:
                 eng = self.resolve_engine(model)
                 if eng == "flux-anime" and "anime" not in clean.lower():
@@ -182,9 +182,15 @@ class ImageService:
         engine = self.resolve_engine(model)
         actual_seed = seed if (seed is not None and seed > 0) else random.randint(100000, 9999999)
 
+        is_technical_query = bool(re.search(r"\b(circuit|schematic|wiring|pinout|logic\s+gate|truth\s+table|converter)\b", clean_prompt, re.IGNORECASE)) or (style in ["diagram", "schematic", "blueprint"])
+
         effective_prompt = clean_prompt
-        if style:
+        if style or is_technical_query:
             effective_prompt = self.enhance_prompt(clean_prompt, style=style, model=engine)
+
+        # For technical schematics, disable Pollinations external LLM rewrite (&enhance=true) to prevent neon/cyberpunk corruption
+        if is_technical_query:
+            enhance = False
 
         # If a reference image is provided, append styling or remix parameters
         if reference_image and reference_image.strip():
