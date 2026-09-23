@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   Clock,
   ChevronDown,
+  Sparkles,
 } from 'lucide-react';
 import { CretivraMark } from '../common/CretivraLogo';
 import type { CretivraModel, HealthStatus } from '../../types';
@@ -39,6 +40,7 @@ interface ContextualHeaderProps {
   onOpenHealth?: () => void;
   onOpenSearch?: () => void;
   onOpenMobileMenu?: () => void;
+  onReplayAnimation?: () => void;
   // Task specific
   taskStatus?: string;
   // Playground specific
@@ -65,6 +67,7 @@ export function ContextualHeader({
   onOpenHealth,
   onOpenSearch,
   onOpenMobileMenu,
+  onReplayAnimation,
   taskStatus,
   onPlaygroundRun,
   onPlaygroundSave,
@@ -108,14 +111,18 @@ export function ContextualHeader({
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-[var(--foreground)] tracking-wide">
+          <button
+            onClick={onReplayAnimation}
+            className="flex items-center gap-2 hover:opacity-85 transition-opacity text-left cursor-pointer group"
+            title="Replay Asura Awakening Animation"
+          >
+            <span className="text-sm font-semibold text-[var(--foreground)] tracking-wide group-hover:text-[#06b6d4] transition-colors">
               ASURA
             </span>
             <span className="text-[11px] text-[var(--muted-foreground)] font-manus-serif italic hidden sm:inline">
               Think beyond.
             </span>
-          </div>
+          </button>
         )}
       </div>
 
@@ -223,6 +230,18 @@ export function ContextualHeader({
             aria-label="Platform Diagnostics & Health"
           >
             <Activity size={15} />
+          </button>
+        )}
+
+        {/* Replay Cinematic Awakening Sequence */}
+        {onReplayAnimation && (
+          <button
+            onClick={onReplayAnimation}
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[#06B6D4] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
+            title="Replay Asura Awakening Animation"
+            aria-label="Replay Asura Awakening Animation"
+          >
+            <Sparkles size={15} />
           </button>
         )}
 

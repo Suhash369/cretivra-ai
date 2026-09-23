@@ -6,9 +6,12 @@ import dynamic from 'next/dynamic';
 const DynamicApp = dynamic(() => import('../../App').then((mod) => mod.App), {
   ssr: false,
   loading: () => (
-    <div className="h-screen w-screen flex flex-col items-center justify-center bg-[var(--bg-base)] text-cyan-600 dark:text-cyan-400 gap-3">
-      <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-      <span className="text-xs font-medium tracking-wide text-slate-500 dark:text-slate-400">Loading Asura AI Studio...</span>
+    <div className="h-screen w-screen flex flex-col items-center justify-center asura-opening-backdrop select-none">
+      {/* Subtle First Signal Glow during dynamic bundle warm-up */}
+      <div className="relative flex items-center justify-center">
+        <div className="w-4 h-4 rounded-full bg-cyan-400 asura-animate-signal" />
+        <div className="absolute w-12 h-12 rounded-full border border-cyan-300/40 animate-ping" />
+      </div>
     </div>
   ),
 });

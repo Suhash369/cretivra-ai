@@ -89,6 +89,7 @@ import { startPlaygroundRunApi, type Artifact } from './services/playgroundApi';
 import { ModelSelectorModal } from './components/model-selector/ModelSelectorModal';
 import { ArtifactPreviewModal } from './components/artifacts/ArtifactPreviewModal';
 import { DragAndDropOverlay } from './components/chat/DragAndDropOverlay';
+import { AsuraOpeningAnimation } from './components/opening';
 import type { Conversation, CretivraModel, SystemSettings, Attachment, HealthStatus } from './types';
 
 const SUGGESTIONS = [
@@ -219,6 +220,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   const [gameModalOpen, setGameModalOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const [replayOpening, setReplayOpening] = useState(false);
 
   // Artifact preview & Drag-and-drop file upload state
   const [previewArtifact, setPreviewArtifact] = useState<Artifact | null>(null);
@@ -1302,6 +1304,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           onOpenHealth={() => setHealthOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMobileMenu={() => setSidebarOpen(true)}
+          onReplayAnimation={() => setReplayOpening(true)}
           taskStatus={activePlaygroundRunId ? 'RUNNING' : undefined}
           onPlaygroundRun={() => {}}
           onPlaygroundSave={() => {}}
@@ -1783,6 +1786,19 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
 
       {/* Floating Lower-Right Suggestion & Commenting Widget */}
       <SuggestionBox user={user} />
+
+      {/* Asura Cinematic Opening Animation & Intelligence Core Gate */}
+      <AsuraOpeningAnimation
+        isAppReady={availableModels.length > 0}
+        forceReplay={replayOpening}
+        onReplayHandled={() => setReplayOpening(false)}
+        onComplete={() => {
+          setTimeout(() => {
+            const textarea = document.querySelector('textarea');
+            if (textarea) textarea.focus();
+          }, 60);
+        }}
+      />
     </div>
   );
 }

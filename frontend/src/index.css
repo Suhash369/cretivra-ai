@@ -1403,15 +1403,98 @@ html.light .animate-shimmer {
   transition: opacity 1s ease;
 }
 
+/* Cinematic Opening Animation Styles */
+.asura-opening-backdrop {
+  background: radial-gradient(circle at 50% 48%, #ffffff 0%, #f7faff 45%, #edf3fc 100%);
+}
+
+@keyframes asura-opening-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 16px rgba(6, 182, 212, 0.4));
+  }
+  50% {
+    transform: scale(1.04);
+    filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.65)) drop-shadow(0 0 45px rgba(6, 182, 212, 0.55));
+  }
+}
+
+@keyframes asura-opening-sweep {
+  0% {
+    transform: translateX(-120%) skewX(-20deg);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(240%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes asura-opening-ripple {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0.95;
+    border-color: rgba(6, 182, 212, 0.9);
+  }
+  50% {
+    opacity: 0.7;
+    border-color: rgba(139, 92, 246, 0.7);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3.2);
+    opacity: 0;
+    border-color: rgba(6, 182, 212, 0);
+  }
+}
+
+@keyframes asura-opening-signal-bloom {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(6, 182, 212, 0);
+  }
+  40% {
+    transform: scale(1.15);
+    opacity: 1;
+    box-shadow: 0 0 25px 8px rgba(6, 182, 212, 0.75);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    box-shadow: 0 0 16px 4px rgba(6, 182, 212, 0.6);
+  }
+}
+
+.asura-animate-pulse-core {
+  animation: asura-opening-pulse 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.asura-animate-sweep {
+  animation: asura-opening-sweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.asura-animate-ripple {
+  animation: asura-opening-ripple 0.9s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+
+.asura-animate-signal {
+  animation: asura-opening-signal-bloom 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor,
   .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button,
   .animate-stitch-laser, .cv-blueprint-grid, .cv-wireframe-box, .cv-skeleton-shimmer, .animate-materialize,
   .animate-enter, .animate-fade, .animate-slide-up, .animate-scale, .animate-panel,
   .animate-pulse-soft, .animate-shimmer, .animate-stream, .animate-success, .animate-error,
-  .asura-btn-interactive, .asura-card-interactive, .asura-ambient-orb {
+  .asura-btn-interactive, .asura-card-interactive, .asura-ambient-orb,
+  .asura-animate-pulse-core, .asura-animate-sweep, .asura-animate-ripple, .asura-animate-signal {
     animation: none !important;
     transition: none !important;
   }
 }
+
 
