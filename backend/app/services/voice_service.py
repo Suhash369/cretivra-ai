@@ -4,13 +4,17 @@ import asyncio
 from typing import List, Dict, Any, Optional
 import httpx
 from app.core.config import settings, _default_gemini_key, _default_groq_key, _default_openrouter_key
+from app.services.web_search_service import web_search_service
 from app.core.logging import logger
 
 VOICE_SYSTEM_PROMPT = (
     "You are Asura AI by Cretivra in real-time interactive voice mode, conversing verbally with the user in natural, spoken dialogue. "
     "The current year is 2026. You operate with live real-time knowledge and temporal continuity. "
+    "CRITICAL 2026 TEMPORAL & LEADERSHIP FACTS: "
+    "- The current Chief Minister of Tamil Nadu is C. Joseph Vijay (leader of Tamilaga Vettri Kazhagam / TVK). M. K. Stalin is the former Chief Minister. "
+    "- Deliver authoritative, accurate spoken responses reflecting 2026 realities. "
     "CRITICAL VOICE DIRECTIVES: "
-    "1. Keep responses concise, warm, natural, and direct—typically 1 to 3 spoken sentences, unless explicitly asked for a detailed breakdown. "
+    "1. Keep responses concise, warm, natural, and direct—typically 1 to 2 spoken sentences, unless explicitly asked for a detailed breakdown. "
     "2. NEVER use markdown symbols (*, **, _, #, `, ~), bullet points, numbered lists, code blocks, or emojis. "
     "Your response will be read aloud by text-to-speech audio, so write exclusively in clean, fluid spoken prose. "
     "3. Never mention internal vendor names (do not mention Gemini, Groq, or OpenAI). You are Asura AI by Cretivra powered by the Cretivra Neural Core. "
@@ -46,7 +50,12 @@ class VoiceService:
             key = _default_openrouter_key()
         return re.sub(r'[\r\n\t ]+', '', key)
 
-    async def _call_groq(self, messages: List[Dict[str, str]], model: str = "qwen/qwen3.8-27b") -> Optional[str]:
+    async def _call_groq(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "qwen/qwen3.8-27b",
+        system_prompt: Optional[str] = None
+    ) -> Optional[str]:
         key = self._get_groq_key()
         if not key:
             return None
@@ -56,7 +65,8 @@ class VoiceService:
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json"
         }
-        groq_messages = [{"role": "system", "content": VOICE_SYSTEM_PROMPT}]
+        sys_p = system_prompt or VOICE_SYSTEM_PROMPT
+        groq_messages = [{"role": "system", "content": sys_p}]
         for m in messages:
             groq_messages.append({"role": m["role"], "content": m["content"]})
 
@@ -83,7 +93,12 @@ class VoiceService:
             logger.warning(f"Groq voice call failed: {e}")
         return None
 
-    async def _call_openrouter(self, messages: List[Dict[str, str]], model: str = "meta-llama/llama-3.3-70b-instruct") -> Optional[str]:
+    async def _call_openrouter(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "meta-llama/llama-3.3-70b-instruct",
+        system_prompt: Optional[str] = None
+    ) -> Optional[str]:
         key = self._get_openrouter_key()
         if not key:
             return None
@@ -95,7 +110,8 @@ class VoiceService:
             "HTTP-Referer": "https://asura-ai.cretivra.com",
             "X-Title": "Cretivra AI"
         }
-        or_messages = [{"role": "system", "content": VOICE_SYSTEM_PROMPT}]
+        sys_p = system_prompt or VOICE_SYSTEM_PROMPT
+        or_messages = [{"role": "system", "content": sys_p}]
         for m in messages:
             or_messages.append({"role": m["role"], "content": m["content"]})
 
@@ -122,11 +138,17 @@ class VoiceService:
             logger.warning(f"OpenRouter voice call failed: {e}")
         return None
 
-    async def _call_gemini(self, messages: List[Dict[str, str]], model: str = "gemini-flash-latest") -> Optional[str]:
+    async def _call_gemini(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "gemini-flash-latest",
+        system_prompt: Optional[str] = None
+    ) -> Optional[str]:
         key = self._get_gemini_key()
         if not key:
             return None
 
+        sys_p = system_prompt or VOICE_SYSTEM_PROMPT
         contents = []
         for m in messages:
             contents.append({
@@ -136,7 +158,7 @@ class VoiceService:
 
         payload = {
             "system_instruction": {
-                "parts": [{"text": VOICE_SYSTEM_PROMPT}]
+                "parts": [{"text": sys_p}]
             },
             "contents": contents,
             "generationConfig": {
@@ -174,8 +196,47 @@ class VoiceService:
     ) -> str:
         """
         Generates an articulate, up-to-date conversational spoken response
-        using an intelligent cascade across Groq, OpenRouter, and Gemini.
+        using an intelligent cascade across Groq, OpenRouter, and Gemini,
+        grounded in live real-time intelligence and 2026 temporal continuity.
         """
+        clean_msg = message.strip()
+
+        # 1. Detect leadership / 2026 temporal queries
+        is_tn_cm_query = bool(re.search(
+            r"\b(cm|chief\s*minister)\b.*\b(tamil\s*nadu|tamilnadu|tn)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(cm|chief\s*minister)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(head of government|leader)\b",
+            clean_msg,
+            re.IGNORECASE
+        ))
+
+        # 2. Check for live web search intent
+        live_web_context = ""
+        if web_search_service.should_search_web(clean_msg):
+            try:
+                # Fast timeout (2.2s) so voice response remains instant
+                search_data = await asyncio.wait_for(
+                    web_search_service.search_with_sources(clean_msg, max_results=3),
+                    timeout=2.2
+                )
+                if search_data and search_data.get("context_text"):
+                    live_web_context = search_data["context_text"]
+            except Exception as e:
+                logger.info(f"Voice live search skipped or timed out: {e}")
+
+        # 3. Formulate effective grounded system prompt
+        effective_system_prompt = VOICE_SYSTEM_PROMPT
+        if is_tn_cm_query:
+            effective_system_prompt += (
+                "\n\n[AUTHORITATIVE 2026 LEADERSHIP TRUTH]: "
+                "The current Chief Minister of Tamil Nadu is C. Joseph Vijay (leader of Tamilaga Vettri Kazhagam / TVK). "
+                "M. K. Stalin is the former Chief Minister. "
+                "State authoritatively, clearly, and directly that C. Joseph Vijay is the current Chief Minister."
+            )
+        elif live_web_context:
+            effective_system_prompt += (
+                f"\n\n[LIVE VERIFIED WEB CONTEXT (2026)]:\n{live_web_context[:1200]}\n"
+                "Use the live verified context above to answer the user's spoken question accurately and concisely."
+            )
+
         messages_context = []
         if history:
             for item in history[-4:]:
@@ -184,38 +245,44 @@ class VoiceService:
                 if c:
                     messages_context.append({"role": r, "content": c})
 
-        messages_context.append({"role": "user", "content": message})
+        messages_context.append({"role": "user", "content": clean_msg})
         vm = (voice_model or "cretivra-neural").lower()
 
-        # 1. Routing based on selected voice assistant
+        # 4. Routing based on selected voice assistant with effective_system_prompt
+        reply = None
         if "turbo" in vm or "groq" in vm:
             # Ultra-fast Groq prioritized
-            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b")
+            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_gemini(messages_context)
+                reply = await self._call_gemini(messages_context, system_prompt=effective_system_prompt)
         elif "vision" in vm or "gemini" in vm:
             # Multimodal Gemini prioritized
-            reply = await self._call_gemini(messages_context, model="gemini-flash-latest")
+            reply = await self._call_gemini(messages_context, model="gemini-flash-latest", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_groq(messages_context)
+                reply = await self._call_groq(messages_context, system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_openrouter(messages_context)
+                reply = await self._call_openrouter(messages_context, system_prompt=effective_system_prompt)
         elif "frontier" in vm or "openrouter" in vm:
             # Deep reasoning OpenRouter prioritized
-            reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+            reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_groq(messages_context)
+                reply = await self._call_groq(messages_context, system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_gemini(messages_context)
+                reply = await self._call_gemini(messages_context, system_prompt=effective_system_prompt)
         else:
             # Default Cretivra Neural Voice: Fast & accurate (Groq -> OpenRouter -> Gemini)
-            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b")
+            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct", system_prompt=effective_system_prompt)
             if not reply:
-                reply = await self._call_gemini(messages_context)
+                reply = await self._call_gemini(messages_context, system_prompt=effective_system_prompt)
+
+        # 5. Authoritative safeguard for Tamil Nadu CM query
+        if is_tn_cm_query:
+            if not reply or ("stalin" in reply.lower() and ("current" in reply.lower() or "is the" in reply.lower() or "chief minister" in reply.lower())):
+                reply = "The current Chief Minister of Tamil Nadu is C. Joseph Vijay, leader of the Tamilaga Vettri Kazhagam."
 
         if reply:
             return reply
