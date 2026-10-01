@@ -1,11 +1,35 @@
 import re
 import base64
+import struct
 import asyncio
 from typing import List, Dict, Any, Optional
 import httpx
 from app.core.config import settings, _default_gemini_key, _default_groq_key, _default_openrouter_key
 from app.services.web_search_service import web_search_service
 from app.core.logging import logger
+
+def pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 24000, channels: int = 1, bits_per_sample: int = 16) -> bytes:
+    """Wraps raw 16-bit linear PCM audio in a standard 44-byte RIFF WAV header."""
+    data_size = len(pcm_bytes)
+    byte_rate = sample_rate * channels * (bits_per_sample // 8)
+    block_align = channels * (bits_per_sample // 8)
+    header = struct.pack(
+        '<4sI4s4sIHHIIHH4sI',
+        b'RIFF',
+        data_size + 36,
+        b'WAVE',
+        b'fmt ',
+        16,
+        1,  # PCM format
+        channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        bits_per_sample,
+        b'data',
+        data_size
+    )
+    return header + pcm_bytes
 
 VOICE_SYSTEM_PROMPT = (
     "You are Asura AI by Cretivra in real-time interactive voice mode, conversing verbally with the user in natural, spoken dialogue. "
@@ -327,6 +351,14 @@ class VoiceService:
                                     mime = p["inlineData"].get("mimeType", "audio/wav")
                                     b64_data = p["inlineData"].get("data", "")
                                     if b64_data:
+                                        if "l16" in mime.lower() or "pcm" in mime.lower():
+                                            try:
+                                                raw_pcm = base64.b64decode(b64_data)
+                                                wav_bytes = pcm_to_wav(raw_pcm, sample_rate=24000)
+                                                wav_b64 = base64.b64encode(wav_bytes).decode("utf-8")
+                                                return f"data:audio/wav;base64,{wav_b64}"
+                                            except Exception as enc_err:
+                                                logger.warning(f"PCM to WAV conversion failed: {enc_err}")
                                         return f"data:{mime};base64,{b64_data}"
             except Exception as e:
                 logger.debug(f"TTS {tts_model} notice: {e}")
