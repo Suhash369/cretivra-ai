@@ -133,7 +133,8 @@ async def regenerate_message(
         raise HTTPException(status_code=400, detail="No preceding user message to regenerate.")
 
     last_user_msg = None
-    for m in reversed(conv.messages):
+    conv_messages = list(conv.messages) if conv and conv.messages else []
+    for m in reversed(conv_messages):
         if m.role == "user":
             last_user_msg = m
             break

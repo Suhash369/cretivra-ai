@@ -1,0 +1,14 @@
+project-includes = [
+    "backend",
+    "scripts",
+]
+search-path = [
+    "backend",
+    "backend/venv/Lib/site-packages",
+]
+python-interpreter-path = "backend/venv/Scripts/python.exe"
+preset = "basic"
+
+[errors]
+missing-import = "ignore"
+missing-source = "ignore"

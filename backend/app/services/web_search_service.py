@@ -523,4 +523,11 @@ class WebSearchService:
                 return results
         return []
 
+    async def search_multi_provider(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
+        """
+        Executes multi-provider search and returns the extracted list of search results.
+        """
+        search_res = await self.search_with_sources(query, max_results=max_results)
+        return search_res.get("sources", [])
+
 web_search_service = WebSearchService()

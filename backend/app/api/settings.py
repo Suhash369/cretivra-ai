@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.database import get_db
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/settings", tags=["Settings"])
 @router.get("")
 def get_settings(db: Session = Depends(get_db)):
     db_settings = db.query(SystemSettingDB).all()
-    setting_dict = {s.key: s.value for s in db_settings}
+    setting_dict: dict[str, Any] = {str(s.key): str(s.value) for s in db_settings}
 
     return {
         "ollama_base_url": setting_dict.get("ollama_base_url", settings.OLLAMA_BASE_URL),

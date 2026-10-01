@@ -2,6 +2,7 @@ import os
 import shutil
 import uuid
 import base64
+import re
 from typing import Dict, Any, Optional
 import pypdf
 import docx

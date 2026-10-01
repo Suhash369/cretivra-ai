@@ -146,8 +146,11 @@ def get_messages(
     db: Session = Depends(get_db)
 ):
     conv = conversation_service.get_conversation(db, conversation_id)
+    if not conv:
+        raise HTTPException(status_code=404, detail="Conversation not found")
     verify_conversation_access(conv, current_user)
     
+    messages = list(conv.messages) if conv.messages else []
     return [
         {
             "id": m.id,
@@ -156,5 +159,5 @@ def get_messages(
             "content": m.content,
             "reasoning_status": m.reasoning_status,
             "created_at": m.created_at.isoformat() if m.created_at else None
-        } for m in conv.messages
+        } for m in messages
     ]

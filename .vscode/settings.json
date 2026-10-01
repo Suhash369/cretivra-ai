@@ -8,9 +8,12 @@
     "${workspaceFolder}/backend",
     "${workspaceFolder}/backend/venv/Lib/site-packages"
   ],
+  "python.pyrefly.configPath": "${workspaceFolder}/pyrefly.toml",
   "python.pyrefly.disableTypeErrors": true,
   "python.pyrefly.typeCheckingMode": "off",
+  "python.analysis.typeCheckingMode": "off",
   "python.analysis.diagnosticSeverityOverrides": {
-    "reportMissingImports": "none"
+    "reportMissingImports": "none",
+    "reportMissingModuleSource": "none"
   }
 }
