@@ -166,8 +166,10 @@ class CloudLLMProvider:
         """
         Detects if the conversation or prompt is asking for current affairs,
         world news, breaking events, geopolitics, or live real-time information.
+        Only checks user-role messages to avoid falsely triggering on system instructions.
         """
-        all_text = " ".join([m.get("content", "") for m in messages if isinstance(m.get("content"), str)])
+        user_texts = [m.get("content", "") for m in messages if m.get("role") == "user" and isinstance(m.get("content"), str)]
+        all_text = " ".join(user_texts)
 
         if any(tag in all_text for tag in [
             "[Verified Real-Time Intelligence Cache",
@@ -259,62 +261,20 @@ class CloudLLMProvider:
                 except Exception as e:
                     logger.error(f"OpenAI Vision stream error: {e}")
 
-        # 1. Current Affairs & World News Routing:
-        # If user searches or queries current affairs, breaking events, world news, or real-time web intelligence,
-        # route primarily to OpenAI APIs (GPT-4o / GPT-4o-mini via direct OpenAI or OpenRouter OpenAI) for state-of-the-art results.
-        is_news_or_search = bool(
-            is_search
-            or self._detect_current_affairs_intent(messages)
-        )
+        # 1. PRIMARY ENGINE: Groq API (Ultra-low latency LPU inference: ~400ms TTFT, 300+ tokens/second)
+        # Groq provides lightning-fast streaming for general chat, coding, reasoning, and context-injected current affairs
+        if self.groq_api_key:
+            try:
+                has_yielded = False
+                async for chunk in self._stream_groq(model, messages, images=images):
+                    has_yielded = True
+                    yield chunk
+                if has_yielded:
+                    return
+            except Exception as e:
+                logger.warning(f"Groq primary stream error: {e}")
 
-        if is_news_or_search:
-            logger.info("Current affairs / world news query detected — prioritizing Gemini, OpenRouter, and Groq APIs")
-
-            # A. Google Gemini API (High-speed factual grounding & live world knowledge)
-            if self.gemini_api_key:
-                try:
-                    has_yielded = False
-                    async for chunk in self._stream_gemini(model, messages, images=images):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.warning(f"Google Gemini stream error for news/search: {e}")
-
-            # B. OpenAI / Frontier via OpenRouter API
-            if self.openrouter_api_key:
-                for or_oa_model in ["openai/gpt-4o-mini", "nex-agi/nex-n2.5-pro:free", "openai/gpt-4o"]:
-                    try:
-                        has_yielded = False
-                        async for chunk in self._stream_openai_compatible(
-                            url="https://openrouter.ai/api/v1/chat/completions",
-                            api_key=self.openrouter_api_key,
-                            model=or_oa_model,
-                            messages=messages,
-                            images=images,
-                            extra_headers={"HTTP-Referer": "https://asura-ai.cretivra.com", "X-Title": "Asura AI by Cretivra"}
-                        ):
-                            has_yielded = True
-                            yield chunk
-                        if has_yielded:
-                            return
-                    except Exception as e:
-                        logger.warning(f"OpenRouter OpenAI ({or_oa_model}) stream error for news/search: {e}")
-
-            # C. Groq API (High-speed fallback)
-            if self.groq_api_key:
-                try:
-                    has_yielded = False
-                    async for chunk in self._stream_groq(model, messages, images=images):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.warning(f"Groq stream error for news/search: {e}")
-
-        # 1. Primary Engine: Google Gemini API (High-fidelity frontier reasoning & multimodal)
+        # 2. SECONDARY ENGINE: Google Gemini API (High-fidelity frontier reasoning & live knowledge)
         if self.gemini_api_key:
             try:
                 has_yielded = False
@@ -324,9 +284,9 @@ class CloudLLMProvider:
                 if has_yielded:
                     return
             except Exception as e:
-                logger.error(f"Gemini stream error: {e}")
+                logger.warning(f"Gemini fallback stream error: {e}")
 
-        # 2. Secondary Engine: OpenRouter API (Frontier model routing)
+        # 3. TERTIARY ENGINE: OpenRouter API (Frontier model routing)
         if self.openrouter_api_key:
             for or_model in self._resolve_openrouter_models(model):
                 try:
@@ -345,18 +305,6 @@ class CloudLLMProvider:
                         return
                 except Exception as e:
                     logger.warning(f"OpenRouter ({or_model}) stream error: {e}")
-
-        # 3. Tertiary Engine: Groq API (Ultra-fast inference: GPT-OSS-120B, GPT-OSS-20B, Qwen 3.8)
-        if self.groq_api_key:
-            try:
-                has_yielded = False
-                async for chunk in self._stream_groq(model, messages, images=images):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.error(f"Groq stream error: {e}")
 
         # 4. Try DeepSeek API if model is reasoning or deepseek
         if self.deepseek_api_key and ("deepseek" in model.lower() or "reason" in model.lower()):
@@ -672,14 +620,12 @@ class CloudLLMProvider:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
         
-        # Multi-model fallback chain for Gemini
+        # Multi-model fallback chain for Gemini (fastest verified models first)
         gemini_model_candidates = [
+            "gemini-flash-lite-latest",
             "gemini-3.1-flash-lite",
             "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-3.8-flash",
-            "gemini-flash-latest",
-            "gemini-pro-latest"
+            "gemini-flash-latest"
         ]
 
         contents = []

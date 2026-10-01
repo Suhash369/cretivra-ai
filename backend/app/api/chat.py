@@ -13,6 +13,12 @@ from app.core.logging import logger
 
 router = APIRouter(prefix="", tags=["Chat"])
 
+SSE_HEADERS = {
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
 @router.post("/chat/stream")
 async def chat_stream(
     payload: ChatRequest,
@@ -61,7 +67,7 @@ async def chat_stream(
         image_mode=payload.image_mode
     )
 
-    return StreamingResponse(generator, media_type="text/event-stream")
+    return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
 
 @router.patch("/messages/{message_id}")
 async def edit_message(
@@ -101,7 +107,7 @@ async def edit_message(
         model_id=model_id
     )
 
-    return StreamingResponse(generator, media_type="text/event-stream")
+    return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
 
 @router.post("/messages/{message_id}/regenerate")
 async def regenerate_message(
@@ -149,7 +155,7 @@ async def regenerate_message(
         model_id=conv.model_id
     )
 
-    return StreamingResponse(generator, media_type="text/event-stream")
+    return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
 
 @router.delete("/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_message(

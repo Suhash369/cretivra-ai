@@ -33,6 +33,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not create upload directory {settings.UPLOAD_DIR}: {e}")
 
+    # Pre-warm provider health status asynchronously so first user chat has 0ms latency
+    try:
+        from app.providers.cretivra_provider import ollama_provider
+        asyncio.create_task(ollama_provider.health_check())
+    except Exception as e:
+        logger.debug(f"Pre-warm health check background task notice: {e}")
+
     logger.info("Asura AI by Cretivra backend ready. Listening for incoming requests.")
     yield
     logger.info("Shutting down Asura AI by Cretivra backend...")

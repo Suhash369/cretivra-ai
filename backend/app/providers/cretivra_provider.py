@@ -19,12 +19,12 @@ class OllamaProvider(BaseLLMProvider):
         """
         now = asyncio.get_event_loop().time()
         cached_time = getattr(self, "_cached_health_time", 0)
-        cache_duration = 30.0 if getattr(self, "_cached_health", {}).get("status") == "connected" else 15.0
+        cache_duration = 300.0 if cloud_provider.has_keys() else 30.0
         if hasattr(self, "_cached_health") and (now - cached_time) < cache_duration:
             return self._cached_health
 
-        # Fast timeout (1.0s) if high-speed cloud fallback is available, else 3.0s
-        check_timeout = 1.0 if cloud_provider.has_keys() else 3.0
+        # Ultra-fast timeout (0.15s) when cloud fallback is active to prevent blocking user requests
+        check_timeout = 0.15 if cloud_provider.has_keys() else 2.0
 
         try:
             headers = {"ngrok-skip-browser-warning": "true", "User-Agent": "Cretivra-AI/1.0"}
@@ -90,6 +90,16 @@ class OllamaProvider(BaseLLMProvider):
         """
         Non-streaming chat request to Ollama /api/chat or Cloud fallback.
         """
+        if cloud_provider.has_keys() and hasattr(self, "_cached_health") and not self._cached_health.get("available", False):
+            full_text = ""
+            async for chunk in cloud_provider.stream_chat(model, messages):
+                full_text += chunk.get("content", "")
+            return {
+                "model": model,
+                "message": {"role": "assistant", "content": full_text},
+                "done": True
+            }
+
         health = await self.health_check()
         if not health["available"]:
             if cloud_provider.has_keys():
@@ -139,6 +149,15 @@ class OllamaProvider(BaseLLMProvider):
         """
         Streaming chat response generator with automatic high-speed Cloud LLM routing and multimodal vision.
         """
+        # Instant bypass: If Ollama is known offline and cloud keys are present, stream immediately with 0ms delay
+        if cloud_provider.has_keys() and hasattr(self, "_cached_health") and not self._cached_health.get("available", False):
+            has_yielded = False
+            async for chunk in cloud_provider.stream_chat(model, messages, images=images, is_search=is_search):
+                has_yielded = True
+                yield chunk
+            if has_yielded:
+                return
+
         health = await self.health_check()
         if not health["available"]:
             if cloud_provider.has_keys():

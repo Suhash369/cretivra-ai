@@ -62,21 +62,22 @@ class WebSearchService:
     """
 
     SEARCH_INTENT_PATTERNS = [
-        r"(?:current|currently|latest|today|now|recent|recently|breaking|live|upcoming|new)",
-        r"(?:who is|who are|what is the current|who is the current|who is currently|who iscurrent)",
-        r"(?:202[3-9])",
-        r"(?:chief minister|prime minister|president|governor|cm of|pm of|minister)",
-        r"(?:stock price|weather in|election results|who won|score|match|gold rate|cryptocurrency|crypto|bitcoin)",
-        r"(?:news about|update on|what happened|current affairs|world news|global news|international news|breaking news)",
-        r"(?:news all over the world|news around the world|all over the world|headlines|world affairs|geopolitics)",
-        r"(?:foreign policy|diplomacy|summit|treaty|un general assembly|g20|brics|nato|war|conflict)",
-        r"(?:tamilnadu|tamil nadu|india|usa|government|parliament|assembly)",
-        r"(?:release|released|releasing|launch|launched|launching|premiere|premiered|air date|ott|trailer|teaser)",
-        r"(?:movie|film|cinema|box office|review|cast of|actor|actress|director)",
-        r"(?:winner|won|champion|cup|tournament|vs|final)",
-        r"(?:alive|dead|age of|net worth|died|born|salary|price of)",
-        r"(?:status of|when is|when will|when was|is\s+.+\s+(?:released|out|available|alive|dead|delayed|cancelled|postponed|open|closed))",
-        r"^(?:is|was|did|has|will)\b.+\b(?:released|finished|started|happened|true|real|available|active)\b"
+        # Explicit search / lookup request
+        r"\b(?:search\s+(?:the\s+)?web|search\s+online|browse\s+(?:the\s+)?web|google\s+this|look\s+up\s+online)\b",
+        # Breaking / live / latest news & current affairs
+        r"\b(?:breaking\s+news|latest\s+news|today'?s?\s+news|today'?s?\s+headlines|world\s+news|global\s+news|current\s+affairs|news\s+updates?|news\s+today)\b",
+        # Live financial / market / weather data
+        r"\b(?:stock\s+price|share\s+price|gold\s+rate|crude\s+oil\s+price|crypto(?:currency)?\s+price|bitcoin\s+price|weather\s+in|weather\s+today)\b",
+        # Live sports scores / winners
+        r"\b(?:who\s+won|match\s+score|live\s+score|medal\s+tally|ipl\s+score|world\s+cup\s+(?:score|winner|results?))\b",
+        # Current political & leadership questions
+        r"\b(?:who\s+is|who\s+are)\s+(?:the\s+)?(?:current|currently|present|now)\b",
+        r"\b(?:current|present)\s+(?:chief\s+minister|cm|prime\s+minister|pm|president|governor|ceo|leader)\b",
+        r"\b(?:cm|chief\s+minister|pm|prime\s+minister)\s+of\s+[A-Za-z\s]+",
+        # Specific upcoming / release queries
+        r"\b(?:when\s+is\s+(?:the\s+)?release\s+date|upcoming\s+release\s+date\s+of|box\s+office\s+collection\s+of)\b",
+        # Live happenings in 2025/2026/2027
+        r"\b(?:election\s+results?\s+202[5-9]|news\s+in\s+202[5-9]|happening\s+in\s+202[5-9])\b"
     ]
 
     _CACHE: Dict[str, Any] = {}
@@ -85,14 +86,23 @@ class WebSearchService:
     def should_search_web(self, query: str) -> bool:
         """
         Determines whether the user prompt requires live real-time intelligence cache lookup.
+        Eliminates false positives on general conversational, creative, coding, or analytical prompts.
         """
         q = query.strip().lower()
         if len(q) < 3:
             return False
 
-        # Exclude pure code/math/translation/image prompts
-        if any(prefix in q for prefix in ["write code", "solve", "calculate", "translate", "generate image", "create image"]):
-            return False
+        # Exclude conversational greetings, prompts asking about the assistant, coding, reasoning, and creation
+        conversational_prefixes = [
+            "who are you", "what are you", "who created you", "who made you", "what model",
+            "how are you", "tell me about yourself", "what is your name", "write a", "explain",
+            "create a", "help me with", "code", "solve", "calculate", "translate", "generate image",
+            "create image", "can you", "what can you do", "tell me a story", "tell me a joke"
+        ]
+        if any(q.startswith(prefix) for prefix in conversational_prefixes):
+            # Only search if there is an explicit real-time news/lookup intent
+            if not re.search(r"\b(search the web|search online|latest news|today's news|stock price|weather in|who is the current)\b", q):
+                return False
 
         for pattern in self.SEARCH_INTENT_PATTERNS:
             if re.search(pattern, q, re.IGNORECASE):
@@ -145,22 +155,9 @@ class WebSearchService:
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
         if tavily_key:
             try:
-                is_temporal = bool(re.search(r"\b(where is|where are|currently|today|now|schedule|travel|visit|whereabouts|latest|breaking|happening|status of)\b", clean_q, re.IGNORECASE))
-                queries_to_run = [clean_q]
-                if is_temporal:
-                    queries_to_run.append(f"{clean_q} latest schedule travel visit news today September 2026")
-
-                search_tasks = [self._search_tavily(q, tavily_key, max_results=max_results) for q in queries_to_run]
-                results_lists = await asyncio.gather(*search_tasks, return_exceptions=True)
-
-                seen_urls = set()
-                for res_list in results_lists:
-                    if isinstance(res_list, list):
-                        for item in res_list:
-                            u = item.get("url") or item.get("title", "")
-                            if u not in seen_urls:
-                                seen_urls.add(u)
-                                raw_items.append(item)
+                tavily_items = await self._search_tavily(clean_q, tavily_key, max_results=max_results)
+                if tavily_items:
+                    raw_items.extend(tavily_items)
             except Exception as e:
                 logger.warning(f"Tavily search error: {e}")
 
@@ -268,7 +265,7 @@ class WebSearchService:
         payload = {
             "api_key": api_key,
             "query": query,
-            "search_depth": "advanced" if is_news else "basic",
+            "search_depth": "basic",
             "include_answer": False,
             "max_results": target_count
         }
@@ -276,7 +273,7 @@ class WebSearchService:
             payload["topic"] = "news"
             payload["days"] = 3
 
-        async with httpx.AsyncClient(timeout=6.0) as client:
+        async with httpx.AsyncClient(timeout=4.5) as client:
             res = await client.post(url, json=payload)
             if res.status_code == 200:
                 data = res.json()
