@@ -3,56 +3,136 @@ import base64
 import asyncio
 from typing import List, Dict, Any, Optional
 import httpx
-from app.core.config import settings, _default_gemini_key
+from app.core.config import settings, _default_gemini_key, _default_groq_key, _default_openrouter_key
 from app.core.logging import logger
 
 VOICE_SYSTEM_PROMPT = (
-    "You are Asura AI by Cretivra in real-time interactive voice mode, conversing verbally with the user in natural speech. "
-    "Guidelines for voice output: "
-    "1. Keep responses concise, natural, warm, and direct—typically 1 to 3 spoken sentences, unless explicitly asked for an in-depth breakdown. "
-    "2. Never use Markdown formatting, bullet points, numbered lists, asterisks, bold tags, hashes, code blocks, or emojis, "
-    "because your reply will be synthesized directly into natural speech audio and read aloud to the user. "
-    "3. Speak with confidence, intelligence, and empathy. The year is 2026."
+    "You are Asura AI by Cretivra in real-time interactive voice mode, conversing verbally with the user in natural, spoken dialogue. "
+    "The current year is 2026. You operate with live real-time knowledge and temporal continuity. "
+    "CRITICAL VOICE DIRECTIVES: "
+    "1. Keep responses concise, warm, natural, and direct—typically 1 to 3 spoken sentences, unless explicitly asked for a detailed breakdown. "
+    "2. NEVER use markdown symbols (*, **, _, #, `, ~), bullet points, numbered lists, code blocks, or emojis. "
+    "Your response will be read aloud by text-to-speech audio, so write exclusively in clean, fluid spoken prose. "
+    "3. Never mention internal vendor names (do not mention Gemini, Groq, or OpenAI). You are Asura AI by Cretivra powered by the Cretivra Neural Core. "
+    "4. Deliver confident, intelligent, articulate, and empathetic answers."
 )
 
 class VoiceService:
-    def __init__(self):
-        pass
+    def _clean_spoken_text(self, text: str) -> str:
+        # Strip markdown syntax, headers, bullets, asterisks, brackets, and emojis
+        text = re.sub(r'[*_#`~]', '', text)
+        text = re.sub(r'^\s*[-•]\s+', '', text, flags=re.MULTILINE)
+        text = re.sub(r'\[.*?\]', '', text)
+        text = re.sub(r'\(http\S+\)', '', text)
+        # Collapse excessive whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
 
-    def _get_api_key(self) -> str:
+    def _get_gemini_key(self) -> str:
         key = getattr(settings, "GEMINI_API_KEY", "")
         if not key or key.strip().startswith("your_"):
             key = _default_gemini_key()
         return re.sub(r'[\r\n\t ]+', '', key)
 
-    async def generate_voice_reply(
-        self,
-        message: str,
-        history: Optional[List[Dict[str, str]]] = None,
-        voice_persona: Optional[str] = "Breeze"
-    ) -> str:
-        """
-        Generates a natural, conversational response using Gemini designed specifically for spoken speech.
-        """
-        key = self._get_api_key()
+    def _get_groq_key(self) -> str:
+        key = getattr(settings, "GROQ_API_KEY", "")
         if not key:
-            return "I am ready to speak with you. How can I assist you today?"
+            key = _default_groq_key()
+        return re.sub(r'[\r\n\t ]+', '', key)
+
+    def _get_openrouter_key(self) -> str:
+        key = getattr(settings, "OPENROUTER_API_KEY", "")
+        if not key:
+            key = _default_openrouter_key()
+        return re.sub(r'[\r\n\t ]+', '', key)
+
+    async def _call_groq(self, messages: List[Dict[str, str]], model: str = "qwen/qwen3.8-27b") -> Optional[str]:
+        key = self._get_groq_key()
+        if not key:
+            return None
+        
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json"
+        }
+        groq_messages = [{"role": "system", "content": VOICE_SYSTEM_PROMPT}]
+        for m in messages:
+            groq_messages.append({"role": m["role"], "content": m["content"]})
+
+        payload = {
+            "model": model,
+            "messages": groq_messages,
+            "temperature": 0.7,
+            "max_tokens": 200
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "")
+                        if content:
+                            return self._clean_spoken_text(content)
+                else:
+                    logger.warning(f"Groq voice error ({resp.status_code}): {resp.text[:120]}")
+        except Exception as e:
+            logger.warning(f"Groq voice call failed: {e}")
+        return None
+
+    async def _call_openrouter(self, messages: List[Dict[str, str]], model: str = "meta-llama/llama-3.3-70b-instruct") -> Optional[str]:
+        key = self._get_openrouter_key()
+        if not key:
+            return None
+
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://asura-ai.cretivra.com",
+            "X-Title": "Cretivra AI"
+        }
+        or_messages = [{"role": "system", "content": VOICE_SYSTEM_PROMPT}]
+        for m in messages:
+            or_messages.append({"role": m["role"], "content": m["content"]})
+
+        payload = {
+            "model": model,
+            "messages": or_messages,
+            "temperature": 0.7,
+            "max_tokens": 200
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=12.0) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "")
+                        if content:
+                            return self._clean_spoken_text(content)
+                else:
+                    logger.warning(f"OpenRouter voice error ({resp.status_code}): {resp.text[:120]}")
+        except Exception as e:
+            logger.warning(f"OpenRouter voice call failed: {e}")
+        return None
+
+    async def _call_gemini(self, messages: List[Dict[str, str]], model: str = "gemini-flash-latest") -> Optional[str]:
+        key = self._get_gemini_key()
+        if not key:
+            return None
 
         contents = []
-        if history:
-            for item in history[-6:]:  # Keep recent context
-                role = item.get("role", "user")
-                txt = item.get("content", "")
-                if txt:
-                    contents.append({
-                        "role": "user" if role == "user" else "model",
-                        "parts": [{"text": txt}]
-                    })
-
-        contents.append({
-            "role": "user",
-            "parts": [{"text": message}]
-        })
+        for m in messages:
+            contents.append({
+                "role": "user" if m["role"] == "user" else "model",
+                "parts": [{"text": m["content"]}]
+            })
 
         payload = {
             "system_instruction": {
@@ -61,15 +141,15 @@ class VoiceService:
             "contents": contents,
             "generationConfig": {
                 "temperature": 0.7,
-                "maxOutputTokens": 350
+                "maxOutputTokens": 200
             }
         }
 
-        candidate_models = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
-        for model in candidate_models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        candidate_gemini_models = [model, "gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-pro-latest"]
+        for g_model in candidate_gemini_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={key}"
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
+                async with httpx.AsyncClient(timeout=12.0) as client:
                     resp = await client.post(url, json=payload)
                     if resp.status_code == 200:
                         data = resp.json()
@@ -78,34 +158,87 @@ class VoiceService:
                             parts = candidates[0].get("content", {}).get("parts", [])
                             text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
                             if text:
-                                # Clean any remaining markdown / asterisks
-                                text = re.sub(r'[*_#`~]', '', text).strip()
-                                return text
+                                return self._clean_spoken_text(text)
                     else:
-                        logger.warning(f"Voice generation with {model} failed ({resp.status_code}): {resp.text[:120]}")
+                        logger.warning(f"Gemini voice call {g_model} returned {resp.status_code}: {resp.text[:120]}")
             except Exception as e:
-                logger.warning(f"Voice model {model} error: {e}")
+                logger.warning(f"Gemini voice {g_model} exception: {e}")
+        return None
 
-        return "I heard you clearly. I am processing your thought with the Cretivra Neural Core. Tell me more."
+    async def generate_voice_reply(
+        self,
+        message: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        voice_persona: Optional[str] = "Breeze",
+        voice_model: Optional[str] = "cretivra-neural"
+    ) -> str:
+        """
+        Generates an articulate, up-to-date conversational spoken response
+        using an intelligent cascade across Groq, OpenRouter, and Gemini.
+        """
+        messages_context = []
+        if history:
+            for item in history[-4:]:
+                r = item.get("role", "user")
+                c = item.get("content", "")
+                if c:
+                    messages_context.append({"role": r, "content": c})
+
+        messages_context.append({"role": "user", "content": message})
+        vm = (voice_model or "cretivra-neural").lower()
+
+        # 1. Routing based on selected voice assistant
+        if "turbo" in vm or "groq" in vm:
+            # Ultra-fast Groq prioritized
+            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b")
+            if not reply:
+                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+            if not reply:
+                reply = await self._call_gemini(messages_context)
+        elif "vision" in vm or "gemini" in vm:
+            # Multimodal Gemini prioritized
+            reply = await self._call_gemini(messages_context, model="gemini-flash-latest")
+            if not reply:
+                reply = await self._call_groq(messages_context)
+            if not reply:
+                reply = await self._call_openrouter(messages_context)
+        elif "frontier" in vm or "openrouter" in vm:
+            # Deep reasoning OpenRouter prioritized
+            reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+            if not reply:
+                reply = await self._call_groq(messages_context)
+            if not reply:
+                reply = await self._call_gemini(messages_context)
+        else:
+            # Default Cretivra Neural Voice: Fast & accurate (Groq -> OpenRouter -> Gemini)
+            reply = await self._call_groq(messages_context, model="qwen/qwen3.8-27b")
+            if not reply:
+                reply = await self._call_openrouter(messages_context, model="meta-llama/llama-3.3-70b-instruct")
+            if not reply:
+                reply = await self._call_gemini(messages_context)
+
+        if reply:
+            return reply
+
+        return "I am connected and listening clearly with the Cretivra Neural Engine. How can I assist you right now?"
 
     async def synthesize_speech(
         self,
         text: str,
-        voice: Optional[str] = "Puck"
+        voice: Optional[str] = "Breeze"
     ) -> Optional[str]:
         """
-        Synthesizes text into high-fidelity audio (WAV) data URL using Gemini Flash TTS.
+        Synthesizes text into audio data URL using Gemini TTS if available.
         """
-        key = self._get_api_key()
+        key = self._get_gemini_key()
         if not key:
             return None
 
-        # Clean text for speech
-        clean_text = re.sub(r'[*_#`~]', '', text).strip()
+        clean_text = self._clean_spoken_text(text)
         if not clean_text:
             return None
 
-        tts_models = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts", "gemini-2.5-flash-preview-tts"]
+        tts_models = ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]
         for tts_model in tts_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{tts_model}:generateContent?key={key}"
             payload = {
@@ -115,7 +248,7 @@ class VoiceService:
                 }
             }
             try:
-                async with httpx.AsyncClient(timeout=25.0) as client:
+                async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await client.post(url, json=payload)
                     if resp.status_code == 200:
                         data = resp.json()
@@ -128,10 +261,8 @@ class VoiceService:
                                     b64_data = p["inlineData"].get("data", "")
                                     if b64_data:
                                         return f"data:{mime};base64,{b64_data}"
-                    else:
-                        logger.warning(f"TTS {tts_model} returned {resp.status_code}: {resp.text[:120]}")
             except Exception as e:
-                logger.warning(f"TTS {tts_model} exception: {e}")
+                logger.debug(f"TTS {tts_model} notice: {e}")
 
         return None
 
@@ -141,50 +272,69 @@ class VoiceService:
         mime_type: str = "audio/webm"
     ) -> str:
         """
-        Transcribes speech audio into text using Gemini multimodal audio perception.
+        Transcribes speech audio into text using Groq Whisper (ultra-fast 150ms)
+        with automatic fallback to Gemini multimodal audio perception.
         """
-        key = self._get_api_key()
-        if not key:
-            return ""
-
-        b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
-        transcribe_models = ["gemini-3.5-transcribe", "gemini-3.1-flash-lite", "gemini-3.5-flash"]
-
-        payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "inline_data": {
-                                "mime_type": mime_type,
-                                "data": b64_audio
-                            }
-                        },
-                        {
-                            "text": "Transcribe the spoken words in this audio exactly. Return only the transcribed speech, nothing else."
-                        }
-                    ]
-                }
-            ]
-        }
-
-        for model in transcribe_models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        # 1. Try Groq Whisper
+        groq_key = self._get_groq_key()
+        if groq_key:
             try:
-                async with httpx.AsyncClient(timeout=20.0) as client:
-                    resp = await client.post(url, json=payload)
+                ext = "webm" if "webm" in mime_type else "wav" if "wav" in mime_type else "mp3"
+                files = {
+                    "file": (f"audio.{ext}", audio_bytes, mime_type),
+                }
+                data = {
+                    "model": "whisper-large-v3-turbo",
+                    "response_format": "json"
+                }
+                headers = {"Authorization": f"Bearer {groq_key}"}
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    resp = await client.post("https://api.groq.com/openai/v1/audio/transcriptions", files=files, data=data, headers=headers)
                     if resp.status_code == 200:
-                        data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
-                            if text:
-                                return text
-                    else:
-                        logger.warning(f"Audio transcribe {model} failed ({resp.status_code}): {resp.text[:120]}")
+                        result = resp.json()
+                        transcribed = result.get("text", "").strip()
+                        if transcribed:
+                            return transcribed
             except Exception as e:
-                logger.warning(f"Audio transcribe {model} error: {e}")
+                logger.warning(f"Groq Whisper transcription exception: {e}")
+
+        # 2. Fallback to Gemini Multimodal
+        gemini_key = self._get_gemini_key()
+        if gemini_key:
+            b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "inline_data": {
+                                    "mime_type": mime_type,
+                                    "data": b64_audio
+                                }
+                            },
+                            {
+                                "text": "Transcribe the spoken words in this audio exactly. Return only the transcribed speech, nothing else."
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            for model in ["gemini-flash-latest", "gemini-flash-lite-latest"]:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
+                try:
+                    async with httpx.AsyncClient(timeout=12.0) as client:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
+                                if text:
+                                    return text
+                except Exception as e:
+                    logger.debug(f"Gemini transcribe {model} notice: {e}")
 
         return ""
 

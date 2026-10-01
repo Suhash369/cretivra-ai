@@ -15,6 +15,7 @@ class VoiceChatRequest(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     voice: Optional[str] = "Breeze"
+    voice_model: Optional[str] = "cretivra-neural"
     history: Optional[List[Dict[str, str]]] = None
 
 class VoiceSynthesizeRequest(BaseModel):
@@ -67,14 +68,15 @@ async def voice_chat(
         content=text
     )
 
-    # 3. Generate natural spoken answer via Gemini
+    # 3. Generate natural spoken answer via Cretivra Multi-Provider Voice Engine
     spoken_reply = await voice_service.generate_voice_reply(
         message=text,
         history=payload.history,
-        voice_persona=payload.voice
+        voice_persona=payload.voice,
+        voice_model=payload.voice_model
     )
 
-    # 4. Synthesize speech audio via Gemini Flash TTS
+    # 4. Synthesize speech audio via Voice TTS if available
     audio_data_url = await voice_service.synthesize_speech(
         text=spoken_reply,
         voice=payload.voice
@@ -93,7 +95,7 @@ async def voice_chat(
         "audio_url": audio_data_url,
         "conversation_id": conv_id,
         "message_id": assistant_msg.id,
-        "model": "cretivra-voice"
+        "model": payload.voice_model or "cretivra-neural"
     }
 
 @router.post("/synthesize")

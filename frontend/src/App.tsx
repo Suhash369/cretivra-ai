@@ -61,7 +61,7 @@ import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
-import { ChatGPTVoiceModal } from './components/voice/ChatGPTVoiceModal';
+import { CretivraVoiceModal } from './components/voice/CretivraVoiceModal';
 import { SlideGeneratorModal } from './components/landing/SlideGeneratorModal';
 import { WebsiteGeneratorModal } from './components/landing/WebsiteGeneratorModal';
 import { GameCreatorModal } from './components/landing/GameCreatorModal';
@@ -1783,8 +1783,8 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         variant={confirmDialog.variant}
       />
 
-      {/* ChatGPT Voice Mode Modal (Powered by Gemini) */}
-      <ChatGPTVoiceModal
+      {/* Cretivra Voice Mode Modal */}
+      <CretivraVoiceModal
         isOpen={voiceModalOpen}
         onClose={() => setVoiceModalOpen(false)}
         conversationId={activeConversationId}
@@ -1794,7 +1794,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             refreshConversations();
           }
         }}
-        activeModelName="Cretivra Voice (Gemini 3.1)"
       />
 
       {/* Model Selector Modal */}

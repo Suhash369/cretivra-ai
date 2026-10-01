@@ -483,6 +483,7 @@ export async function sendVoiceChatApi(payload: {
   message: string;
   conversation_id?: string;
   voice?: string;
+  voice_model?: string;
   history?: Array<{ role: string; content: string }>;
 }): Promise<{
   text: string;
