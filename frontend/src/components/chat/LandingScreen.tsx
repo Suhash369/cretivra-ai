@@ -44,7 +44,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onSelectPrompt }) 
         </div>
       </div>
 
-      {/* Main ChatGPT-Style Greeting */}
+      {/* Main Greeting */}
       <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">
         What can I help with today?
       </h1>
@@ -52,7 +52,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onSelectPrompt }) 
         Asura AI by Cretivra • Frontier Intelligence • Privacy Guaranteed
       </p>
 
-      {/* 2x2 Suggested Action Cards (ChatGPT Replica Layout) */}
+      {/* 2x2 Suggested Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full text-left">
         {SUGGESTED_PROMPTS.map((item, idx) => (
           <button

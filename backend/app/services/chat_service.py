@@ -150,8 +150,8 @@ class ChatService:
 
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Architecting creative visual composition with Gemini Neural Core...'})}\n\n"
                 
-                # Expand prompt like ChatGPT DALL-E 3
-                expanded = await image_service.expand_prompt_chatgpt_grade(final_image_prompt)
+                # Expand prompt with Creative Director engine
+                expanded = await image_service.expand_prompt_creative(final_image_prompt)
                 chosen_prompt = expanded or final_image_prompt
 
             img_data = image_service.generate_image_url(

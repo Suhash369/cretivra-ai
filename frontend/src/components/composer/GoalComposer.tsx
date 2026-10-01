@@ -327,13 +327,13 @@ export function GoalComposer({
             </button>
           )}
 
-          {/* ChatGPT Voice Mode Button */}
+          {/* Cretivra Voice Mode Button */}
           {onOpenVoiceMode && (
             <button
               type="button"
               onClick={onOpenVoiceMode}
               className="w-8 h-8 rounded-xl bg-[var(--surface-secondary)] border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center transition-all asura-btn-interactive shadow-sm group"
-              title="Start ChatGPT Voice Mode (Powered by Gemini)"
+              title="Start Cretivra Voice Mode"
             >
               <Headphones size={15} className="group-hover:scale-110 transition-transform" />
             </button>

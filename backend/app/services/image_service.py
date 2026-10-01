@@ -166,13 +166,13 @@ class ImageService:
             clean = f"{clean}, in {style} style"
         return clean
 
-    async def expand_prompt_chatgpt_grade(
+    async def expand_prompt_creative(
         self,
         prompt: str,
         style: Optional[str] = None
     ) -> str:
         """
-        Transforms a concise user image request into an award-winning, ChatGPT DALL-E 3 grade visual prompt.
+        Transforms a concise user image request into an award-winning visual prompt.
         Cascades dynamically across Gemini, OpenRouter, and Groq to specify composition, lighting,
         color palette, typography, and textures.
         """
@@ -183,7 +183,7 @@ class ImageService:
         is_poster = bool(re.search(r"\b(poster|banner|invitation|card|flyer|marriage|wedding)\b", clean_p, re.IGNORECASE))
 
         sys_prompt = (
-            "You are an elite Creative Visual Director and Prompt Engineer for state-of-the-art AI image synthesis (like ChatGPT DALL-E 3). "
+            "You are an elite Creative Visual Director and Prompt Engineer for state-of-the-art AI image synthesis. "
             "When given an image or poster request, expand it into a single, breathtaking, highly descriptive visual prompt that produces an award-winning visual masterpiece. "
             "Specify visual composition, cinematic lighting, color palette, surface textures, background atmosphere, and artistic details. "
             + ("For posters, weddings, or celebrations: specify elegant gold foil embossed typography (such as 'Save the Date' or 'Wedding Celebration'), opulent floral borders, rich royal silk or velvet background, and romantic cinematic lighting. " if is_poster else "")
@@ -256,6 +256,8 @@ class ImageService:
                 logger.debug(f"Groq prompt expansion notice: {e}")
 
         return self.enhance_prompt(clean_p, style=style)
+
+    expand_prompt_chatgpt_grade = expand_prompt_creative
 
     def generate_image_url(
         self,

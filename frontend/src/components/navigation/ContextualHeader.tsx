@@ -199,12 +199,12 @@ export function ContextualHeader({
           </button>
         )}
 
-        {/* ChatGPT Voice Mode Button */}
+        {/* Cretivra Voice Mode Button */}
         {onOpenVoiceMode && (
           <button
             onClick={onOpenVoiceMode}
             className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all asura-btn-interactive bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:border-cyan-400 hover:bg-cyan-500/20 shadow-xs"
-            title="Start ChatGPT Voice Mode (Powered by Gemini)"
+            title="Start Cretivra Voice Mode"
           >
             <Headphones size={14} className="text-cyan-400 animate-pulse" />
             <span className="hidden sm:inline font-semibold">Voice Mode</span>

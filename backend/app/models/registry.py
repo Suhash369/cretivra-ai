@@ -139,8 +139,8 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
     ),
     "cretivra-voice": CretivraModel(
         id="cretivra-voice",
-        display_name="Cretivra Voice (ChatGPT Mode)",
-        description="ChatGPT-style conversational Voice Model with live speech synthesis powered by Gemini",
+        display_name="Cretivra Voice Ultra",
+        description="High-fidelity conversational Voice Model with live neural speech synthesis and real-time intelligence",
         provider="frontier_core",
         underlying_model="gemini-3.1-flash-lite",
         capabilities=["chat", "voice", "audio", "realtime"],

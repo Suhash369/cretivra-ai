@@ -463,7 +463,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
     return name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Friend';
   }, [user]);
 
-  // Active conversation title for ChatGPT-style breadcrumb indicator
+  // Active conversation title for breadcrumb indicator
   const activeChatTitle = useMemo(() => {
     const activeConv = conversations.find((c) => c.id === activeConversationId);
     if (activeConv?.title) return activeConv.title;
@@ -714,7 +714,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
     }
   };
 
-  // Scroll listener for "Scroll to bottom" button & position tracking (ChatGPT-style)
+  // Scroll listener for "Scroll to bottom" button & position tracking
   const handleChatScroll = () => {
     if (!scrollRef.current || isLanding) {
       if (showScrollBottom) setShowScrollBottom(false);
@@ -1034,7 +1034,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 : 'rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 shadow-lg p-3 sm:p-3.5'
             }`}
           >
-              {/* ChatGPT-style live response status banner */}
+              {/* Live response status banner */}
               {isGenerating && (
                 <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
                   <div className="flex items-center gap-2">
@@ -1110,7 +1110,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
 
               <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
                 <div className="flex items-center gap-1.5">
-                  {/* ChatGPT-Style Action Menu (+) Button */}
+                  {/* Action Menu (+) Button */}
                   <div className="relative">
                     <button
                       type="button"

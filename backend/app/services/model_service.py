@@ -24,9 +24,15 @@ class ModelService:
         for db_setting in db_settings:
             model = registry.get_model(db_setting.id)
             if model:
-                model.display_name = db_setting.display_name
+                d_name = db_setting.display_name or model.display_name
+                d_desc = db_setting.description or model.description
+                if d_name and "chatgpt" in d_name.lower():
+                    d_name = d_name.replace("(ChatGPT Mode)", "").replace("ChatGPT", "Cretivra").strip()
+                if d_desc and "chatgpt" in d_desc.lower():
+                    d_desc = d_desc.replace("ChatGPT-style", "Real-time").replace("ChatGPT", "Cretivra").strip()
+                model.display_name = d_name
                 model.underlying_model = db_setting.underlying_model
-                model.description = db_setting.description or model.description
+                model.description = d_desc
                 model.enabled = db_setting.enabled
                 model.version = db_setting.version or model.version
 

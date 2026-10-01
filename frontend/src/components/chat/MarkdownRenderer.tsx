@@ -301,7 +301,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         remarkPlugins={[remarkGfm, remarkMath]}
         rehypePlugins={[[rehypeKatex, { throwOnError: false, errorColor: 'inherit', strict: false }]]}
         components={{
-          // Tables (ChatGPT / Claude / Gemini card-styled with perfect Light & Dark theme contrast)
+          // Tables (Enterprise card-styled with perfect Light & Dark theme contrast)
           table({ children }) {
             return <TableBlock>{children}</TableBlock>;
           },

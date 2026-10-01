@@ -775,7 +775,7 @@ body.light .cv-gradient-text,
 .cv-msg-assistant { font-size: 15.5px; line-height: 1.78; color: var(--text); }
 .cv-msg-assistant p { margin: 0 0 14px; color: var(--text); }
 
-/* Global Markdown & Table Typography (ChatGPT / Claude / Gemini quality) */
+/* Global Markdown & Table Typography (Enterprise high-fidelity quality) */
 .chat-markdown,
 .cv-msg-assistant {
   font-size: 15.5px;

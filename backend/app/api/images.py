@@ -100,7 +100,7 @@ async def generate_image(request: ImageGenerateRequest):
     target_model = request.model or "flux-realism"
     effective_prompt = request.prompt
     if request.enhance:
-        effective_prompt = await image_service.expand_prompt_chatgpt_grade(
+        effective_prompt = await image_service.expand_prompt_creative(
             prompt=request.prompt,
             style=request.style
         )
@@ -129,7 +129,7 @@ async def enhance_prompt_endpoint(request: EnhancePromptRequest):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
     
-    enhanced = await image_service.expand_prompt_chatgpt_grade(
+    enhanced = await image_service.expand_prompt_creative(
         prompt=request.prompt,
         style=request.style
     )

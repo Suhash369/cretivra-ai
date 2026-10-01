@@ -120,7 +120,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         {/* Composer Action Toolbar */}
         <div className="flex items-center justify-between px-3 pb-3 pt-1">
           <div className="flex items-center gap-2">
-            {/* ChatGPT-style Plus Action Menu */}
+            {/* Quick Action Plus Menu */}
             <div className="relative">
               <button
                 type="button"
@@ -204,7 +204,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 type="button"
                 onClick={onOpenVoiceMode}
                 className="p-2 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-cyan-500/30 transition-all shadow-sm"
-                title="Start ChatGPT Voice Mode (Powered by Gemini)"
+                title="Start Cretivra Voice Mode"
               >
                 <Headphones className="w-4 h-4" />
               </button>
