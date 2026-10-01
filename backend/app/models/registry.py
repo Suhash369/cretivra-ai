@@ -137,6 +137,19 @@ DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
         category="Omni Intelligence",
         is_available=True
     ),
+    "cretivra-voice": CretivraModel(
+        id="cretivra-voice",
+        display_name="Cretivra Voice (ChatGPT Mode)",
+        description="ChatGPT-style conversational Voice Model with live speech synthesis powered by Gemini",
+        provider="frontier_core",
+        underlying_model="gemini-3.1-flash-lite",
+        capabilities=["chat", "voice", "audio", "realtime"],
+        context_length=1048576,
+        enabled=True,
+        version="2.0",
+        category="Voice & Realtime",
+        is_available=True
+    ),
     "cretivra-multimodal": CretivraModel(
         id="cretivra-multimodal",
         display_name="Cretivra Vision 3.6",

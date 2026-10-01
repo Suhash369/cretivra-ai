@@ -1,0 +1,131 @@
+from typing import Optional, List, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.database.database import get_db
+from app.database.models import UserDB
+from app.api.auth import get_optional_user
+from app.services.conversation_service import conversation_service
+from app.services.voice_service import voice_service
+from app.core.logging import logger
+
+router = APIRouter(prefix="/voice", tags=["Voice"])
+
+class VoiceChatRequest(BaseModel):
+    message: str
+    conversation_id: Optional[str] = None
+    voice: Optional[str] = "Breeze"
+    history: Optional[List[Dict[str, str]]] = None
+
+class VoiceSynthesizeRequest(BaseModel):
+    text: str
+    voice: Optional[str] = "Breeze"
+
+@router.post("/chat")
+async def voice_chat(
+    payload: VoiceChatRequest,
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Two-way conversational voice endpoint powered by Gemini.
+    Generates an articulate, spoken-word conversational response and native audio WAV speech.
+    Persists to database so user conversation history remains unified.
+    """
+    text = payload.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Voice message cannot be empty.")
+
+    # 1. Resolve or create conversation
+    conv_id = payload.conversation_id
+    user_id = current_user.id if current_user else None
+
+    if not conv_id:
+        conv = conversation_service.create_conversation(
+            db=db,
+            title="Voice Conversation",
+            model_id="cretivra-voice",
+            user_id=user_id
+        )
+        conv_id = conv.id
+    else:
+        conv = conversation_service.get_conversation(db, conv_id)
+        if not conv:
+            conv = conversation_service.create_conversation(
+                db=db,
+                title="Voice Conversation",
+                model_id="cretivra-voice",
+                user_id=user_id
+            )
+            conv_id = conv.id
+
+    # 2. Record user message in DB
+    conversation_service.add_message(
+        db=db,
+        conversation_id=conv_id,
+        role="user",
+        content=text
+    )
+
+    # 3. Generate natural spoken answer via Gemini
+    spoken_reply = await voice_service.generate_voice_reply(
+        message=text,
+        history=payload.history,
+        voice_persona=payload.voice
+    )
+
+    # 4. Synthesize speech audio via Gemini Flash TTS
+    audio_data_url = await voice_service.synthesize_speech(
+        text=spoken_reply,
+        voice=payload.voice
+    )
+
+    # 5. Record assistant response in DB
+    assistant_msg = conversation_service.add_message(
+        db=db,
+        conversation_id=conv_id,
+        role="assistant",
+        content=spoken_reply
+    )
+
+    return {
+        "text": spoken_reply,
+        "audio_url": audio_data_url,
+        "conversation_id": conv_id,
+        "message_id": assistant_msg.id,
+        "model": "cretivra-voice"
+    }
+
+@router.post("/synthesize")
+async def synthesize_voice(payload: VoiceSynthesizeRequest):
+    """
+    Text-to-speech synthesis using Gemini Flash TTS.
+    """
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty.")
+
+    audio_url = await voice_service.synthesize_speech(
+        text=payload.text.strip(),
+        voice=payload.voice
+    )
+    return {
+        "audio_url": audio_url,
+        "text": payload.text.strip()
+    }
+
+@router.post("/transcribe")
+async def transcribe_audio_file(
+    file: UploadFile = File(...)
+):
+    """
+    Speech-to-text audio transcription using Gemini multimodal audio perception.
+    """
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
+
+    mime = file.content_type or "audio/webm"
+    transcription = await voice_service.transcribe_audio(contents, mime_type=mime)
+    return {
+        "text": transcription
+    }

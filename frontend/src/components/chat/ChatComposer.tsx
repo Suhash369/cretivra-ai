@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Square, Paperclip, X, FileText, Image as ImageIcon, Presentation, Plus } from 'lucide-react';
+import { Send, Square, Paperclip, X, FileText, Image as ImageIcon, Presentation, Plus, Headphones } from 'lucide-react';
 import { ModelSelector } from '../model-selector/ModelSelector';
 import { ActionMenu } from './ActionMenu';
 import { SketchModal } from './SketchModal';
@@ -16,6 +16,7 @@ interface ChatComposerProps {
   attachments: Attachment[];
   onFileUpload: (file: File) => void;
   onRemoveAttachment: (id: string) => void;
+  onOpenVoiceMode?: () => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -28,6 +29,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   attachments,
   onFileUpload,
   onRemoveAttachment,
+  onOpenVoiceMode,
 }) => {
   const [text, setText] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
@@ -195,26 +197,40 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             />
           </div>
 
-          {/* Send or Stop Generation Button */}
-          {isGenerating ? (
-            <button
-              type="button"
-              onClick={onStopGeneration}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all shadow-sm"
-            >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              <span>Stop</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={!text.trim() && attachments.length === 0}
-              className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white transition-all shadow-md shadow-indigo-600/20"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          )}
+          {/* Right Action Buttons */}
+          <div className="flex items-center gap-1.5">
+            {onOpenVoiceMode && (
+              <button
+                type="button"
+                onClick={onOpenVoiceMode}
+                className="p-2 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 border border-cyan-500/30 transition-all shadow-sm"
+                title="Start ChatGPT Voice Mode (Powered by Gemini)"
+              >
+                <Headphones className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Send or Stop Generation Button */}
+            {isGenerating ? (
+              <button
+                type="button"
+                onClick={onStopGeneration}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 text-xs font-semibold transition-all shadow-sm"
+              >
+                <Square className="w-3.5 h-3.5 fill-current" />
+                <span>Stop</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!text.trim() && attachments.length === 0}
+                className="p-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 text-white transition-all shadow-md shadow-indigo-600/20"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <p className="text-[11px] text-center text-gray-500 mt-2">

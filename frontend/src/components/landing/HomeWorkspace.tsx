@@ -39,6 +39,7 @@ interface HomeWorkspaceProps {
   onOpenSlides?: () => void;
   onOpenWebsite?: () => void;
   onOpenGame?: () => void;
+  onOpenVoiceMode?: () => void;
 }
 
 const SUGGESTIONS = [
@@ -99,6 +100,7 @@ export function HomeWorkspace({
   onOpenSlides,
   onOpenWebsite,
   onOpenGame,
+  onOpenVoiceMode,
 }: HomeWorkspaceProps) {
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center min-h-full px-4 py-8 overflow-y-auto z-10 text-[var(--foreground)]">
@@ -176,6 +178,7 @@ export function HomeWorkspace({
             onOpenSlides={onOpenSlides}
             onOpenWebsite={onOpenWebsite}
             onOpenGame={onOpenGame}
+            onOpenVoiceMode={onOpenVoiceMode}
           />
         </div>
 

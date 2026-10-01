@@ -14,6 +14,7 @@ import {
   Clock,
   ChevronDown,
   Sparkles,
+  Headphones,
 } from 'lucide-react';
 import { CretivraMark } from '../common/CretivraLogo';
 import type { CretivraModel, HealthStatus } from '../../types';
@@ -23,6 +24,7 @@ interface ContextualHeaderProps {
   contextTitle?: string;
   isGenerating?: boolean;
   onStopGeneration?: () => void;
+  onOpenVoiceMode?: () => void;
   // Model
   selectedModel?: string;
   availableModels?: CretivraModel[];
@@ -53,6 +55,7 @@ export function ContextualHeader({
   contextTitle,
   isGenerating = false,
   onStopGeneration,
+  onOpenVoiceMode,
   selectedModel = 'cretivra-1',
   availableModels = [],
   onSelectModel,
@@ -193,6 +196,18 @@ export function ContextualHeader({
           >
             <Brain size={14} />
             <span className="hidden sm:inline">Reason</span>
+          </button>
+        )}
+
+        {/* ChatGPT Voice Mode Button */}
+        {onOpenVoiceMode && (
+          <button
+            onClick={onOpenVoiceMode}
+            className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all asura-btn-interactive bg-cyan-500/10 border-cyan-500/30 text-cyan-400 hover:border-cyan-400 hover:bg-cyan-500/20 shadow-xs"
+            title="Start ChatGPT Voice Mode (Powered by Gemini)"
+          >
+            <Headphones size={14} className="text-cyan-400 animate-pulse" />
+            <span className="hidden sm:inline font-semibold">Voice Mode</span>
           </button>
         )}
 

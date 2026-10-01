@@ -24,8 +24,8 @@ def _default_groq_key() -> str:
 
 def _default_gemini_key() -> str:
     env_val = os.getenv("GEMINI_API_KEY")
-    if env_val:
-        return env_val
+    if env_val and not env_val.strip().startswith("your_"):
+        return env_val.strip()
     g1 = "AQ.Ab8RN"
     g2 = "6IBSQPe8Rf"
     g3 = "XojHNGHSFXN08IXaMRzk"

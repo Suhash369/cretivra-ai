@@ -672,12 +672,13 @@ class CloudLLMProvider:
     ) -> AsyncGenerator[Dict[str, Any], None]:
         clean_key = re.sub(r'[\r\n\t ]+', '', self.gemini_api_key)
         
-        # Multi-model fallback chain for Gemini (Flash 3.6/3.7 have world-class vision & factual search grounding)
+        # Multi-model fallback chain for Gemini
         gemini_model_candidates = [
-            "gemini-3.6-flash",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.8-flash",
             "gemini-flash-latest",
-            "gemini-3-flash-preview",
-            "gemini-2.5-flash-lite",
             "gemini-pro-latest"
         ]
 

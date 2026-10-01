@@ -49,6 +49,7 @@ import {
   MessageSquare,
   Bot,
   ExternalLink,
+  Headphones,
 } from 'lucide-react';
 import { useConversations } from './hooks/useConversations';
 import { useChat } from './hooks/useChat';
@@ -60,6 +61,7 @@ import { ShareModal } from './components/settings/ShareModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { OnboardingTourModal } from './components/onboarding/OnboardingTourModal';
 import { ImageStudioModal } from './components/image-studio/ImageStudioModal';
+import { ChatGPTVoiceModal } from './components/voice/ChatGPTVoiceModal';
 import { SlideGeneratorModal } from './components/landing/SlideGeneratorModal';
 import { WebsiteGeneratorModal } from './components/landing/WebsiteGeneratorModal';
 import { GameCreatorModal } from './components/landing/GameCreatorModal';
@@ -183,6 +185,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   const [authOpen, setAuthOpen] = useState(false);
   const [imageStudioOpen, setImageStudioOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false);
   const [shareId, setShareId] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
@@ -1306,6 +1309,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           contextTitle={contextTitle}
           isGenerating={isGenerating}
           onStopGeneration={stopGeneration}
+          onOpenVoiceMode={() => setVoiceModalOpen(true)}
           selectedModel={selectedModel}
           availableModels={availableModels}
           onSelectModel={handleSelectModel}
@@ -1372,6 +1376,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
             onOpenSlides={() => setSlideModalOpen(true)}
             onOpenWebsite={() => setWebsiteModalOpen(true)}
             onOpenGame={() => setGameModalOpen(true)}
+            onOpenVoiceMode={() => setVoiceModalOpen(true)}
           />
         )}
 
@@ -1642,6 +1647,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                 onOpenSlides={() => setSlideModalOpen(true)}
                 onOpenWebsite={() => setWebsiteModalOpen(true)}
                 onOpenGame={() => setGameModalOpen(true)}
+                onOpenVoiceMode={() => setVoiceModalOpen(true)}
               />
             </div>
           </div>
@@ -1775,6 +1781,20 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         confirmLabel={confirmDialog.confirmLabel}
         cancelLabel={confirmDialog.cancelLabel}
         variant={confirmDialog.variant}
+      />
+
+      {/* ChatGPT Voice Mode Modal (Powered by Gemini) */}
+      <ChatGPTVoiceModal
+        isOpen={voiceModalOpen}
+        onClose={() => setVoiceModalOpen(false)}
+        conversationId={activeConversationId}
+        onNewMessageSynced={(_userMsg, _assistantReply) => {
+          if (activeConversationId) {
+            loadConversation(activeConversationId);
+            refreshConversations();
+          }
+        }}
+        activeModelName="Cretivra Voice (Gemini 3.1)"
       />
 
       {/* Model Selector Modal */}

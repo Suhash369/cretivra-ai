@@ -479,4 +479,63 @@ export async function exportPdf(
   return res.json();
 }
 
+export async function sendVoiceChatApi(payload: {
+  message: string;
+  conversation_id?: string;
+  voice?: string;
+  history?: Array<{ role: string; content: string }>;
+}): Promise<{
+  text: string;
+  audio_url?: string;
+  conversation_id: string;
+  message_id: string;
+  model: string;
+}> {
+  const res = await fetch(`${API_BASE}/voice/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Voice chat request failed');
+  }
+  return res.json();
+}
+
+export async function synthesizeSpeechApi(text: string, voice?: string): Promise<{ audio_url: string; text: string }> {
+  const res = await fetch(`${API_BASE}/voice/synthesize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ text, voice }),
+  });
+  if (!res.ok) {
+    throw new Error('Speech synthesis failed');
+  }
+  return res.json();
+}
+
+export async function transcribeAudioApi(blob: Blob): Promise<{ text: string }> {
+  const formData = new FormData();
+  formData.append('file', blob, 'recording.webm');
+  const res = await fetch(`${API_BASE}/voice/transcribe`, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders(),
+    },
+    body: formData,
+  });
+  if (!res.ok) {
+    throw new Error('Audio transcription failed');
+  }
+  return res.json();
+}
+
+
 

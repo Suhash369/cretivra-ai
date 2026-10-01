@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Sparkles,
   Plus,
+  Headphones,
+  Mic,
 } from 'lucide-react';
 import { ActionMenu } from '../chat/ActionMenu';
 import type { Attachment, CretivraModel } from '../../types';
@@ -40,6 +42,7 @@ interface GoalComposerProps {
   onOpenSlides?: () => void;
   onOpenWebsite?: () => void;
   onOpenGame?: () => void;
+  onOpenVoiceMode?: () => void;
   // Models
   selectedModel: string;
   availableModels: CretivraModel[];
@@ -69,6 +72,7 @@ export function GoalComposer({
   onOpenSlides,
   onOpenWebsite,
   onOpenGame,
+  onOpenVoiceMode,
   selectedModel,
   availableModels,
   onSelectModel,
@@ -320,6 +324,18 @@ export function GoalComposer({
             >
               <span className="truncate max-w-[110px]">{modelName}</span>
               <ChevronDown size={11} className="text-[var(--muted-foreground)]" />
+            </button>
+          )}
+
+          {/* ChatGPT Voice Mode Button */}
+          {onOpenVoiceMode && (
+            <button
+              type="button"
+              onClick={onOpenVoiceMode}
+              className="w-8 h-8 rounded-xl bg-[var(--surface-secondary)] border border-cyan-500/30 hover:border-cyan-400 hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center transition-all asura-btn-interactive shadow-sm group"
+              title="Start ChatGPT Voice Mode (Powered by Gemini)"
+            >
+              <Headphones size={15} className="group-hover:scale-110 transition-transform" />
             </button>
           )}
 
