@@ -7,6 +7,7 @@ backend_dir = str(Path(__file__).resolve().parent.parent)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,20 +16,28 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.database.database import init_db
+from app.database.database import init_db, fallback_to_sqlite
 from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images, suggestions, agents as agents_api, playground as playground_api, tools_api, projects_api, artifacts_api, voice
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing Asura AI by Cretivra Database...")
+    logger.info("Starting Asura AI by Cretivra service...")
     try:
-        init_db()
+        # Strict 3-second hard timeout for DB initialization so Uvicorn binds port instantly
+        await asyncio.wait_for(asyncio.to_thread(init_db), timeout=3.0)
+    except asyncio.TimeoutError:
+        logger.warning("Primary database check timed out after 3.0s — switching immediately to resilient SQLite to guarantee instant port binding.")
+        fallback_to_sqlite()
     except Exception as e:
-        logger.error(f"Database initialization encountered an error (non-fatal): {e}", exc_info=True)
+        logger.error(f"Database initialization encountered non-fatal error: {e}", exc_info=True)
+        fallback_to_sqlite()
+
     try:
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     except Exception as e:
         logger.warning(f"Could not create upload directory {settings.UPLOAD_DIR}: {e}")
+
+    logger.info("Asura AI by Cretivra backend ready. Listening for incoming requests.")
     yield
     logger.info("Shutting down Asura AI by Cretivra backend...")
 
@@ -113,4 +122,17 @@ else:
             "status": "online",
             "docs": "/docs"
         }
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
+    logger.info(f"Starting Asura AI server on 0.0.0.0:{port}...")
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=port,
+        proxy_headers=True,
+        forwarded_allow_ips="*"
+    )
+
 

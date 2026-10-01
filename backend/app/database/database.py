@@ -11,11 +11,30 @@ if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 def _build_engine(target_url: str):
-    connect_args = {"check_same_thread": False} if target_url.startswith("sqlite") else {"connect_timeout": 5}
+    if target_url.startswith("sqlite"):
+        return create_engine(
+            target_url,
+            connect_args={"check_same_thread": False},
+            pool_pre_ping=True
+        )
+    # PostgreSQL configuration with strict network timeouts and keepalives
+    connect_args = {
+        "connect_timeout": 3,
+        "sslmode": "require",
+        "keepalives": 1,
+        "keepalives_idle": 3,
+        "keepalives_interval": 2,
+        "keepalives_count": 2,
+        "options": "-c statement_timeout=4000"
+    }
     return create_engine(
         target_url,
         connect_args=connect_args,
-        pool_pre_ping=True
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_timeout=3,
+        pool_size=5,
+        max_overflow=5
     )
 
 try:
@@ -46,10 +65,73 @@ def get_db():
     finally:
         db.close()
 
+def _run_sqlite_migrations(target_engine):
+    with target_engine.connect() as conn:
+        try:
+            # 1. users table migrations
+            result = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+            existing_cols = [row[1] for row in result]
+            if "email" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+            if "username" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR"))
+            if "password_hash" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR"))
+            if "full_name" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR"))
+            if "is_subscribed" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN DEFAULT 0"))
+            if "subscription_expires_at" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME"))
+            if "plan_name" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN plan_name VARCHAR DEFAULT '15-Day Pass'"))
+            if "created_at" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN created_at DATETIME"))
+
+            # 2. conversations table migrations
+            conv_result = conn.execute(text("PRAGMA table_info(conversations)")).fetchall()
+            conv_cols = [row[1] for row in conv_result]
+            if "user_id" not in conv_cols:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id VARCHAR"))
+            if "model_id" not in conv_cols:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN model_id VARCHAR DEFAULT 'cretivra-1'"))
+
+            # 3. messages table migrations
+            msg_result = conn.execute(text("PRAGMA table_info(messages)")).fetchall()
+            msg_cols = [row[1] for row in msg_result]
+            if "reasoning_status" not in msg_cols:
+                conn.execute(text("ALTER TABLE messages ADD COLUMN reasoning_status VARCHAR"))
+
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"SQLite auto-migration notice: {e}")
+
+def fallback_to_sqlite():
+    global engine, SessionLocal, db_url
+    logger.warning("Configuring resilient local SQLite database fallback...")
+    db_url = "sqlite:///./cretivra.db"
+    engine = create_engine(db_url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
+    SessionLocal.configure(bind=engine)
+    try:
+        from app.database import models  # noqa
+        Base.metadata.create_all(bind=engine)
+        _run_sqlite_migrations(engine)
+        logger.info("Resilient SQLite fallback initialized successfully.")
+    except Exception as err:
+        logger.error(f"Fallback SQLite initialization error: {err}")
+
 def init_db():
     global engine, SessionLocal, db_url
-    from app.core.logging import logger
     from app.database import models  # noqa
+
+    if db_url.startswith("sqlite"):
+        try:
+            Base.metadata.create_all(bind=engine)
+            _run_sqlite_migrations(engine)
+            logger.info("Local SQLite database schema initialized successfully.")
+        except Exception as e:
+            logger.error(f"SQLite initialization error: {e}")
+        return
 
     try:
         # Pre-verify database responsiveness with a quick ping
@@ -59,55 +141,6 @@ def init_db():
         logger.info("Primary database schema initialized successfully.")
     except Exception as e:
         logger.warning(f"Primary database connection unavailable or timed out: {e}. Falling back to resilient SQLite database...")
-        db_url = "sqlite:///./cretivra.db"
-        engine = create_engine(db_url, connect_args={"check_same_thread": False}, pool_pre_ping=True)
-        SessionLocal.configure(bind=engine)
-        try:
-            Base.metadata.create_all(bind=engine)
-            logger.info("Resilient SQLite fallback initialized successfully.")
-        except Exception as err:
-            logger.error(f"Fallback SQLite initialization error: {err}")
-    
-    # Auto-migrate missing columns for SQLite
-    if db_url.startswith("sqlite"):
-        with engine.connect() as conn:
-            try:
-                # 1. users table migrations
-                result = conn.execute(text("PRAGMA table_info(users)")).fetchall()
-                existing_cols = [row[1] for row in result]
-                if "email" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
-                if "username" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR"))
-                if "password_hash" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR"))
-                if "full_name" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR"))
-                if "is_subscribed" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN is_subscribed BOOLEAN DEFAULT 0"))
-                if "subscription_expires_at" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME"))
-                if "plan_name" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN plan_name VARCHAR DEFAULT '15-Day Pass'"))
-                if "created_at" not in existing_cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN created_at DATETIME"))
+        fallback_to_sqlite()
 
-                # 2. conversations table migrations
-                conv_result = conn.execute(text("PRAGMA table_info(conversations)")).fetchall()
-                conv_cols = [row[1] for row in conv_result]
-                if "user_id" not in conv_cols:
-                    conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id VARCHAR"))
-                if "model_id" not in conv_cols:
-                    conn.execute(text("ALTER TABLE conversations ADD COLUMN model_id VARCHAR DEFAULT 'cretivra-1'"))
-
-                # 3. messages table migrations
-                msg_result = conn.execute(text("PRAGMA table_info(messages)")).fetchall()
-                msg_cols = [row[1] for row in msg_result]
-                if "reasoning_status" not in msg_cols:
-                    conn.execute(text("ALTER TABLE messages ADD COLUMN reasoning_status VARCHAR"))
-
-                conn.commit()
-            except Exception as e:
-                import logging
-                logging.getLogger("uvicorn.error").warning(f"SQLite auto-migration notice: {e}")
 

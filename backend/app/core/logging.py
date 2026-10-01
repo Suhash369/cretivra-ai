@@ -1,6 +1,11 @@
 import logging
 import sys
 
+class ImmediateFlushStreamHandler(logging.StreamHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
 def setup_logging():
     try:
         if hasattr(sys.stdout, "reconfigure"):
@@ -10,13 +15,18 @@ def setup_logging():
     except Exception:
         pass
 
+    handler = ImmediateFlushStreamHandler(sys.stdout)
+    handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
+        handlers=[handler],
+        force=True
     )
-    return logging.getLogger("cretivra")
+    
+    app_logger = logging.getLogger("cretivra")
+    app_logger.setLevel(logging.INFO)
+    return app_logger
 
 logger = setup_logging()
+
