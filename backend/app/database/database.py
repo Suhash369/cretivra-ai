@@ -1,20 +1,40 @@
+import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
+
+logger = logging.getLogger("uvicorn.error")
 
 db_url = (settings.DATABASE_URL or "").strip().strip("'").strip('"')
 # Normalize postgres:// to postgresql:// for SQLAlchemy compatibility
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
-# For SQLite, check_same_thread=False allows multi-threaded requests; for Postgres set strict 5s connect_timeout
-connect_args = {"check_same_thread": False} if db_url.startswith("sqlite") else {"connect_timeout": 5}
+def _build_engine(target_url: str):
+    connect_args = {"check_same_thread": False} if target_url.startswith("sqlite") else {"connect_timeout": 5}
+    return create_engine(
+        target_url,
+        connect_args=connect_args,
+        pool_pre_ping=True
+    )
 
-engine = create_engine(
-    db_url,
-    connect_args=connect_args,
-    pool_pre_ping=True
-)
+try:
+    engine = _build_engine(db_url)
+except Exception as e:
+    # If the default driver (e.g. psycopg 3) is missing, try psycopg2 driver if applicable
+    if "psycopg" in str(e).lower() and db_url.startswith("postgresql://"):
+        try:
+            alt_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            engine = _build_engine(alt_url)
+            db_url = alt_url
+        except Exception:
+            logger.warning(f"Failed to connect to primary DB ({e}). Falling back to SQLite.")
+            db_url = "sqlite:///./cretivra.db"
+            engine = _build_engine(db_url)
+    else:
+        logger.warning(f"Failed to initialize engine for {db_url}: {e}. Falling back to SQLite.")
+        db_url = "sqlite:///./cretivra.db"
+        engine = _build_engine(db_url)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
