@@ -58,8 +58,8 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
     }
   }, [forceReplay]);
 
-  // Hook into continuous high-resolution timeline
-  const { stage, elapsedTime, skip, finish } = useOpeningTimeline({
+  // Hook into high-performance timeline
+  const { stage, skip, finish } = useOpeningTimeline({
     isReturningUser,
     reducedMotion,
     forceReplay,
@@ -74,7 +74,7 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
         setIsDismissed(true);
         onCompleteRef.current?.();
         onReplayHandledRef.current?.();
-      }, 260);
+      }, 300);
     },
   });
 
@@ -106,7 +106,7 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
   return (
     <div
       onClick={skip}
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-800 ease-out cursor-pointer ${
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center select-none overflow-hidden asura-opening-backdrop transition-all duration-800 ease-out cursor-pointer will-change-transform ${
         isTransitioning
           ? 'opacity-0 scale-125 pointer-events-none'
           : 'opacity-100 scale-100'
@@ -118,23 +118,23 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
     >
       {/* 1. Deep Atmospheric Radial Aura (Apple Intelligence / Astra depth) */}
       <div
-        className="absolute w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full pointer-events-none filter blur-3xl opacity-60 bg-gradient-to-tr from-cyan-200/50 via-blue-100/40 to-violet-200/50 animate-pulse-soft"
+        className="absolute w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full pointer-events-none filter blur-3xl opacity-60 bg-gradient-to-tr from-cyan-200/50 via-blue-100/40 to-violet-200/50 animate-pulse-soft will-change-transform"
         aria-hidden="true"
       />
 
       {/* 2. Volumetric Particle Field with Additive Glow & Procedural Lemniscate Physics */}
       {!reducedMotion && (
-        <ParticleField stage={stage} elapsedTime={elapsedTime} />
+        <ParticleField stage={stage} />
       )}
 
       {/* 3. Central Chamber: Consciousness Core, Energy Paths, and Pulse */}
       <div className="relative w-full max-w-xl mx-auto flex flex-col items-center justify-center p-6 z-20">
         <div className="relative flex items-center justify-center">
           {/* Geodesic Energy Traces & Infinity Path Pulse */}
-          <EnergyTrace stage={stage} elapsedTime={elapsedTime} />
+          <EnergyTrace stage={stage} />
 
           {/* Authentic CRETIVRA Core Mark with Caustic Glow & Camera Scaling */}
-          <LogoCore stage={stage} elapsedTime={elapsedTime} />
+          <LogoCore stage={stage} />
 
           {/* Consciousness Stillness & Double Heartbeat Pulse */}
           <ConsciousnessPulse stage={stage} />

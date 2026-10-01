@@ -9,8 +9,8 @@ export type AwakeningStage =
   | 'FLOW'         // 1.40 – 2.20s: Procedural Gravitational Wells (Subconscious Infinity)
   | 'FORMATION'    // 2.20 – 2.90s: Progressive Structure & Energy Path Travel
   | 'STABILIZE'    // 2.90 – 3.20s: 300ms Chamber Stillness & Anticipation
-  | 'CONSCIOUS'    // 3.20 – 3.70s: Consciousness Heartbeat & Environmental Pulse
-  | 'IDENTITY'     // 3.70 – 4.70s: ASURA Materialization, Optical Tracking & Letterform Sweep
+  | 'CONSCIOUS'    // 3.20 – 3.80s: Consciousness Heartbeat & Environmental Pulse
+  | 'IDENTITY'     // 3.80 – 4.70s: ASURA Materialization, Optical Tracking & Letterform Sweep
   | 'TRANSITION'   // 4.70 – 5.40s: Lens-Through Core Expansion & App Emergence
   | 'READY';       // 5.40s+: Fully Unmounted & Interactive
 
@@ -28,8 +28,7 @@ export function useOpeningTimeline({
   onComplete,
 }: UseOpeningTimelineOptions) {
   const [stage, setStage] = useState<AwakeningStage>('IDLE');
-  const [progress, setProgress] = useState(0); // 0.0 to 1.0 normalized
-  const [elapsedTime, setElapsedTime] = useState(0); // in seconds
+  const currentStageRef = useRef<AwakeningStage>('IDLE');
 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -40,15 +39,15 @@ export function useOpeningTimeline({
   const pauseStartRef = useRef<number | null>(null);
   const isFinishedRef = useRef(false);
 
-  // Cinema-grade timeline duration = 5.40s (Allows every phase to breathe with majestic pacing)
-  const totalDuration = reducedMotion ? 0.4 : 5.40;
+  // Cinema-grade timeline duration = 5.40s
+  const totalDuration = reducedMotion ? 0.35 : 5.40;
 
   const finish = useCallback(() => {
     if (isFinishedRef.current) return;
     isFinishedRef.current = true;
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    currentStageRef.current = 'READY';
     setStage('READY');
-    setProgress(1);
     onCompleteRef.current?.();
   }, []);
 
@@ -63,11 +62,13 @@ export function useOpeningTimeline({
     pauseStartRef.current = null;
 
     if (reducedMotion) {
+      currentStageRef.current = 'FORMATION';
       setStage('FORMATION');
       const t = setTimeout(() => {
+        currentStageRef.current = 'TRANSITION';
         setStage('TRANSITION');
-        setTimeout(() => finish(), 180);
-      }, 200);
+        setTimeout(() => finish(), 160);
+      }, 180);
       return () => clearTimeout(t);
     }
 
@@ -92,31 +93,33 @@ export function useOpeningTimeline({
       // Compute actual active elapsed time factoring in background tab pauses
       const activeElapsedMs = now - startTimeRef.current - pausedTimeRef.current;
       const t = Math.max(0, activeElapsedMs / 1000);
-      setElapsedTime(t);
 
-      const norm = Math.min(1, t / totalDuration);
-      setProgress(norm);
-
-      // Full Master-Class Cinematic Awakening (5.40s total)
+      let nextStage: AwakeningStage = 'SIGNAL';
       if (t < 0.60) {
-        setStage('SIGNAL');
+        nextStage = 'SIGNAL';
       } else if (t < 1.40) {
-        setStage('FIELD');
+        nextStage = 'FIELD';
       } else if (t < 2.20) {
-        setStage('FLOW');
+        nextStage = 'FLOW';
       } else if (t < 2.90) {
-        setStage('FORMATION');
+        nextStage = 'FORMATION';
       } else if (t < 3.20) {
-        setStage('STABILIZE');
-      } else if (t < 3.70) {
-        setStage('CONSCIOUS');
+        nextStage = 'STABILIZE';
+      } else if (t < 3.80) {
+        nextStage = 'CONSCIOUS';
       } else if (t < 4.70) {
-        setStage('IDENTITY');
+        nextStage = 'IDENTITY';
       } else if (t < 5.40) {
-        setStage('TRANSITION');
+        nextStage = 'TRANSITION';
       } else {
         finish();
         return;
+      }
+
+      // ONLY trigger React re-renders when the stage actually changes!
+      if (currentStageRef.current !== nextStage) {
+        currentStageRef.current = nextStage;
+        setStage(nextStage);
       }
 
       animationFrameRef.current = requestAnimationFrame(tick);
@@ -132,8 +135,8 @@ export function useOpeningTimeline({
 
   return {
     stage,
-    progress,
-    elapsedTime,
+    progress: 1,
+    elapsedTime: 0,
     skip,
     finish,
   };

@@ -6,7 +6,6 @@ import { CRETIVRA_NODES } from './EnergyParticles';
 
 interface EnergyTraceProps {
   stage: AwakeningStage;
-  elapsedTime: number;
 }
 
 // 18 Geodesic connection edges between the 11 CRETIVRA nodes
@@ -20,25 +19,17 @@ const GEODESIC_EDGES: [number, number][] = [
 ];
 
 // Parametric SVG path tracing the exact infinity figure-eight: Left -> Center -> Right -> Center
-// Normalized to viewBox 0 0 100 65.2
 const INFINITY_PULSE_PATH =
   'M 50 32.6 C 35 15, 10 15, 10 32.6 C 10 50, 35 50, 50 32.6 C 65 15, 90 15, 90 32.6 C 90 50, 65 50, 50 32.6 Z';
 
-export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage, elapsedTime }) => {
+export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage }) => {
   const isForming =
     stage === 'FORMATION' ||
     stage === 'STABILIZE' ||
     stage === 'CONSCIOUS' ||
     stage === 'IDENTITY';
 
-  // Energy pulse timing: triggers during formation around 2.30s – 2.85s
-  const isPulseActive =
-    stage === 'FORMATION' && elapsedTime >= 2.30 && elapsedTime <= 2.85;
-
-  const pulseOffset =
-    isPulseActive
-      ? ((elapsedTime - 2.30) / 0.55) * 200 // travels smoothly along stroke
-      : 200;
+  const isPulseActive = stage === 'FORMATION' || stage === 'CONSCIOUS';
 
   return (
     <svg
@@ -67,11 +58,10 @@ export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage, elapsedTime }) 
         </filter>
       </defs>
 
-      {/* Geodesic Mesh Lines */}
+      {/* Geodesic Mesh Lines with Silky Staggered Drawing */}
       {GEODESIC_EDGES.map(([startIdx, endIdx], idx) => {
         const start = CRETIVRA_NODES[startIdx];
         const end = CRETIVRA_NODES[endIdx];
-        const showLine = isForming;
 
         return (
           <line
@@ -84,31 +74,28 @@ export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage, elapsedTime }) 
             strokeWidth="0.55"
             filter="url(#trace-glow)"
             strokeDasharray="100"
-            strokeDashoffset={showLine ? '0' : '100'}
-            className="transition-all duration-700 ease-out"
+            strokeDashoffset={isForming ? '0' : '100'}
+            className="transition-all duration-700 ease-out will-change-transform"
             style={{
-              transitionDelay: `${idx * 18}ms`,
-              opacity: showLine ? 0.75 : 0,
+              transitionDelay: `${idx * 16}ms`,
+              opacity: isForming ? 0.8 : 0,
             }}
           />
         );
       })}
 
-      {/* Single Deliberate Energy Pulse Traveling the Infinity Path */}
+      {/* Silky Energy Pulse Traveling the Infinity Path */}
       {isForming && (
         <path
           d={INFINITY_PULSE_PATH}
           fill="none"
           stroke="url(#travel-pulse-grad)"
-          strokeWidth="1.2"
+          strokeWidth="1.3"
           filter="url(#trace-glow)"
-          strokeDasharray="40 160"
-          strokeDashoffset={-pulseOffset}
-          className="pointer-events-none"
-          style={{
-            opacity: isPulseActive ? 0.95 : 0,
-            transition: 'opacity 0.2s ease',
-          }}
+          strokeDasharray="45 155"
+          className={`pointer-events-none transition-opacity duration-500 ${
+            isPulseActive ? 'opacity-95 asura-animate-infinity-pulse' : 'opacity-0'
+          }`}
         />
       )}
     </svg>

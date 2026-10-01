@@ -7,15 +7,12 @@ import { CRETIVRA_NODES } from './EnergyParticles';
 
 interface ParticleFieldProps {
   stage: AwakeningStage;
-  elapsedTime: number;
 }
 
-export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime }) => {
+export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef(stage);
   stageRef.current = stage;
-  const elapsedRef = useRef(elapsedTime);
-  elapsedRef.current = elapsedTime;
 
   const pulseTimeRef = useRef<number>(0);
   const pulseTriggeredRef = useRef(false);
@@ -45,9 +42,9 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
     };
     window.addEventListener('resize', handleResize);
 
-    // Astra-grade dense particle population: 300 desktop / 150 mobile
+    // Astra-grade dense particle population: 260 desktop / 130 mobile
     const isMobile = width < 640;
-    const count = isMobile ? 150 : 300;
+    const count = isMobile ? 130 : 260;
     const photons: PhotonSpark[] = [];
 
     const PALETTE = [
@@ -64,9 +61,9 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
         i % 12 === 0 ? 'star' : i % 3 === 0 ? 'medium' : 'fine';
 
       const baseRadius =
-        layerType === 'star' ? 2.2 + Math.random() * 0.9 :
-        layerType === 'medium' ? 1.2 + Math.random() * 0.6 :
-        0.5 + Math.random() * 0.4;
+        layerType === 'star' ? 2.2 + Math.random() * 0.8 :
+        layerType === 'medium' ? 1.2 + Math.random() * 0.5 :
+        0.6 + Math.random() * 0.4;
 
       const palette = PALETTE[i % PALETTE.length];
 
@@ -79,27 +76,28 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
         x: width / 2 + Math.cos(angle) * radius,
         y: height / 2 + Math.sin(angle) * radius,
         z,
-        vx: (Math.random() - 0.5) * 0.6,
-        vy: (Math.random() - 0.5) * 0.6,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
         baseRadius,
         layer: layerType,
-        baseOpacity: layerType === 'star' ? 0.95 : layerType === 'medium' ? 0.7 : 0.4,
+        baseOpacity: layerType === 'star' ? 0.95 : layerType === 'medium' ? 0.7 : 0.45,
         color: palette.color,
         glowColor: palette.glow,
         targetNodeIndex: i % CRETIVRA_NODES.length,
         trail: [],
-        maxTrailLength: layerType === 'star' ? 8 : layerType === 'medium' ? 5 : 2,
+        maxTrailLength: layerType === 'star' ? 7 : layerType === 'medium' ? 4 : 2,
         phaseOffset: Math.random() * Math.PI * 2,
         settled: false,
       });
     }
 
-    let lastTime = performance.now();
+    const startPerfTime = performance.now();
+    let lastTime = startPerfTime;
 
     const render = (now: number) => {
       const currentStage = stageRef.current;
-      const elapsed = elapsedRef.current;
-      const dt = Math.min((now - lastTime) / 1000, 0.08);
+      const elapsed = (now - startPerfTime) / 1000;
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
       lastTime = now;
 
       // Clear canvas cleanly
@@ -113,25 +111,25 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
 
         // Cardiac breathe rhythm: 0.4 -> 1.0 -> 0.7
         const breath = Math.sin(tNorm * Math.PI) * 0.6 + 0.4;
-        const pointRadius = 0.9 + breath * 0.8;
+        const pointRadius = 1.0 + breath * 0.8;
 
         // Radiant multi-stop bloom
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 36 * breath);
+        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 38 * breath);
         bloom.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
         bloom.addColorStop(0.3, 'rgba(6, 182, 212, 0.65)');
         bloom.addColorStop(0.65, 'rgba(139, 92, 246, 0.35)');
         bloom.addColorStop(1, 'rgba(6, 182, 212, 0)');
         ctx.fillStyle = bloom;
         ctx.beginPath();
-        ctx.arc(cx, cy, 36 * breath, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 38 * breath, 0, Math.PI * 2);
         ctx.fill();
 
         // Hot white core
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = '#06b6d4';
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 14;
         ctx.beginPath();
         ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
         ctx.fill();
@@ -169,7 +167,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
         return;
       }
 
-      // 2. Enable Additive Blending (The secret to Astra luminous glow!)
+      // 2. Enable Additive Blending for luminous glow
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
@@ -193,11 +191,11 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
           targetPos
         );
 
-        p.vx += forces.x * dt * 55;
-        p.vy += forces.y * dt * 55;
+        p.vx += forces.x * dt * 50;
+        p.vy += forces.y * dt * 50;
 
         // Friction damping
-        const friction = currentStage === 'FORMATION' ? 0.89 : 0.94;
+        const friction = currentStage === 'FORMATION' ? 0.90 : 0.94;
         p.vx *= friction;
         p.vy *= friction;
 
@@ -214,14 +212,14 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
         if (p.trail.length > p.maxTrailLength) p.trail.shift();
 
         // Render silky ribbon trail
-        if (p.trail.length > 2 && (Math.abs(p.vx) > 0.3 || Math.abs(p.vy) > 0.3)) {
+        if (p.trail.length > 2 && (Math.abs(p.vx) > 0.25 || Math.abs(p.vy) > 0.25)) {
           ctx.beginPath();
           ctx.moveTo(p.trail[0].x, p.trail[0].y);
           for (let k = 1; k < p.trail.length; k++) {
             ctx.lineTo(p.trail[k].x, p.trail[k].y);
           }
           ctx.strokeStyle = p.color;
-          ctx.globalAlpha = alpha * 0.38;
+          ctx.globalAlpha = alpha * 0.35;
           ctx.lineWidth = radius * 0.8;
           ctx.stroke();
         }
@@ -262,7 +260,7 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage, elapsedTime
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none w-full h-full z-10"
+      className="absolute inset-0 pointer-events-none w-full h-full z-10 will-change-transform"
       aria-hidden="true"
     />
   );

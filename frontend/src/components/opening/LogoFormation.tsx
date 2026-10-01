@@ -89,9 +89,21 @@ export const LogoFormation: React.FC<LogoFormationProps> = ({
 
           {/* Luminous Light Sweep Across Infinity Paths */}
           {showLogoCore && (
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div
+              className="absolute inset-0 overflow-hidden pointer-events-none"
+              style={{
+                WebkitMaskImage: 'url(/cretivra-core.png)',
+                maskImage: 'url(/cretivra-core.png)',
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+              }}
+            >
               <div
-                className="w-1/3 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/50 to-transparent blur-sm"
+                className="w-1/3 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/70 to-transparent blur-xs"
                 aria-hidden="true"
               />
             </div>
