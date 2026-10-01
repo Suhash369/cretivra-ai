@@ -18,6 +18,10 @@ class LoginSchema(BaseModel):
     email: str
     password: str
 
+class ResetPasswordSchema(BaseModel):
+    email: str
+    new_password: str
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -128,3 +132,28 @@ def get_current_user_profile(user: UserDB = Depends(get_required_user)):
         "full_name": user.full_name,
         "created_at": user.created_at.isoformat() if user.created_at else None
     }
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordSchema, db: Session = Depends(get_db)):
+    """Reset user password securely."""
+    email_clean = payload.email.lower().strip()
+    user = db.query(UserDB).filter(UserDB.email == email_clean).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="No account found with this email.")
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    user.password_hash = hash_password(payload.new_password)
+    db.commit()
+    logger.info(f"Password reset successfully for: {user.email}")
+    token = create_access_token(user.id, user.email)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "created_at": user.created_at.isoformat() if user.created_at else None
+        }
+    }
+

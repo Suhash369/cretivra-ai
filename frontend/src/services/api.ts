@@ -65,6 +65,23 @@ export async function loginUserApi(payload: { email: string; password: string })
   return res.json();
 }
 
+export async function resetPasswordApi(payload: { email: string; new_password: string }): Promise<{
+  access_token: string;
+  token_type: string;
+  user: { id: string; email: string; full_name?: string };
+}> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Password reset failed');
+  }
+  return res.json();
+}
+
 export async function fetchCurrentUserProfileApi(): Promise<{ id: string; email: string; full_name?: string }> {
   const res = await fetch(`${API_BASE}/auth/me`, {
     headers: { ...getAuthHeaders() },

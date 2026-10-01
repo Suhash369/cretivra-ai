@@ -2,17 +2,17 @@ import React, { useState } from "react";
 import { X, Mail, Lock, User, LogIn, UserPlus, Sparkles } from "lucide-react";
 import { CretivraMark } from "../common/CretivraLogo";
 
-import { loginUserApi, registerUserApi } from "../../services/api";
+import { loginUserApi, registerUserApi, resetPasswordApi } from "../../services/api";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLoginSuccess: (user: any, token: string, isNewRegistration?: boolean) => void;
-  initialTab?: "login" | "register";
+  initialTab?: "login" | "register" | "reset";
 }
 
 export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login" }: AuthModalProps) {
-  const [tab, setTab] = useState<"login" | "register">(initialTab);
+  const [tab, setTab] = useState<"login" | "register" | "reset">(initialTab);
 
   React.useEffect(() => {
     if (initialTab) setTab(initialTab);
@@ -35,8 +35,10 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login
       const isRegistering = tab === "register";
       if (tab === "login") {
         data = await loginUserApi({ email, password });
-      } else {
+      } else if (tab === "register") {
         data = await registerUserApi({ email, password, full_name: fullName });
+      } else {
+        data = await resetPasswordApi({ email, new_password: password });
       }
 
       // Save token and user info
@@ -46,7 +48,7 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login
       onLoginSuccess(data.user, data.access_token, isRegistering);
       onClose();
     } catch (err: any) {
-      setError(err.message || "Authentication failed. Please try again.");
+      setError(err.message || "Authentication failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -148,7 +150,20 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-slate-300">
+                {tab === "reset" ? "New Password" : "Password"}
+              </label>
+              {tab === "login" && (
+                <button
+                  type="button"
+                  onClick={() => { setTab("reset"); setError(null); }}
+                  className="text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
             <div className="relative">
               <Lock size={16} className="absolute left-3 top-3 text-slate-400" />
               <input
@@ -173,12 +188,28 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess, initialTab = "login
               <>
                 <LogIn size={18} /> Sign In to Cretivra
               </>
-            ) : (
+            ) : tab === "register" ? (
               <>
                 <Sparkles size={18} /> Create Account
               </>
+            ) : (
+              <>
+                <Lock size={18} /> Reset Password & Sign In
+              </>
             )}
           </button>
+
+          {tab === "reset" && (
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => { setTab("login"); setError(null); }}
+                className="text-xs text-slate-400 hover:text-cyan-300 transition-colors"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          )}
         </form>
 
         <p className="text-[10px] text-slate-500 text-center mt-4">

@@ -17,22 +17,21 @@ def _build_engine(target_url: str):
             connect_args={"check_same_thread": False},
             pool_pre_ping=True
         )
-    # PostgreSQL configuration with strict network timeouts and keepalives
+    # PostgreSQL / Supabase configuration with robust keepalives
     connect_args = {
-        "connect_timeout": 3,
+        "connect_timeout": 10,
         "sslmode": "require",
         "keepalives": 1,
-        "keepalives_idle": 3,
-        "keepalives_interval": 2,
-        "keepalives_count": 2,
-        "options": "-c statement_timeout=4000"
+        "keepalives_idle": 10,
+        "keepalives_interval": 3,
+        "keepalives_count": 3
     }
     return create_engine(
         target_url,
         connect_args=connect_args,
         pool_pre_ping=True,
         pool_recycle=300,
-        pool_timeout=3,
+        pool_timeout=10,
         pool_size=5,
         max_overflow=5
     )
@@ -122,6 +121,7 @@ def fallback_to_sqlite():
 
 def init_db():
     global engine, SessionLocal, db_url
+    import time
     from app.database import models  # noqa
 
     if db_url.startswith("sqlite"):
@@ -133,14 +133,26 @@ def init_db():
             logger.error(f"SQLite initialization error: {e}")
         return
 
-    try:
-        # Pre-verify database responsiveness with a quick ping
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-        Base.metadata.create_all(bind=engine)
-        logger.info("Primary database schema initialized successfully.")
-    except Exception as e:
-        logger.warning(f"Primary database connection unavailable or timed out: {e}. Falling back to resilient SQLite database...")
-        fallback_to_sqlite()
+    # For PostgreSQL / Supabase: verify connection with retry
+    connected = False
+    for attempt in range(1, 4):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            connected = True
+            logger.info(f"Supabase PostgreSQL connected successfully (attempt {attempt}).")
+            break
+        except Exception as ping_err:
+            logger.warning(f"Database ping attempt {attempt} failed: {ping_err}")
+            time.sleep(1)
+
+    if connected:
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Primary PostgreSQL schema verified.")
+        except Exception as schema_err:
+            logger.warning(f"Schema check notice (non-fatal): {schema_err}")
+    else:
+        logger.error("Could not connect to PostgreSQL after 3 attempts.")
 
 

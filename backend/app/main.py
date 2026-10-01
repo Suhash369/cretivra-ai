@@ -16,21 +16,17 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.database.database import init_db, fallback_to_sqlite
+from app.database.database import init_db
 from app.api import health, models, conversations, chat, files, settings as settings_api, auth, images, suggestions, agents as agents_api, playground as playground_api, tools_api, projects_api, artifacts_api, voice
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting Asura AI by Cretivra service...")
     try:
-        # Strict 3-second hard timeout for DB initialization so Uvicorn binds port instantly
-        await asyncio.wait_for(asyncio.to_thread(init_db), timeout=3.0)
-    except asyncio.TimeoutError:
-        logger.warning("Primary database check timed out after 3.0s — switching immediately to resilient SQLite to guarantee instant port binding.")
-        fallback_to_sqlite()
+        # Allow sufficient time for remote database connection
+        await asyncio.wait_for(asyncio.to_thread(init_db), timeout=10.0)
     except Exception as e:
-        logger.error(f"Database initialization encountered non-fatal error: {e}", exc_info=True)
-        fallback_to_sqlite()
+        logger.warning(f"Database initialization non-fatal notice: {e}")
 
     try:
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
