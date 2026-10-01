@@ -97,22 +97,28 @@ async def generate_image(request: ImageGenerateRequest):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
 
-    target_model = request.model or "nanobanana2"
+    target_model = request.model or "flux-realism"
+    effective_prompt = request.prompt
+    if request.enhance:
+        effective_prompt = await image_service.expand_prompt_chatgpt_grade(
+            prompt=request.prompt,
+            style=request.style
+        )
 
     # 1. Standard multi-engine generation with automatic watermark & logo removal
     result = image_service.generate_image_url(
-        prompt=request.prompt,
+        prompt=effective_prompt,
         aspect_ratio=request.aspect_ratio,
         width=request.width,
         height=request.height,
         model=target_model,
         style=request.style,
-        enhance=request.enhance,
+        enhance=False,
         seed=request.seed,
         negative_prompt=request.negative_prompt,
         reference_image=request.reference_image
     )
-    result["provider"] = "Cretivra Vision Engine (Zero Watermark & No Logos)"
+    result["provider"] = "Cretivra Vision Engine (Powered by Gemini & OpenRouter)"
     return result
 
 @router.post("/enhance-prompt")
@@ -123,10 +129,9 @@ async def enhance_prompt_endpoint(request: EnhancePromptRequest):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty.")
     
-    enhanced = image_service.enhance_prompt(
+    enhanced = await image_service.expand_prompt_chatgpt_grade(
         prompt=request.prompt,
-        style=request.style,
-        model=request.model
+        style=request.style
     )
     return {
         "original_prompt": request.prompt,

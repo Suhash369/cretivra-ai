@@ -35,8 +35,8 @@ class ImageService:
         "nano-banana-2": "nanobanana2",
         "nanobanana": "nanobanana2",
         "nanobanana2": "nanobanana2",
-        "nanobanana-pro": "nanobanana-pro",
-        "nano-banana-pro": "nanobanana-pro",
+        "nanobanana-pro": "flux-pro",
+        "nano-banana-pro": "flux-pro",
         "nano banana": "nanobanana2",
         "cretivra-gemini": "nanobanana2",
         "gemini": "nanobanana2",
@@ -160,13 +160,110 @@ class ImageService:
             return f"{clean}, {', '.join(additions)}"
         return clean
 
+    def _finalize_expanded_text(self, text: str, style: Optional[str] = None) -> str:
+        clean = text.replace('"', '').replace('**', '').strip()
+        if style and style.lower() not in clean.lower():
+            clean = f"{clean}, in {style} style"
+        return clean
+
+    async def expand_prompt_chatgpt_grade(
+        self,
+        prompt: str,
+        style: Optional[str] = None
+    ) -> str:
+        """
+        Transforms a concise user image request into an award-winning, ChatGPT DALL-E 3 grade visual prompt.
+        Cascades dynamically across Gemini, OpenRouter, and Groq to specify composition, lighting,
+        color palette, typography, and textures.
+        """
+        clean_p = prompt.strip()
+        if len(clean_p.split()) > 50:
+            return self._finalize_expanded_text(clean_p, style=style)
+
+        is_poster = bool(re.search(r"\b(poster|banner|invitation|card|flyer|marriage|wedding)\b", clean_p, re.IGNORECASE))
+
+        sys_prompt = (
+            "You are an elite Creative Visual Director and Prompt Engineer for state-of-the-art AI image synthesis (like ChatGPT DALL-E 3). "
+            "When given an image or poster request, expand it into a single, breathtaking, highly descriptive visual prompt that produces an award-winning visual masterpiece. "
+            "Specify visual composition, cinematic lighting, color palette, surface textures, background atmosphere, and artistic details. "
+            + ("For posters, weddings, or celebrations: specify elegant gold foil embossed typography (such as 'Save the Date' or 'Wedding Celebration'), opulent floral borders, rich royal silk or velvet background, and romantic cinematic lighting. " if is_poster else "")
+            + (f"Ensure the visual adheres to the '{style}' artistic style. " if style else "")
+            + "Output ONLY the expanded visual prompt in one cohesive paragraph. NEVER include explanations, markdown, or quotation marks."
+        )
+
+        # 1. Try Gemini
+        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
+        if gemini_key and not gemini_key.strip().startswith("your_"):
+            clean_gkey = re.sub(r'[\r\n\t ]+', '', gemini_key)
+            for g_model in ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash-lite"]:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={clean_gkey}"
+                    payload = {
+                        "contents": [{"parts": [{"text": f"{sys_prompt}\n\nUser Request: {clean_p}"}]}],
+                        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 250}
+                    }
+                    async with httpx.AsyncClient(timeout=8.0) as client:
+                        r = await client.post(url, json=payload)
+                        if r.status_code == 200:
+                            candidates = r.json().get("candidates", [])
+                            if candidates:
+                                text = candidates[0].get("content", {}).get("parts", [])[0].get("text", "").strip()
+                                if text and len(text) > 25:
+                                    return self._finalize_expanded_text(text, style=style)
+                except Exception as e:
+                    logger.debug(f"Gemini prompt expansion notice: {e}")
+
+        # 2. Try OpenRouter
+        or_key = getattr(settings, "OPENROUTER_API_KEY", "")
+        if or_key:
+            try:
+                url = "https://openrouter.ai/api/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {or_key}", "Content-Type": "application/json"}
+                payload = {
+                    "model": "meta-llama/llama-3.3-70b-instruct",
+                    "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": clean_p}],
+                    "max_tokens": 250,
+                    "temperature": 0.7
+                }
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    r = await client.post(url, json=payload, headers=headers)
+                    if r.status_code == 200:
+                        content = r.json()["choices"][0]["message"]["content"].strip()
+                        if content and len(content) > 25:
+                            return self._finalize_expanded_text(content, style=style)
+            except Exception as e:
+                logger.debug(f"OpenRouter prompt expansion notice: {e}")
+
+        # 3. Try Groq (Ultra-fast 200ms)
+        groq_key = getattr(settings, "GROQ_API_KEY", "")
+        if groq_key:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+                payload = {
+                    "model": "qwen/qwen3.8-27b",
+                    "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": clean_p}],
+                    "max_tokens": 250,
+                    "temperature": 0.7
+                }
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    r = await client.post(url, json=payload, headers=headers)
+                    if r.status_code == 200:
+                        content = r.json()["choices"][0]["message"]["content"].strip()
+                        if content and len(content) > 25:
+                            return self._finalize_expanded_text(content, style=style)
+            except Exception as e:
+                logger.debug(f"Groq prompt expansion notice: {e}")
+
+        return self.enhance_prompt(clean_p, style=style)
+
     def generate_image_url(
         self,
         prompt: str,
         width: Optional[int] = None,
         height: Optional[int] = None,
         aspect_ratio: Optional[str] = "1:1",
-        model: str = "nanobanana2",
+        model: str = "flux-realism",
         style: Optional[str] = None,
         enhance: bool = True,
         seed: Optional[int] = None,
@@ -178,7 +275,13 @@ class ImageService:
         Also produces a local proxy_url to prevent client-side CORS and Cloudflare Turnstile blocks.
         """
         clean_prompt = prompt.strip()
-        actual_width, actual_height = self.resolve_dimensions(aspect_ratio, width, height)
+        effective_aspect = aspect_ratio or "1:1"
+        # Smart aspect ratio: posters, invitations, and wedding cards are vertical/portrait (3:4) by default
+        if effective_aspect == "1:1" and width is None and height is None:
+            if re.search(r"\b(poster|banner|invitation|card|flyer|marriage|wedding)\b", clean_prompt, re.IGNORECASE):
+                effective_aspect = "3:4"
+
+        actual_width, actual_height = self.resolve_dimensions(effective_aspect, width, height)
         engine = self.resolve_engine(model)
         actual_seed = seed if (seed is not None and seed > 0) else random.randint(100000, 9999999)
 
@@ -228,7 +331,7 @@ class ImageService:
             "proxy_url": proxy_url,
             "model": engine,
             "model_id": model,
-            "aspect_ratio": aspect_ratio or f"{actual_width}:{actual_height}",
+            "aspect_ratio": effective_aspect or f"{actual_width}:{actual_height}",
             "width": actual_width,
             "height": actual_height,
             "seed": actual_seed,
@@ -322,6 +425,72 @@ class ImageService:
                         logger.warning(f"Gemini {model_name} returned status {res.status_code}: {res.text[:150]}")
                 except Exception as e:
                     logger.warning(f"Gemini {model_name} exception: {e}")
+        return None
+
+    async def generate_with_openrouter(
+        self,
+        prompt: str,
+        aspect_ratio: str = "1:1"
+    ) -> Optional[Tuple[bytes, str]]:
+        """
+        Synthesizes native AI visuals directly via OpenRouter image generation models.
+        """
+        key = getattr(settings, "OPENROUTER_API_KEY", "")
+        if not key:
+            return None
+
+        clean_key = re.sub(r'[\r\n\t ]+', '', key)
+        headers = {
+            "Authorization": f"Bearer {clean_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://asura-ai.cretivra.com",
+            "X-Title": "Cretivra AI"
+        }
+
+        openrouter_models = [
+            "google/gemini-2.5-flash-image",
+            "google/gemini-3.1-flash-image",
+            "openai/gpt-5-image-mini"
+        ]
+
+        payload = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": f"Generate a high-definition image of: {prompt}. Masterpiece, 8k resolution, cinematic lighting, aspect ratio {aspect_ratio}."
+                }
+            ]
+        }
+
+        async with httpx.AsyncClient(timeout=35.0) as client:
+            for model_name in openrouter_models:
+                try:
+                    payload["model"] = model_name
+                    res = await client.post("https://openrouter.ai/api/v1/chat/completions", json=payload, headers=headers)
+                    if res.status_code == 200:
+                        data = res.json()
+                        choices = data.get("choices", [])
+                        if choices:
+                            msg = choices[0].get("message", {})
+                            content = msg.get("content", "")
+                            img_match = re.search(r'(https?://[^\s)"]+\.(?:png|jpg|jpeg|webp))', content, re.IGNORECASE)
+                            if img_match:
+                                img_url = img_match.group(1)
+                                img_resp = await client.get(img_url, timeout=15.0)
+                                if img_resp.status_code == 200:
+                                    logger.info(f"Synthesized visual via OpenRouter ({model_name})")
+                                    return img_resp.content, img_resp.headers.get("content-type", "image/png")
+                            data_url_match = re.search(r'data:(image/[^;]+);base64,([A-Za-z0-9+/=]+)', content)
+                            if data_url_match:
+                                mime = data_url_match.group(1)
+                                b64 = data_url_match.group(2)
+                                logger.info(f"Synthesized visual via OpenRouter ({model_name})")
+                                return base64.b64decode(b64), mime
+                    elif res.status_code in [402, 429]:
+                        logger.warning(f"OpenRouter {model_name} limit ({res.status_code}), cascading to next engine.")
+                        break
+                except Exception as e:
+                    logger.warning(f"OpenRouter {model_name} exception: {e}")
         return None
 
     async def fetch_image_bytes(self, url: str) -> Tuple[bytes, str]:

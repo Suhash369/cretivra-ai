@@ -137,15 +137,25 @@ class ChatService:
                 enhance_flag = False
                 diagram_style = "diagram"
                 display_title = f"{circuit_topic} Circuit Diagram"
+                chosen_prompt = final_image_prompt
+                is_poster = False
             else:
                 circuit_topic = final_image_prompt
-                enhance_flag = True
+                enhance_flag = False
                 diagram_style = None
-                target_aspect = "1:1"
                 display_title = final_image_prompt.title()
+                is_poster = bool(re.search(r"\b(poster|banner|invitation|card|flyer|marriage|wedding)\b", final_image_prompt, re.IGNORECASE))
+                target_aspect = "3:4" if is_poster else "1:1"
+                target_engine = "flux-realism"
+
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Architecting creative visual composition with Gemini Neural Core...'})}\n\n"
+                
+                # Expand prompt like ChatGPT DALL-E 3
+                expanded = await image_service.expand_prompt_chatgpt_grade(final_image_prompt)
+                chosen_prompt = expanded or final_image_prompt
 
             img_data = image_service.generate_image_url(
-                prompt=final_image_prompt,
+                prompt=chosen_prompt,
                 aspect_ratio=target_aspect,
                 model=target_engine,
                 style=diagram_style,
@@ -156,7 +166,15 @@ class ChatService:
             image_card = f"![{display_title}]({rendered_url})\n\n"
 
             if not is_technical_diagram and not is_dedicated_image_model and not any(w in user_message_content.lower() for w in ["explain", "how", "what", "tell", "describe", "details"]):
-                image_reply = f"Here is your generated visual for: **{display_title}**\n\n{image_card}"
+                design_desc = ""
+                if is_poster:
+                    design_desc = (
+                        "\n\n### 🎨 Design Highlights:\n"
+                        "- **Aesthetic**: Opulent royal celebration with gold foil embossed calligraphy.\n"
+                        "- **Framing**: Symmetrical composition with ornate floral borders and golden mandala accents.\n"
+                        "- **Atmosphere**: Warm cinematic lighting, romantic golden-hour glow, and floating bokeh.\n"
+                    )
+                image_reply = f"Here is your generated high-definition visual for **{display_title}**:\n\n{image_card}{design_desc}"
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': image_reply, 'full_content': image_reply, 'done': True, 'reasoning_status': None})}\n\n"
                 conversation_service.add_message(
                     db=db,
