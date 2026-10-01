@@ -65,7 +65,7 @@ export function IntelligenceCacheCard({
 
   return (
     <div className="mb-3 max-w-xl transition-all duration-200">
-      {/* Sleek Claude-Style Interactive Container */}
+      {/* Sleek Cretivra Interactive Container */}
       <div 
         className={`relative overflow-hidden rounded-xl border transition-all duration-200 shadow-sm ${
           isGenerating 

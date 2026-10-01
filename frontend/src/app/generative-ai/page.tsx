@@ -91,8 +91,8 @@ export default function GenerativeAiPage() {
           <h2 className="text-base font-bold text-white">Multi-Model Cloud Routing</h2>
           <p className="text-xs text-gray-400 leading-relaxed">
             Intelligently route low-latency queries to lightweight edge models and
-            deep multi-step reasoning to frontier models (DeepSeek R1, GPT, Claude,
-            edge neural cores) while minimizing token expenditure.
+            deep multi-step reasoning to frontier Cretivra neural cores while
+            optimizing compute latency.
           </p>
         </div>
 

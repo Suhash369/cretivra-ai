@@ -118,7 +118,7 @@ async def generate_image(request: ImageGenerateRequest):
         negative_prompt=request.negative_prompt,
         reference_image=request.reference_image
     )
-    result["provider"] = "Cretivra Vision Engine (Powered by Gemini & OpenRouter)"
+    result["provider"] = "Cretivra Vision Studio"
     return result
 
 @router.post("/enhance-prompt")

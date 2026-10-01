@@ -444,7 +444,7 @@ class StitchEngine:
         <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
           <div class="text-purple-400 text-xl mb-1"><i class="fa-solid fa-microchip"></i></div>
           <h4 class="font-bold text-white text-sm">AI & Agentic Systems</h4>
-          <p class="text-xs text-slate-400 leading-relaxed">LangChain, Ollama Local Models, Gemini 2.5, DAG Task Planners, Self-Correction.</p>
+          <p class="text-xs text-slate-400 leading-relaxed">Cretivra Neural Engine, Autonomous DAG Task Planners, Self-Correction, Distributed Workflows.</p>
         </div>
       </div>
     </div>

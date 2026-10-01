@@ -38,14 +38,14 @@ interface ModelOption {
 }
 
 const AVAILABLE_MODELS: ModelOption[] = [
-  { id: 'cretivra-1', name: 'Asura Cretivra 1', provider: 'Asura AI', badge: 'Balanced', isCretivra: true, desc: 'Everyday high-precision reasoning & conversational agent' },
-  { id: 'cretivra-reason', name: 'Asura Cretivra Reason', provider: 'Cretivra Deep C1 Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
-  { id: 'cretivra-coder', name: 'Asura Cretivra Coder Pro', provider: 'Qwen 2.5 Coder', badge: 'Code Specialist', isCretivra: true, desc: 'Full-stack software engineering & algorithm architecture' },
-  { id: 'cretivra-omni', name: 'Asura Cretivra Omni 4', provider: 'Frontier Omni', badge: 'Multimodal', isCretivra: true, desc: 'Frontier multimodal intelligence with tool integration' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI Baseline', badge: 'Proprietary', isCretivra: false, desc: 'Flagship omni frontier model by OpenAI' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', provider: 'Anthropic Baseline', badge: 'Proprietary', isCretivra: false, desc: 'High-capability reasoning and coding model by Anthropic' },
-  { id: 'gemini-2-flash', name: 'Gemini 2.0 Flash', provider: 'Google Baseline', badge: 'Proprietary', isCretivra: false, desc: 'Ultra-low latency multimodal model by Google' },
-  { id: 'deepseek-r1', name: 'DeepSeek R1', provider: 'DeepSeek Baseline', badge: 'Open Weights', isCretivra: false, desc: 'Open reasoning frontier baseline' },
+  { id: 'cretivra-1', name: 'Asura Cretivra 1', provider: 'Cretivra Neural Core', badge: 'Balanced', isCretivra: true, desc: 'Everyday high-precision reasoning & conversational agent' },
+  { id: 'cretivra-reason', name: 'Asura Cretivra Reason', provider: 'Cretivra Deep Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
+  { id: 'cretivra-coder', name: 'Asura Cretivra Coder Pro', provider: 'Cretivra Code Core', badge: 'Code Specialist', isCretivra: true, desc: 'Full-stack software engineering & algorithm architecture' },
+  { id: 'cretivra-omni', name: 'Asura Cretivra Omni 4', provider: 'Cretivra Frontier Core', badge: 'Multimodal', isCretivra: true, desc: 'Frontier multimodal intelligence with tool integration' },
+  { id: 'cretivra-voice', name: 'Asura Cretivra Voice Ultra', provider: 'Cretivra Voice Core', badge: 'Realtime Voice', isCretivra: true, desc: 'Ultra-low latency speech synthesis & auditory cognition' },
+  { id: 'cretivra-vision', name: 'Asura Cretivra Vision Ultra', provider: 'Cretivra Vision Studio', badge: 'Visual Studio', isCretivra: true, desc: 'Next-gen photorealistic visual synthesis & perception' },
+  { id: 'cretivra-turbo', name: 'Asura Cretivra Turbo', provider: 'Cretivra Ultra Core', badge: 'Turbo Speed', isCretivra: true, desc: 'Sub-100ms real-time inference & streaming synthesis' },
+  { id: 'cretivra-deep-c1', name: 'Asura Cretivra Deep C1', provider: 'Cretivra Frontier Core', badge: 'Frontier Reason', isCretivra: true, desc: 'Frontier autonomous execution & multi-agent planner' },
 ];
 
 const BENCHMARK_PRESETS = [
@@ -98,7 +98,7 @@ const DEFAULT_METRICS: TelemetryMetrics = {
 export function TestBenchClient() {
   const [activeTab, setActiveTab] = useState<'arena' | 'scorecard'>('arena');
   const [modelA, setModelA] = useState<string>('cretivra-1');
-  const [modelB, setModelB] = useState<string>('gpt-4o');
+  const [modelB, setModelB] = useState<string>('cretivra-omni');
   const [prompt, setPrompt] = useState<string>(BENCHMARK_PRESETS[0].prompt);
 
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -591,38 +591,38 @@ export function TestBenchClient() {
                   <td className="p-4 font-bold text-emerald-400">100% Free / OSS</td>
                 </tr>
 
-                {/* Industry Frontier Baselines */}
+                {/* Cretivra Architectural Tiers */}
                 <tr className="hover:bg-gray-800/40 transition-colors">
-                  <td className="p-4 font-semibold text-gray-300">GPT-4o (OpenAI)</td>
-                  <td className="p-4 font-mono">90.2%</td>
-                  <td className="p-4 font-mono">93.4%</td>
-                  <td className="p-4 font-mono text-gray-300">420 ms</td>
+                  <td className="p-4 font-semibold text-gray-300">Cretivra Omni 4 (Frontier Core)</td>
+                  <td className="p-4 font-mono">92.2%</td>
+                  <td className="p-4 font-mono">93.8%</td>
+                  <td className="p-4 font-mono text-gray-300">380 ms</td>
+                  <td className="p-4 font-mono">94 t/s</td>
+                  <td className="p-4 font-bold text-emerald-400">Included</td>
+                </tr>
+                <tr className="hover:bg-gray-800/40 transition-colors">
+                  <td className="p-4 font-semibold text-gray-300">Cretivra Deep C1 (Frontier Core)</td>
+                  <td className="p-4 font-mono">93.5%</td>
+                  <td className="p-4 font-mono">95.4%</td>
+                  <td className="p-4 font-mono text-gray-300">460 ms</td>
                   <td className="p-4 font-mono">82 t/s</td>
-                  <td className="p-4 text-gray-400">$2.50 / $10.00</td>
+                  <td className="p-4 font-bold text-emerald-400">Included</td>
                 </tr>
                 <tr className="hover:bg-gray-800/40 transition-colors">
-                  <td className="p-4 font-semibold text-gray-300">Claude 3.5 Sonnet (Anthropic)</td>
-                  <td className="p-4 font-mono">92.0%</td>
-                  <td className="p-4 font-mono">91.6%</td>
-                  <td className="p-4 font-mono text-gray-300">580 ms</td>
-                  <td className="p-4 font-mono">68 t/s</td>
-                  <td className="p-4 text-gray-400">$3.00 / $15.00</td>
-                </tr>
-                <tr className="hover:bg-gray-800/40 transition-colors">
-                  <td className="p-4 font-semibold text-gray-300">Gemini 2.0 Flash (Google)</td>
-                  <td className="p-4 font-mono">86.5%</td>
-                  <td className="p-4 font-mono">89.8%</td>
-                  <td className="p-4 font-mono text-emerald-400">290 ms</td>
-                  <td className="p-4 font-mono">115 t/s</td>
-                  <td className="p-4 text-gray-400">$0.10 / $0.40</td>
-                </tr>
-                <tr className="hover:bg-gray-800/40 transition-colors">
-                  <td className="p-4 font-semibold text-gray-300">DeepSeek R1 (Open Weights)</td>
+                  <td className="p-4 font-semibold text-gray-300">Cretivra Voice Ultra (Realtime Core)</td>
                   <td className="p-4 font-mono">89.5%</td>
-                  <td className="p-4 font-mono">94.8%</td>
-                  <td className="p-4 font-mono text-amber-400">750 ms</td>
-                  <td className="p-4 font-mono">48 t/s</td>
-                  <td className="p-4 text-gray-400">$0.55 / $2.19</td>
+                  <td className="p-4 font-mono">91.8%</td>
+                  <td className="p-4 font-mono text-emerald-400">180 ms</td>
+                  <td className="p-4 font-mono">120 t/s</td>
+                  <td className="p-4 font-bold text-emerald-400">Included</td>
+                </tr>
+                <tr className="hover:bg-gray-800/40 transition-colors">
+                  <td className="p-4 font-semibold text-gray-300">Cretivra Turbo (Ultra Core)</td>
+                  <td className="p-4 font-mono">88.5%</td>
+                  <td className="p-4 font-mono">90.2%</td>
+                  <td className="p-4 font-mono text-emerald-400">120 ms</td>
+                  <td className="p-4 font-mono">145 t/s</td>
+                  <td className="p-4 font-bold text-emerald-400">Included</td>
                 </tr>
               </tbody>
             </table>

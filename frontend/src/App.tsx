@@ -1189,7 +1189,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                     <span>Search</span>
                   </button>
 
-                  {/* Deep Reasoning Toggle (Claude / DeepSeek style) */}
+                  {/* Deep Reasoning Toggle */}
                   <button
                     type="button"
                     onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}

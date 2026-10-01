@@ -65,7 +65,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             <span className="font-semibold text-slate-700 dark:text-gray-300">{isUser ? 'You' : 'Asura AI by Cretivra'}</span>
           </div>
 
-          {/* Claude-style Intelligence Cache Indicator */}
+          {/* Cretivra Intelligence Cache Indicator */}
           {!isUser && (
             <>
               <IntelligenceCacheCard

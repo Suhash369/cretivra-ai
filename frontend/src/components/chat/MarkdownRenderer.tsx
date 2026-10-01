@@ -239,7 +239,7 @@ function preprocessMarkdown(raw: string): string {
   if (!raw) return '';
   let text = raw;
 
-  // 1. Strip internal reasoning/thinking tags (DeepSeek-R1, QwQ, Gemini Thinking)
+  // 1. Strip internal reasoning/thinking tags
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
   text = text.replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '');
   // Strip unclosed <think> during active stream

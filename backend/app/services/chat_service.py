@@ -148,7 +148,7 @@ class ChatService:
                 target_aspect = "3:4" if is_poster else "1:1"
                 target_engine = "flux-realism"
 
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Architecting creative visual composition with Gemini Neural Core...'})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Architecting creative visual composition with Cretivra Neural Core...'})}\n\n"
                 
                 # Expand prompt with Creative Director engine
                 expanded = await image_service.expand_prompt_creative(final_image_prompt)
