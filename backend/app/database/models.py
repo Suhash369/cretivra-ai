@@ -1,11 +1,14 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Integer, Float, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.database.database import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
+
+def utc_now():
+    return datetime.now(timezone.utc)
 
 class UserDB(Base):
     __tablename__ = "users"
@@ -18,7 +21,7 @@ class UserDB(Base):
     is_subscribed = Column(Boolean, default=False)
     subscription_expires_at = Column(DateTime, nullable=True)
     plan_name = Column(String, default="15-Day Pass")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     conversations = relationship("ConversationDB", back_populates="user", cascade="all, delete-orphan")
     payments = relationship("PaymentDB", back_populates="user", cascade="all, delete-orphan", order_by="desc(PaymentDB.created_at)")
@@ -33,8 +36,8 @@ class ConversationDB(Base):
     title = Column(String, default="New Conversation")
     model_id = Column(String, default="cretivra-1", nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     user = relationship("UserDB", back_populates="conversations")
     messages = relationship("MessageDB", back_populates="conversation", cascade="all, delete-orphan", order_by="MessageDB.created_at")
@@ -48,8 +51,8 @@ class MessageDB(Base):
     role = Column(String, nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
     reasoning_status = Column(String, nullable=True)  # Thinking, Analyzing, Completed, etc.
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     conversation = relationship("ConversationDB", back_populates="messages")
     attachments = relationship("AttachmentDB", back_populates="message")
@@ -64,7 +67,7 @@ class AttachmentDB(Base):
     mime_type = Column(String, nullable=False)
     path = Column(String, nullable=False)
     size = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     conversation = relationship("ConversationDB", back_populates="attachments")
     message = relationship("MessageDB", back_populates="attachments")
@@ -83,14 +86,14 @@ class ModelSettingDB(Base):
     version = Column(String, default="1.0")
     icon = Column(String, nullable=True)
     category = Column(String, default="General")
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 class SystemSettingDB(Base):
     __tablename__ = "system_settings"
 
     key = Column(String, primary_key=True)
     value = Column(Text, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 class PaymentDB(Base):
     __tablename__ = "payments"
@@ -105,7 +108,7 @@ class PaymentDB(Base):
     status = Column(String, default="completed")  # completed, pending, failed
     plan_name = Column(String, default="15-Day Pass")
     days_added = Column(Integer, default=15)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     user = relationship("UserDB", back_populates="payments")
 
@@ -122,7 +125,7 @@ class SuggestionDB(Base):
     page_url = Column(String, nullable=True)
     device_info = Column(String, nullable=True)
     status = Column(String, default="pending")  # pending, reviewed, resolved
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     user = relationship("UserDB", back_populates="suggestions")
 
@@ -138,8 +141,8 @@ class ProjectDB(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     root_path = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     user = relationship("UserDB", back_populates="projects")
     files = relationship("ProjectFileDB", back_populates="project", cascade="all, delete-orphan")
@@ -157,8 +160,8 @@ class ProjectFileDB(Base):
     content = Column(Text, nullable=True)
     size = Column(Integer, default=0)
     mime_type = Column(String, default="text/plain")
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
     project = relationship("ProjectDB", back_populates="files")
 
@@ -170,7 +173,7 @@ class ProjectMemoryDB(Base):
     key = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     category = Column(String, default="requirement")  # requirement, decision, architecture, issue
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     project = relationship("ProjectDB", back_populates="memories")
 
@@ -186,7 +189,7 @@ class AgentDB(Base):
     capabilities = Column(JSON, default=list)
     is_custom = Column(Boolean, default=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class AgentSkillDB(Base):
     __tablename__ = "agent_skills"
@@ -200,7 +203,7 @@ class AgentSkillDB(Base):
     input_schema = Column(JSON, default=dict)
     output_schema = Column(JSON, default=dict)
     verification_rules = Column(JSON, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class AgentRunDB(Base):
     __tablename__ = "agent_runs"
@@ -212,14 +215,14 @@ class AgentRunDB(Base):
     prompt = Column(Text, nullable=False)
     intent = Column(String, default="general_task")
     status = Column(String, default="PENDING")  # PENDING, PLANNING, RUNNING, WAITING, WAITING_FOR_APPROVAL, COMPLETED, FAILED, RETRYING, CANCELLED
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=utc_now)
     completed_at = Column(DateTime, nullable=True)
     duration = Column(Float, default=0.0)
     tokens = Column(Integer, default=0)
     estimated_cost = Column(Float, default=0.0)
     result = Column(Text, nullable=True)
     error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     user = relationship("UserDB", back_populates="agent_runs")
     project = relationship("ProjectDB", back_populates="runs")
@@ -260,7 +263,7 @@ class AgentStepDB(Base):
     step_number = Column(Integer, default=1)
     step_type = Column(String, default="plan")  # plan, tool_call, observation, verification, thought
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     task = relationship("AgentTaskDB", back_populates="steps")
 
@@ -288,7 +291,7 @@ class ToolExecutionDB(Base):
     error = Column(Text, nullable=True)
     duration_ms = Column(Float, default=0.0)
     status = Column(String, default="success")  # success, failed, rejected
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     run = relationship("AgentRunDB", back_populates="executions")
 
@@ -314,7 +317,7 @@ class ArtifactDB(Base):
     mime_type = Column(String, default="application/octet-stream")
     download_url = Column(String, nullable=False)
     metadata_json = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     project = relationship("ProjectDB", back_populates="artifacts")
     run = relationship("AgentRunDB", back_populates="artifacts")
@@ -332,7 +335,7 @@ class ApprovalDB(Base):
     risk_level = Column(String, default="HIGH")  # HIGH, CRITICAL
     status = Column(String, default="pending")  # pending, approved, denied, modified
     modified_payload = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     responded_at = Column(DateTime, nullable=True)
 
     run = relationship("AgentRunDB", back_populates="approvals")
@@ -346,7 +349,7 @@ class AuditLogDB(Base):
     action = Column(String, nullable=False)
     details = Column(JSON, default=dict)
     ip_address = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class KnowledgeSourceDB(Base):
     __tablename__ = "knowledge_sources"
@@ -357,7 +360,7 @@ class KnowledgeSourceDB(Base):
     source_type = Column(String, default="file")  # file, url, text
     content = Column(Text, nullable=False)
     chunks_count = Column(Integer, default=1)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     project = relationship("ProjectDB", back_populates="knowledge_sources")
 
@@ -369,7 +372,7 @@ class WorkflowDB(Base):
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     steps_json = Column(JSON, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 class WorkflowRunDB(Base):
     __tablename__ = "workflow_runs"
@@ -378,5 +381,5 @@ class WorkflowRunDB(Base):
     workflow_id = Column(String, ForeignKey("workflows.id"), nullable=False, index=True)
     run_id = Column(String, ForeignKey("agent_runs.id"), nullable=False, index=True)
     status = Column(String, default="RUNNING")
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 

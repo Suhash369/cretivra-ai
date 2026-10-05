@@ -124,6 +124,25 @@ class ExecutionEngine:
                 task.retry_count += 1
                 task.status = "RETRYING"
                 task.input_data = replan_act.adjusted_input
+
+                # Manus 2.0 Self-Healing: If Python code failed, invoke Cretivra Coder to repair the code
+                if task.tool_name == "python_executor" and task.input_data and "code" in task.input_data:
+                    repaired_code = await self._heal_code(
+                        original_code=task.input_data.get("code", ""),
+                        error_message=exec_res.error or "Runtime error",
+                        description=task.description
+                    )
+                    if repaired_code:
+                        task.input_data["code"] = repaired_code
+                        logger.info(f"Self-healed Python code for task {task.id} (attempt {task.retry_count})")
+
+                heal_step = AgentStepDB(
+                    task_id=task.id,
+                    step_number=(len(task.steps) + 1),
+                    step_type="self_healing",
+                    content=f"Self-correction loop triggered (retry {task.retry_count}/3): {replan_act.reason}"
+                )
+                db.add(heal_step)
                 db.commit()
                 logger.info(f"Task {task.id} scheduled for self-correction: {replan_act.reason}")
                 return await self.execute_task(db, run_id, task, context)
@@ -158,6 +177,16 @@ class ExecutionEngine:
                 task.retry_count += 1
                 task.status = "RETRYING"
                 task.input_data = replan_act.adjusted_input
+
+                if task.tool_name == "python_executor" and task.input_data and "code" in task.input_data:
+                    repaired_code = await self._heal_code(
+                        original_code=task.input_data.get("code", ""),
+                        error_message=verif.feedback or "Verification check failed",
+                        description=task.description
+                    )
+                    if repaired_code:
+                        task.input_data["code"] = repaired_code
+
                 db.commit()
                 return await self.execute_task(db, run_id, task, context)
             else:
@@ -172,4 +201,43 @@ class ExecutionEngine:
         db.commit()
         return True, exec_res.output, None, None
 
+    async def _heal_code(self, original_code: str, error_message: str, description: str) -> Optional[str]:
+        """
+        Autonomously repairs failing code using Cretivra Coder LLM diagnostics.
+        """
+        try:
+            import re
+            from app.providers.ollama import ollama_provider
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Cretivra Coder, a frontier autonomous self-healing software intelligence. "
+                        "A Python script failed during execution. Analyze the traceback and fix the code completely so it runs cleanly without errors. "
+                        "Return ONLY the complete, executable Python code inside a single ```python ... ``` block. Do not include conversational text."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Task: {description}\n\nExecution Traceback / Error:\n{error_message}\n\nOriginal Code:\n```python\n{original_code}\n```"
+                }
+            ]
+            res = await ollama_provider.chat(
+                model="cretivra-coder",
+                messages=messages,
+                options={"temperature": 0.1}
+            )
+            text = res.get("message", {}).get("content", "")
+            m = re.search(r"```(?:python)?\s*(.*?)\s*```", text, re.DOTALL)
+            if m:
+                code = m.group(1).strip()
+                if code:
+                    return code
+            if text.strip() and not text.strip().startswith("{"):
+                return text.strip()
+        except Exception as e:
+            logger.warning(f"Self-healing code attempt failed: {e}")
+        return None
+
 execution_engine = ExecutionEngine()
+

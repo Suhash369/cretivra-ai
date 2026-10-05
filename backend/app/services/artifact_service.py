@@ -89,4 +89,38 @@ class ArtifactService:
         }
         return mimes.get(ext, "application/octet-stream")
 
+    def export_run_artifacts_as_zip(self, db: Session, run_id: str) -> Optional[str]:
+        """
+        Bundles all generated artifacts for an agent run into a single downloadable .zip archive.
+        """
+        import zipfile
+        artifacts = self.list_artifacts(db, run_id=run_id)
+        if not artifacts:
+            return None
+
+        zip_dir = os.path.join(self.storage_dir, "zips")
+        os.makedirs(zip_dir, exist_ok=True)
+        zip_filename = f"cretivra_run_{run_id[:8]}_artifacts.zip"
+        zip_filepath = os.path.join(zip_dir, zip_filename)
+
+        with zipfile.ZipFile(zip_filepath, "w", zipfile.ZIP_DEFLATED) as zf:
+            added_names = set()
+            for art in artifacts:
+                arcname = art.name
+                counter = 1
+                while arcname in added_names:
+                    base, ext = os.path.splitext(art.name)
+                    arcname = f"{base}_{counter}{ext}"
+                    counter += 1
+                added_names.add(arcname)
+
+                if art.path and os.path.exists(art.path) and os.path.isfile(art.path):
+                    zf.write(art.path, arcname=arcname)
+                elif art.metadata_json and isinstance(art.metadata_json, dict) and "content" in art.metadata_json:
+                    zf.writestr(arcname, art.metadata_json["content"])
+
+        if os.path.exists(zip_filepath) and os.path.getsize(zip_filepath) > 0:
+            return zip_filepath
+        return None
+
 artifact_service = ArtifactService()

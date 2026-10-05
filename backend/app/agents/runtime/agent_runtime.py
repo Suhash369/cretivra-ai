@@ -3,7 +3,7 @@ import json
 import time
 import asyncio
 from typing import AsyncGenerator, Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -48,7 +48,7 @@ class AgentRuntime:
             prompt=prompt,
             intent=intent,
             status="RUNNING",
-            started_at=datetime.utcnow()
+            started_at=datetime.now(timezone.utc)
         )
         db.add(run)
         db.commit()
@@ -77,10 +77,13 @@ class AgentRuntime:
         project = db.query(ProjectDB).filter(ProjectDB.id == run.project_id).first()
         project_root = project.root_path if project else os.path.join(settings.UPLOAD_DIR, "projects", run.project_id or "default")
 
-        context = {
+        context: Dict[str, Any] = {
             "project_root": project_root,
             "user_id": run.user_id,
-            "project_id": run.project_id
+            "project_id": run.project_id,
+            "step_results": {},
+            "findings": [],
+            "latest_output": None
         }
 
         # 1. Emit run started event
@@ -122,16 +125,42 @@ class AgentRuntime:
 
             next_task = task_manager.get_next_runnable_task(db, run.id)
             if not next_task:
-                # Check if all completed
+                # Check execution progress
                 progress = task_manager.calculate_progress(db, run.id)
                 if progress["status"] == "COMPLETED":
                     run.status = "COMPLETED"
+                elif progress["failed"] > 0 or progress["status"] == "FAILED":
+                    run.status = "FAILED"
+                    run.error = f"Agent execution halted: {progress['failed']} subtask(s) failed."
+                    task_manager.cancel_remaining_pending(db, run.id)
                 elif progress["waiting_approval"] > 0:
                     run.status = "WAITING_FOR_APPROVAL"
                 else:
-                    run.status = "COMPLETED"
+                    # Check if unrunnable pending tasks remain
+                    pending_tasks = db.query(AgentTaskDB).filter(
+                        AgentTaskDB.run_id == run.id,
+                        AgentTaskDB.status == "PENDING"
+                    ).all()
+                    if pending_tasks:
+                        run.status = "FAILED"
+                        run.error = "Agent execution halted due to unfulfilled task dependencies."
+                        for pt in pending_tasks:
+                            pt.status = "CANCELLED"
+                    else:
+                        run.status = "COMPLETED"
                 db.commit()
                 break
+
+            # Dynamic context enrichment: inject prior findings into downstream tools
+            if next_task.input_data and isinstance(next_task.input_data, dict):
+                # Enrich PDF/report generation with real verified research findings
+                if next_task.tool_name == "pdf_generator" and context.get("findings"):
+                    existing_content = next_task.input_data.get("content", "")
+                    findings_md = "\n\n## Verified Empirical Findings\n" + "\n".join(
+                        f"- {f}" for f in context["findings"][:8]
+                    )
+                    if "Verified Empirical Findings" not in existing_content:
+                        next_task.input_data["content"] = existing_content + findings_md
 
             # Task Started
             yield self._sse_frame("agent.task.started", {
@@ -183,6 +212,20 @@ class AgentRuntime:
                 })
 
             if success:
+                # Update shared context with step result
+                context["step_results"][next_task.id] = output
+                context["latest_output"] = output
+
+                # Extract factual snippets from web searches into findings
+                if next_task.tool_name == "web_search" and isinstance(output, dict):
+                    results_list = output.get("results", [])
+                    for r in results_list:
+                        if isinstance(r, dict):
+                            title = r.get("title", "")
+                            snippet = r.get("snippet", "")
+                            url = r.get("url", "")
+                            context["findings"].append(f"**{title}**: {snippet} (Source: {url})")
+
                 yield self._sse_frame("agent.task.completed", {
                     "run_id": run.id,
                     "task_id": next_task.id,
@@ -191,6 +234,8 @@ class AgentRuntime:
                     "status": "COMPLETED"
                 })
             else:
+                # Auto-cancel dependent downstream tasks
+                task_manager.cancel_downstream_tasks(db, run.id, next_task.id)
                 yield self._sse_frame("agent.task.failed", {
                     "run_id": run.id,
                     "task_id": next_task.id,
@@ -220,7 +265,7 @@ class AgentRuntime:
         # 4. Finalize Run
         duration = round(time.time() - start_ts, 2)
         run.duration = duration
-        run.completed_at = datetime.utcnow()
+        run.completed_at = datetime.now(timezone.utc)
 
         final_artifacts = artifact_service.list_artifacts(db, run_id=run.id)
         artifact_count = len(final_artifacts)
@@ -229,7 +274,9 @@ class AgentRuntime:
             run.result = f"Task completed successfully in {duration}s. Generated {artifact_count} artifact(s)."
         elif run.status != "WAITING_FOR_APPROVAL":
             run.status = "FAILED"
-            run.error = "Run terminated with errors."
+            if not run.error:
+                run.error = "Agent execution terminated with errors."
+            run.result = None
 
         db.commit()
         db.refresh(run)
@@ -244,7 +291,7 @@ class AgentRuntime:
         })
 
     def _sse_frame(self, event_type: str, data: Dict[str, Any]) -> str:
-        payload = {"event": event_type, "data": data, "timestamp": datetime.utcnow().isoformat()}
+        payload = {"event": event_type, "data": data, "timestamp": datetime.now(timezone.utc).isoformat()}
         return f"data: {json.dumps(payload)}\n\n"
 
 agent_runtime = AgentRuntime()

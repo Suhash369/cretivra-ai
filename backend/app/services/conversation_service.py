@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc
@@ -65,8 +65,8 @@ class ConversationService:
         conversations = query.order_by(desc(ConversationDB.updated_at)).limit(limit).all()
 
         # Group conversations by date: Today, Yesterday, Previous 7 Days, Older
-        now = datetime.utcnow()
-        today_start = datetime(now.year, now.month, now.day)
+        now = datetime.now(timezone.utc)
+        today_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc)
         yesterday_start = today_start - timedelta(days=1)
         seven_days_ago = today_start - timedelta(days=7)
 
@@ -79,6 +79,8 @@ class ConversationService:
 
         for c in conversations:
             c_date = c.updated_at or c.created_at
+            if c_date and c_date.tzinfo is None:
+                c_date = c_date.replace(tzinfo=timezone.utc)
             item = {
                 "id": c.id,
                 "title": c.title,
@@ -87,7 +89,7 @@ class ConversationService:
                 "updated_at": c.updated_at.isoformat() if c.updated_at else None,
                 "message_count": len(c.messages)
             }
-            if c_date >= today_start:
+            if c_date and c_date >= today_start:
                 grouped["today"].append(item)
             elif c_date >= yesterday_start:
                 grouped["yesterday"].append(item)
@@ -125,7 +127,7 @@ class ConversationService:
         if model_id is not None:
             conv.model_id = model_id
 
-        conv.updated_at = datetime.utcnow()
+        conv.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(conv)
         return conv
@@ -170,7 +172,7 @@ class ConversationService:
         # Touch conversation updated_at
         conv = self.get_conversation(db, conversation_id)
         if conv:
-            conv.updated_at = datetime.utcnow()
+            conv.updated_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(msg)
@@ -199,7 +201,7 @@ class ConversationService:
         ).delete(synchronize_session=False)
 
         msg.content = new_content
-        msg.updated_at = datetime.utcnow()
+        msg.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(msg)
 

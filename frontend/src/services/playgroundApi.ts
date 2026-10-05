@@ -235,3 +235,8 @@ export async function getArtifactContentApi(downloadUrl: string): Promise<string
   }
   return res.text();
 }
+
+export function getRunZipDownloadUrl(runId: string): string {
+  return `${API_BASE}/artifacts/run/${runId}/zip`;
+}
+

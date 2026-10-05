@@ -144,3 +144,15 @@ def download_artifact_file(filename: str, db: Session = Depends(get_db)):
                     return FileResponse(found_p, filename=filename)
 
     raise HTTPException(status_code=404, detail=f"Artifact file '{filename}' not found.")
+
+@router.get("/run/{run_id}/zip")
+def download_run_zip(run_id: str, db: Session = Depends(get_db)):
+    """
+    Downloads all deliverables produced by an agent run as a single ZIP bundle.
+    """
+    zip_path = artifact_service.export_run_artifacts_as_zip(db, run_id=run_id)
+    if not zip_path or not os.path.exists(zip_path):
+        raise HTTPException(status_code=404, detail="No artifacts found for this run or failed to generate ZIP bundle.")
+    filename = f"Cretivra_Run_{run_id[:8]}_Deliverables.zip"
+    return FileResponse(zip_path, filename=filename, media_type="application/zip")
+

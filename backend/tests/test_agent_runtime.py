@@ -18,6 +18,7 @@ def test_intent_classification():
     assert planner.classify_intent("Create a presentation on quantum computing") == "presentation"
     assert planner.classify_intent("Generate a pdf report for our board meeting") == "document"
     assert planner.classify_intent("Find leads for our enterprise software") == "sales_leads"
+    assert planner.classify_intent("Research quantum computing, calculate cost in Python, and generate a presentation deck") == "composite_autonomous_goal"
 
 def test_tools_catalog_endpoint():
     res = client.get("/api/tools")
@@ -124,3 +125,132 @@ def test_approval_workflow():
         assert appr_res.json()["status"] == "approved"
     finally:
         db.close()
+
+
+def test_task_failure_propagation_and_accurate_status():
+    from app.database.database import SessionLocal
+    from app.database.models import AgentRunDB, AgentTaskDB, UserDB
+    from app.agents.runtime.task_manager import task_manager
+
+    db = SessionLocal()
+    try:
+        user = db.query(UserDB).first()
+        if not user:
+            user = UserDB(email="tester_agent@cretivra.ai", password_hash="dummy_hash")
+            db.add(user)
+            db.commit()
+
+        run = AgentRunDB(
+            user_id=user.id,
+            agent_id="asura-orchestrator",
+            prompt="Failing task pipeline test",
+            intent="general_task",
+            status="RUNNING"
+        )
+        db.add(run)
+        db.commit()
+
+        # Task 1: Will fail
+        t1 = AgentTaskDB(
+            run_id=run.id,
+            task_order=1,
+            task_type="coding",
+            description="Task 1 (Broken)",
+            status="PENDING"
+        )
+        db.add(t1)
+        db.commit()
+
+        # Task 2: Depends on Task 1
+        t2 = AgentTaskDB(
+            run_id=run.id,
+            parent_task_id=t1.id,
+            task_order=2,
+            task_type="document",
+            description="Task 2 (Dependent)",
+            status="PENDING"
+        )
+        db.add(t2)
+        db.commit()
+
+        # 1. Simulate Task 1 failure
+        t1.status = "FAILED"
+        t1.error = "Simulated syntax execution error"
+        db.commit()
+
+        # 2. Check get_next_runnable_task: Task 2 depends on failed Task 1, so it should auto-cancel
+        next_task = task_manager.get_next_runnable_task(db, run.id)
+        assert next_task is None
+
+        # 3. Refresh and verify t2 is now CANCELLED
+        db.refresh(t2)
+        assert t2.status == "CANCELLED"
+
+        # 4. Progress calculation must report status="FAILED", not RUNNING or COMPLETED
+        progress = task_manager.calculate_progress(db, run.id)
+        assert progress["status"] == "FAILED"
+        assert progress["failed"] == 1
+        assert progress["cancelled"] == 1
+        assert progress["completed"] == 0
+    finally:
+        db.close()
+
+
+def test_run_artifacts_zip_export():
+    import zipfile
+    import io
+    from app.database.database import SessionLocal
+    from app.database.models import AgentRunDB, UserDB, ArtifactDB
+
+    db = SessionLocal()
+    try:
+        user = db.query(UserDB).first()
+        run = AgentRunDB(
+            user_id=user.id,
+            agent_id="asura-orchestrator",
+            prompt="Zip export test",
+            intent="general_task",
+            status="COMPLETED"
+        )
+        db.add(run)
+        db.commit()
+
+        # Add mock artifacts
+        art1 = ArtifactDB(
+            run_id=run.id,
+            name="summary.html",
+            path="summary.html",
+            type="WEBSITE",
+            size=120,
+            mime_type="text/html",
+            download_url="/api/artifacts/download/summary.html",
+            metadata_json={"content": "<h1>Deliverable 1</h1>"}
+        )
+        art2 = ArtifactDB(
+            run_id=run.id,
+            name="notes.txt",
+            path="notes.txt",
+            type="SOURCE_CODE",
+            size=50,
+            mime_type="text/plain",
+            download_url="/api/artifacts/download/notes.txt",
+            metadata_json={"content": "Verified notes from Cretivra AI"}
+        )
+        db.add_all([art1, art2])
+        db.commit()
+
+        # Call zip export endpoint
+        res = client.get(f"/api/artifacts/run/{run.id}/zip")
+        assert res.status_code == 200
+        assert res.headers["content-type"] == "application/zip"
+
+        # Verify ZIP contains both files
+        with zipfile.ZipFile(io.BytesIO(res.content)) as zf:
+            namelist = zf.namelist()
+            assert "summary.html" in namelist
+            assert "notes.txt" in namelist
+            assert zf.read("summary.html").decode("utf-8") == "<h1>Deliverable 1</h1>"
+    finally:
+        db.close()
+
+

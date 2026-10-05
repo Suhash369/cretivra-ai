@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.database.models import ApprovalDB, AgentRunDB, AgentTaskDB
@@ -61,7 +61,7 @@ class ApprovalManager:
             "edit": "modified"
         }
         approval.status = status_map.get(action, "denied")
-        approval.responded_at = datetime.utcnow()
+        approval.responded_at = datetime.now(timezone.utc)
         if modified_payload:
             approval.modified_payload = modified_payload
 

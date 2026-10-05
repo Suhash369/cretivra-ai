@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Maximize2, Minimize2, ExternalLink, RefreshCw, Monitor, Code, Eye, Download, FileText } from 'lucide-react';
+import { Maximize2, Minimize2, ExternalLink, RefreshCw, Monitor, Code, Eye, Download, FileText, Presentation, FileSpreadsheet } from 'lucide-react';
 import { resolveArtifactDownloadUrl, type Artifact } from '../services/playgroundApi';
 import { UIBuildingCanvas } from './UIBuildingCanvas';
 
@@ -34,6 +34,8 @@ export function PreviewPanel({
     Boolean(htmlContent);
 
   const isPdf = artifact?.type === 'PDF' || artifact?.name?.endsWith('.pdf');
+  const isPptx = artifact?.type === 'PRESENTATION' || artifact?.type === 'PPTX' || artifact?.name?.endsWith('.pptx') || artifact?.name?.endsWith('.ppt');
+  const isCsv = artifact?.type === 'DATA' || artifact?.type === 'CSV' || artifact?.name?.endsWith('.csv') || artifact?.name?.endsWith('.xlsx');
 
   // If it is an HTML/Web app or currently building, render the state-of-the-art UIBuildingCanvas
   if (isHtml || isBuilding) {
@@ -117,6 +119,41 @@ export function PreviewPanel({
                 <Download className="w-3.5 h-3.5" /> Download PDF Report
               </a>
             </div>
+          </div>
+        ) : isPptx && artifact?.download_url ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-b from-slate-900 to-slate-950 text-white text-center">
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 mb-4 shadow-xl shadow-amber-500/5">
+              <Presentation className="w-12 h-12 text-amber-400" />
+            </div>
+            <h4 className="text-base font-bold text-slate-100 mb-1">{artifact.name}</h4>
+            <p className="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+              16:9 Widescreen Microsoft PowerPoint Presentation synthesized autonomously by Cretivra Multi-Agent Engine.
+              Fully compatible with PowerPoint, Google Slides, and Apple Keynote.
+            </p>
+            <a
+              href={resolveArtifactDownloadUrl(artifact.download_url)}
+              download={artifact.name}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Download Presentation (.pptx)
+            </a>
+          </div>
+        ) : isCsv && artifact?.download_url ? (
+          <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-gradient-to-b from-slate-900 to-slate-950 text-white text-center">
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 mb-4 shadow-xl shadow-emerald-500/5">
+              <FileSpreadsheet className="w-12 h-12 text-emerald-400" />
+            </div>
+            <h4 className="text-base font-bold text-slate-100 mb-1">{artifact.name}</h4>
+            <p className="text-xs text-slate-400 max-w-md mb-6 leading-relaxed">
+              Structured dataset compiled deterministically with computed statistical metrics and source validation.
+            </p>
+            <a
+              href={resolveArtifactDownloadUrl(artifact.download_url)}
+              download={artifact.name}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Download Dataset (.csv)
+            </a>
           </div>
         ) : markdownContent ? (
           <div className="p-6 overflow-y-auto h-full text-slate-700 dark:text-slate-300 text-xs leading-relaxed max-w-none font-sans">

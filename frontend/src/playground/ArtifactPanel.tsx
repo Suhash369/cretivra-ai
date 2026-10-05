@@ -1,14 +1,15 @@
 import React from 'react';
 import { FileText, Presentation, FileCode, Download, ExternalLink, Package, FileSpreadsheet, Eye } from 'lucide-react';
-import { resolveArtifactDownloadUrl, type Artifact } from '../services/playgroundApi';
+import { resolveArtifactDownloadUrl, getRunZipDownloadUrl, type Artifact } from '../services/playgroundApi';
 
 interface ArtifactPanelProps {
   artifacts: Artifact[];
   onSelectPreview?: (artifact: Artifact) => void;
   selectedArtifactId?: string;
+  runId?: string;
 }
 
-export function ArtifactPanel({ artifacts, onSelectPreview, selectedArtifactId }: ArtifactPanelProps) {
+export function ArtifactPanel({ artifacts, onSelectPreview, selectedArtifactId, runId }: ArtifactPanelProps) {
   const getIcon = (type: string) => {
     switch (type.toUpperCase()) {
       case 'PDF':
@@ -36,9 +37,22 @@ export function ArtifactPanel({ artifacts, onSelectPreview, selectedArtifactId }
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-[#0d121f] border border-slate-200 dark:border-[#232d45] rounded-xl overflow-hidden shadow-xs">
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50">
+      <div className="px-4 py-2.5 border-b border-slate-200 dark:border-[#232d45] flex items-center justify-between bg-slate-50 dark:bg-[#151c2e]/50">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-slate-300">Generated Artifacts</h3>
-        <span className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold">{artifacts.length} Files</span>
+        <div className="flex items-center gap-2">
+          {runId && artifacts.length > 0 && (
+            <a
+              href={getRunZipDownloadUrl(runId)}
+              download={`cretivra_deliverables_${runId.substring(0, 8)}.zip`}
+              title="Download all deliverables as a ZIP bundle"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-[10px] font-semibold transition-colors cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              <span>ZIP Bundle</span>
+            </a>
+          )}
+          <span className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold">{artifacts.length} Files</span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">

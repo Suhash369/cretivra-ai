@@ -529,12 +529,13 @@ export function TaskWorkspace({ runId, onBackToHome }: TaskWorkspaceProps) {
               </div>
 
               {/* Artifacts Bar */}
-              {artifacts.length > 1 && (
-                <div className="h-28 shrink-0 overflow-hidden">
+              {artifacts.length > 0 && (
+                <div className="h-32 shrink-0 overflow-hidden">
                   <ArtifactPanel
                     artifacts={artifacts}
                     selectedArtifactId={selectedArtifact?.id}
                     onSelectPreview={(art) => setSelectedArtifact(art)}
+                    runId={runId}
                   />
                 </div>
               )}
