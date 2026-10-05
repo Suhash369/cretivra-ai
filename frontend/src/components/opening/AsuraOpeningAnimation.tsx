@@ -128,21 +128,19 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
         <ParticleField stage={stage} />
       )}
 
-      {/* 3. Central Chamber: Consciousness Core, Energy Paths, and Pulse */}
-      <div className="relative w-full max-w-xl mx-auto flex flex-col items-center justify-center p-6 z-20">
+      {/* 3. Central Chamber: Perfectly Centered in Viewport (Zero-Drift Registration) */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 z-20 pointer-events-none">
+        {/* Exact Dead-Center Core: EnergyTrace, LogoCore, ConsciousnessPulse */}
         <div className="relative flex items-center justify-center">
-          {/* Geodesic Energy Traces & Infinity Path Pulse */}
           <EnergyTrace stage={stage} />
-
-          {/* Authentic CRETIVRA Core Mark with Caustic Glow & Camera Scaling */}
           <LogoCore stage={stage} />
-
-          {/* Consciousness Stillness & Double Heartbeat Pulse */}
           <ConsciousnessPulse stage={stage} />
         </div>
 
-        {/* 4. ASURA Identity Emergence (Laser line & Prismatic Sweep) */}
-        <AsuraIdentity stage={stage} />
+        {/* 4. ASURA Identity Emergence (Anchored precisely below Core without shifting the Core's center) */}
+        <div className="absolute top-[calc(50%+110px)] sm:top-[calc(50%+132px)] left-0 right-0 flex justify-center pointer-events-none">
+          <AsuraIdentity stage={stage} />
+        </div>
       </div>
 
       {/* 5. Non-intrusive skip hint for power users */}
