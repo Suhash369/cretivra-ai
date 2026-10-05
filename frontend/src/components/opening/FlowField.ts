@@ -21,23 +21,23 @@ export interface PhotonSpark {
   color: string;
   glowColor: string;
   targetNodeIndex: number;
+  px?: number;
+  py?: number;
   trail: { x: number; y: number }[];
   maxTrailLength: number;
   phaseOffset: number;
   settled: boolean;
 }
 
-// Procedural curl-noise approximation for silky fluid streams
+// High-performance analytical fluid curl (zero finite-difference approximation overhead)
 export function curlNoise(x: number, y: number, time: number): Vector2D {
-  const eps = 1.0;
-  const n1 = Math.sin(x * 0.008 + time * 1.4) + Math.cos(y * 0.008 - time * 1.1);
-  const n2 = Math.sin((x + eps) * 0.008 + time * 1.4) + Math.cos(y * 0.008 - time * 1.1);
-  const n3 = Math.sin(x * 0.008 + time * 1.4) + Math.cos((y + eps) * 0.008 - time * 1.1);
-
-  const dy = (n3 - n1) / eps;
-  const dx = (n2 - n1) / eps;
-  // Perpendicular gradient produces non-divergent fluid curl
-  return { x: dy * 1.8, y: -dx * 1.8 };
+  const ax = x * 0.007 + time * 1.3;
+  const by = y * 0.007 - time * 1.0;
+  // Analytical curl stream is non-divergent and evaluates in 2 trig calls instead of 6
+  return {
+    x: Math.sin(by) * 1.8,
+    y: -Math.cos(ax) * 1.8,
+  };
 }
 
 export interface FlowEngineParams {

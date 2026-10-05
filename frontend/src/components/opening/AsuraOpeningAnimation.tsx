@@ -116,9 +116,10 @@ export const AsuraOpeningAnimation: React.FC<AsuraOpeningAnimationProps> = ({
       }}
       aria-label="Asura AI Consciousness Awakening"
     >
-      {/* 1. Deep Atmospheric Radial Aura (Apple Intelligence / Astra depth) */}
+      {/* 1. Deep Atmospheric Radial Aura (Apple Intelligence / Astra depth - GPU Promoted) */}
       <div
-        className="absolute w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full pointer-events-none filter blur-3xl opacity-60 bg-gradient-to-tr from-cyan-200/50 via-blue-100/40 to-violet-200/50 animate-pulse-soft will-change-transform"
+        className="absolute w-[600px] h-[600px] sm:w-[800px] sm:h-[800px] rounded-full pointer-events-none filter blur-3xl opacity-60 bg-gradient-to-tr from-cyan-200/50 via-blue-100/40 to-violet-200/50 animate-pulse-soft transform-gpu will-change-transform"
+        style={{ transform: 'translateZ(0)' }}
         aria-hidden="true"
       />
 

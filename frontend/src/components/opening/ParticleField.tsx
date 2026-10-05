@@ -20,72 +20,102 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
     let animationFrameId: number;
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth || 800);
     let height = (canvas.height = canvas.parentElement?.clientHeight || window.innerHeight || 600);
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5); // Cap at 1.5 for ultra-high FPS on high-DPI displays
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
     ctx.scale(dpr, dpr);
 
     const handleResize = () => {
       if (!canvas.parentElement) return;
       width = canvas.parentElement.clientWidth;
       height = canvas.parentElement.clientHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
       ctx.scale(dpr, dpr);
     };
     window.addEventListener('resize', handleResize);
 
-    // Astra-grade dense particle population: 260 desktop / 130 mobile
+    // Pre-render glowing photon sprites once offscreen for 0-allocation GPU blitting
+    const createGlowSprite = (coreColor: string, outerGlow: string, size: number = 32) => {
+      const offscreen = document.createElement('canvas');
+      offscreen.width = size;
+      offscreen.height = size;
+      const offCtx = offscreen.getContext('2d');
+      if (!offCtx) return null;
+      const half = size / 2;
+      const grad = offCtx.createRadialGradient(half, half, 0, half, half, half);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(0.35, coreColor);
+      grad.addColorStop(0.8, outerGlow);
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      offCtx.fillStyle = grad;
+      offCtx.beginPath();
+      offCtx.arc(half, half, half, 0, Math.PI * 2);
+      offCtx.fill();
+      return offscreen;
+    };
+
+    const sprites: Record<string, HTMLCanvasElement | null> = {
+      '#06b6d4': createGlowSprite('#06b6d4', 'rgba(6, 182, 212, 0.4)', 32),
+      '#2563eb': createGlowSprite('#2563eb', 'rgba(37, 99, 235, 0.4)', 32),
+      '#8b5cf6': createGlowSprite('#8b5cf6', 'rgba(139, 92, 246, 0.4)', 32),
+      '#38bdf8': createGlowSprite('#38bdf8', 'rgba(56, 189, 248, 0.4)', 32),
+      '#ffffff': createGlowSprite('#ffffff', 'rgba(6, 182, 212, 0.6)', 40),
+    };
+
+    // Refined, cinema-grade particle count for buttery 120 FPS
     const isMobile = width < 640;
-    const count = isMobile ? 130 : 260;
+    const count = isMobile ? 42 : 84;
     const photons: PhotonSpark[] = [];
 
     const PALETTE = [
-      { color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.75)' },  // Cyan
-      { color: '#2563eb', glow: 'rgba(37, 99, 235, 0.70)' }, // Royal Blue
-      { color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.70)' },// Violet
-      { color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.75)' }, // Sky
-      { color: '#ffffff', glow: 'rgba(255, 255, 255, 0.90)' },// Pure Light
+      { color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.75)' },
+      { color: '#2563eb', glow: 'rgba(37, 99, 235, 0.70)' },
+      { color: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.70)' },
+      { color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.75)' },
+      { color: '#ffffff', glow: 'rgba(255, 255, 255, 0.90)' },
     ];
 
     for (let i = 0; i < count; i++) {
-      const z = (Math.random() * 2) - 1; // -1 (far) to +1 (near)
+      const z = Math.random() * 2 - 1;
       const layerType: 'fine' | 'medium' | 'star' =
-        i % 12 === 0 ? 'star' : i % 3 === 0 ? 'medium' : 'fine';
+        i % 8 === 0 ? 'star' : i % 3 === 0 ? 'medium' : 'fine';
 
       const baseRadius =
-        layerType === 'star' ? 2.2 + Math.random() * 0.8 :
-        layerType === 'medium' ? 1.2 + Math.random() * 0.5 :
-        0.6 + Math.random() * 0.4;
+        layerType === 'star' ? 2.0 + Math.random() * 0.6 :
+        layerType === 'medium' ? 1.2 + Math.random() * 0.4 :
+        0.7 + Math.random() * 0.3;
 
       const palette = PALETTE[i % PALETTE.length];
-
-      // Initial orbital cluster
       const angle = Math.random() * Math.PI * 2;
-      const radius = 20 + Math.random() * (Math.min(width, height) * 0.32);
+      const radius = 25 + Math.random() * (Math.min(width, height) * 0.30);
+      const startX = width / 2 + Math.cos(angle) * radius;
+      const startY = height / 2 + Math.sin(angle) * radius;
 
       photons.push({
         id: i,
-        x: width / 2 + Math.cos(angle) * radius,
-        y: height / 2 + Math.sin(angle) * radius,
+        x: startX,
+        y: startY,
+        px: startX,
+        py: startY,
         z,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
         baseRadius,
         layer: layerType,
-        baseOpacity: layerType === 'star' ? 0.95 : layerType === 'medium' ? 0.7 : 0.45,
+        baseOpacity: layerType === 'star' ? 0.95 : layerType === 'medium' ? 0.75 : 0.5,
         color: palette.color,
         glowColor: palette.glow,
         targetNodeIndex: i % CRETIVRA_NODES.length,
         trail: [],
-        maxTrailLength: layerType === 'star' ? 7 : layerType === 'medium' ? 4 : 2,
+        maxTrailLength: 2,
         phaseOffset: Math.random() * Math.PI * 2,
         settled: false,
       });
@@ -97,41 +127,31 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
     const render = (now: number) => {
       const currentStage = stageRef.current;
       const elapsed = (now - startPerfTime) / 1000;
-      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      const dt = Math.min((now - lastTime) / 1000, 0.033);
       lastTime = now;
 
-      // Clear canvas cleanly
+      // Clean canvas
       ctx.clearRect(0, 0, width, height);
 
-      // 1. Scene 01 — THE VOID: Single Microscopic Point with Organic Heartbeat
+      // 1. Scene 01 — THE VOID: Clean, luminous breathing signal dot
       if (currentStage === 'SIGNAL') {
         const cx = width / 2;
         const cy = height / 2;
         const tNorm = Math.min(1, elapsed / 0.60);
+        const breath = Math.sin(tNorm * Math.PI) * 0.5 + 0.5;
 
-        // Cardiac breathe rhythm: 0.4 -> 1.0 -> 0.7
-        const breath = Math.sin(tNorm * Math.PI) * 0.6 + 0.4;
-        const pointRadius = 1.0 + breath * 0.8;
-
-        // Radiant multi-stop bloom
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        const bloom = ctx.createRadialGradient(cx, cy, 0, cx, cy, 38 * breath);
-        bloom.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        bloom.addColorStop(0.3, 'rgba(6, 182, 212, 0.65)');
-        bloom.addColorStop(0.65, 'rgba(139, 92, 246, 0.35)');
-        bloom.addColorStop(1, 'rgba(6, 182, 212, 0)');
-        ctx.fillStyle = bloom;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 38 * breath, 0, Math.PI * 2);
-        ctx.fill();
 
-        // Hot white core
+        const starSprite = sprites['#ffffff'] || sprites['#06b6d4'];
+        if (starSprite) {
+          const bloomSize = 56 * breath;
+          ctx.drawImage(starSprite, cx - bloomSize / 2, cy - bloomSize / 2, bloomSize, bloomSize);
+        }
+
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#06b6d4';
-        ctx.shadowBlur = 14;
         ctx.beginPath();
-        ctx.arc(cx, cy, pointRadius, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 1.4 + breath * 0.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
@@ -139,7 +159,6 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
         return;
       }
 
-      // Track consciousness pulse
       if (currentStage === 'CONSCIOUS' && !pulseTriggeredRef.current) {
         pulseTriggeredRef.current = true;
         pulseTimeRef.current = 0;
@@ -148,101 +167,99 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
         pulseTimeRef.current += dt;
       }
 
-      // Calculate core bounds for target nodes
       const coreW = Math.min(width * 0.72, 350);
       const coreH = coreW * (480 / 736);
       const coreStartX = (width - coreW) / 2;
       const coreStartY = (height - coreH) / 2;
 
-      // Master fade multiplier
       const globalAlpha =
         currentStage === 'TRANSITION'
-          ? Math.max(0, 1 - (elapsed - 4.70) / 0.60)
+          ? Math.max(0, 1 - (elapsed - 4.70) / 0.50)
           : currentStage === 'READY'
           ? 0
-          : Math.min(1, (elapsed - 0.40) / 0.50);
+          : Math.min(1, (elapsed - 0.40) / 0.45);
 
       if (globalAlpha <= 0) {
         animationFrameId = requestAnimationFrame(render);
         return;
       }
 
-      // 2. Enable Additive Blending for luminous glow
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      photons.forEach((p) => {
+      const forcesParams = {
+        width,
+        height,
+        time: elapsed,
+        stage: currentStage,
+        pulseActive: pulseTriggeredRef.current,
+        pulseTime: pulseTimeRef.current,
+      };
+
+      for (let i = 0; i < photons.length; i++) {
+        const p = photons[i];
         const targetNode = CRETIVRA_NODES[p.targetNodeIndex];
         const targetPos: Vector2D = {
           x: coreStartX + targetNode.x * coreW,
           y: coreStartY + targetNode.y * coreH,
         };
 
-        const forces = FlowFieldEngine.updatePhotonForces(
-          p,
-          {
-            width,
-            height,
-            time: elapsed,
-            stage: currentStage,
-            pulseActive: pulseTriggeredRef.current,
-            pulseTime: pulseTimeRef.current,
-          },
-          targetPos
-        );
+        const forces = FlowFieldEngine.updatePhotonForces(p, forcesParams, targetPos);
 
-        p.vx += forces.x * dt * 50;
-        p.vy += forces.y * dt * 50;
+        p.vx += forces.x * dt * 45;
+        p.vy += forces.y * dt * 45;
 
-        // Friction damping
-        const friction = currentStage === 'FORMATION' ? 0.90 : 0.94;
+        const friction = currentStage === 'FORMATION' ? 0.91 : 0.94;
         p.vx *= friction;
         p.vy *= friction;
 
+        p.px = p.x;
+        p.py = p.y;
         p.x += p.vx;
         p.y += p.vy;
 
-        // Depth perspective
-        const depthScale = 0.65 + 0.35 * p.z;
+        const depthScale = 0.7 + 0.3 * p.z;
         const radius = p.baseRadius * depthScale;
-        const alpha = Math.max(0.08, p.baseOpacity * (0.6 + 0.4 * p.z)) * globalAlpha;
+        const alpha = Math.max(0.1, p.baseOpacity * (0.65 + 0.35 * p.z)) * globalAlpha;
 
-        // Record silky light trail
-        p.trail.push({ x: p.x, y: p.y });
-        if (p.trail.length > p.maxTrailLength) p.trail.shift();
+        ctx.globalAlpha = alpha;
 
-        // Render silky ribbon trail
-        if (p.trail.length > 2 && (Math.abs(p.vx) > 0.25 || Math.abs(p.vy) > 0.25)) {
+        // Zero-allocation silky light streak
+        const speedSq = p.vx * p.vx + p.vy * p.vy;
+        if (speedSq > 0.08 && p.px !== undefined && p.py !== undefined) {
           ctx.beginPath();
-          ctx.moveTo(p.trail[0].x, p.trail[0].y);
-          for (let k = 1; k < p.trail.length; k++) {
-            ctx.lineTo(p.trail[k].x, p.trail[k].y);
-          }
+          ctx.moveTo(p.px, p.py);
+          ctx.lineTo(p.x, p.y);
           ctx.strokeStyle = p.color;
-          ctx.globalAlpha = alpha * 0.35;
-          ctx.lineWidth = radius * 0.8;
+          ctx.lineWidth = radius * 0.9;
           ctx.stroke();
         }
 
-        // Render Glowing Photon Spark
-        ctx.globalAlpha = alpha;
+        // Render Glowing Photon Spark via pre-rendered hardware sprites
         if (p.layer === 'star') {
-          // Radiant star bloom
-          const radGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 3.5);
-          radGrad.addColorStop(0, '#ffffff');
-          radGrad.addColorStop(0.35, p.color);
-          radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = radGrad;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, radius * 3.5, 0, Math.PI * 2);
-          ctx.fill();
+          const sprite = sprites[p.color] || sprites['#06b6d4'];
+          if (sprite) {
+            const spriteSize = radius * 7.5;
+            ctx.drawImage(
+              sprite,
+              p.x - spriteSize / 2,
+              p.y - spriteSize / 2,
+              spriteSize,
+              spriteSize
+            );
+          } else {
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+          }
         } else {
           ctx.fillStyle = p.color;
           ctx.beginPath();
           ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
           ctx.fill();
         }
-      });
+      }
 
       ctx.restore();
 
@@ -260,7 +277,8 @@ export const ParticleField: React.FC<ParticleFieldProps> = ({ stage }) => {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 pointer-events-none w-full h-full z-10 will-change-transform"
+      className="absolute inset-0 pointer-events-none w-full h-full z-10 will-change-transform transform-gpu"
+      style={{ transform: 'translateZ(0)' }}
       aria-hidden="true"
     />
   );

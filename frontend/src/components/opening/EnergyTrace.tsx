@@ -34,7 +34,8 @@ export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage }) => {
   return (
     <svg
       viewBox="0 0 100 65.2"
-      className="absolute inset-0 w-full h-full pointer-events-none z-15"
+      className="absolute inset-0 w-full h-full pointer-events-none z-15 transform-gpu"
+      style={{ transform: 'translateZ(0)' }}
       aria-hidden="true"
     >
       <defs>
@@ -51,52 +52,80 @@ export const EnergyTrace: React.FC<EnergyTraceProps> = ({ stage }) => {
           <stop offset="50%" stopColor="#ffffff" stopOpacity="1" />
           <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
         </linearGradient>
-
-        <filter id="trace-glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="0.6" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
       </defs>
 
-      {/* Geodesic Mesh Lines with Silky Staggered Drawing */}
+      {/* Geodesic Mesh Lines with Silky Dual-Pass Vector Technique (Zero CPU Filter Blur) */}
       {GEODESIC_EDGES.map(([startIdx, endIdx], idx) => {
         const start = CRETIVRA_NODES[startIdx];
         const end = CRETIVRA_NODES[endIdx];
 
         return (
-          <line
-            key={`edge-${idx}`}
-            x1={start.x * 100}
-            y1={start.y * 65.2}
-            x2={end.x * 100}
-            y2={end.y * 65.2}
-            stroke="url(#trace-edge-grad)"
-            strokeWidth="0.55"
-            filter="url(#trace-glow)"
-            strokeDasharray="100"
-            strokeDashoffset={isForming ? '0' : '100'}
-            className="transition-all duration-700 ease-out will-change-transform"
-            style={{
-              transitionDelay: `${idx * 16}ms`,
-              opacity: isForming ? 0.8 : 0,
-            }}
-          />
+          <g key={`edge-group-${idx}`}>
+            {/* Outer soft aura vector */}
+            <line
+              x1={start.x * 100}
+              y1={start.y * 65.2}
+              x2={end.x * 100}
+              y2={end.y * 65.2}
+              stroke="url(#trace-edge-grad)"
+              strokeWidth="1.4"
+              strokeOpacity="0.25"
+              strokeDasharray="100"
+              strokeDashoffset={isForming ? '0' : '100'}
+              className="transition-all duration-700 ease-out will-change-transform"
+              style={{
+                transitionDelay: `${idx * 14}ms`,
+                opacity: isForming ? 0.75 : 0,
+              }}
+            />
+            {/* Inner high-intensity filament vector */}
+            <line
+              x1={start.x * 100}
+              y1={start.y * 65.2}
+              x2={end.x * 100}
+              y2={end.y * 65.2}
+              stroke="url(#trace-edge-grad)"
+              strokeWidth="0.55"
+              strokeDasharray="100"
+              strokeDashoffset={isForming ? '0' : '100'}
+              className="transition-all duration-700 ease-out will-change-transform"
+              style={{
+                transitionDelay: `${idx * 14}ms`,
+                opacity: isForming ? 0.95 : 0,
+              }}
+            />
+          </g>
         );
       })}
 
       {/* Silky Energy Pulse Traveling the Infinity Path */}
       {isForming && (
-        <path
-          d={INFINITY_PULSE_PATH}
-          fill="none"
-          stroke="url(#travel-pulse-grad)"
-          strokeWidth="1.3"
-          filter="url(#trace-glow)"
-          strokeDasharray="45 155"
-          className={`pointer-events-none transition-opacity duration-500 ${
-            isPulseActive ? 'opacity-95 asura-animate-infinity-pulse' : 'opacity-0'
-          }`}
-        />
+        <g>
+          {/* Base pulse radiance */}
+          <path
+            d={INFINITY_PULSE_PATH}
+            fill="none"
+            stroke="url(#travel-pulse-grad)"
+            strokeWidth="2.2"
+            strokeOpacity="0.35"
+            strokeDasharray="45 155"
+            className={`pointer-events-none transition-opacity duration-500 will-change-transform ${
+              isPulseActive ? 'opacity-90 asura-animate-infinity-pulse' : 'opacity-0'
+            }`}
+          />
+          {/* Hot core traveling pulse */}
+          <path
+            d={INFINITY_PULSE_PATH}
+            fill="none"
+            stroke="url(#travel-pulse-grad)"
+            strokeWidth="1.1"
+            strokeOpacity="1.0"
+            strokeDasharray="45 155"
+            className={`pointer-events-none transition-opacity duration-500 will-change-transform ${
+              isPulseActive ? 'opacity-100 asura-animate-infinity-pulse' : 'opacity-0'
+            }`}
+          />
+        </g>
       )}
     </svg>
   );

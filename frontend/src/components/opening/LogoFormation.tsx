@@ -46,10 +46,6 @@ export const LogoFormation: React.FC<LogoFormationProps> = ({
               <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.9" />
               <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
             </linearGradient>
-            <filter id="line-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="0.8" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
           </defs>
 
           {NETWORK_EDGES.map(([startIdx, endIdx], idx) => {
@@ -63,11 +59,10 @@ export const LogoFormation: React.FC<LogoFormationProps> = ({
                 x2={end.x * 100}
                 y2={end.y * 65.2}
                 stroke="url(#edge-grad)"
-                strokeWidth="0.55"
-                filter="url(#line-glow)"
+                strokeWidth="0.6"
                 strokeDasharray="100"
                 strokeDashoffset={showNetworkLines ? '0' : '100'}
-                className="transition-all duration-700 ease-out"
+                className="transition-all duration-700 ease-out will-change-transform"
                 style={{ transitionDelay: `${idx * 15}ms` }}
               />
             );

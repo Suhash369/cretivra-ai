@@ -23,7 +23,7 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage }) => {
     stage === 'IDENTITY' ||
     stage === 'TRANSITION';
 
-  // Fluid camera scale progression per stage (GPU-composited)
+  // Fluid camera scale progression per stage (GPU-composited via translate3d/scale3d)
   const cameraScaleClass =
     stage === 'SIGNAL' || stage === 'FIELD' || stage === 'FLOW'
       ? 'scale-90 opacity-0'
@@ -43,20 +43,34 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage }) => {
 
   return (
     <div
-      className={`relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center select-none transition-all duration-700 ease-out will-change-transform ${cameraScaleClass} ${
+      className={`relative w-[280px] sm:w-[350px] aspect-[736/480] flex items-center justify-center select-none transition-all duration-700 ease-out transform-gpu will-change-transform ${cameraScaleClass} ${
         isHeartbeat ? 'asura-animate-heartbeat' : ''
       }`}
       style={{
         transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        transform: 'translateZ(0)',
       }}
     >
-      {/* Authentic CRETIVRA Core Logo Image Surface with Caustic Radiant Glow */}
+      {/* 1. Ambient Caustic Glow Layer (GPU Hardware Composited - No CPU filter re-rasterization!) */}
       <div
-        className={`relative w-full h-full transition-all duration-700 ease-out will-change-transform ${
-          showSurface
-            ? 'opacity-100 filter drop-shadow-[0_4px_30px_rgba(6,182,212,0.45)] drop-shadow-[0_0_50px_rgba(139,92,246,0.35)]'
-            : 'opacity-0 scale-90'
+        className={`absolute inset-0 -m-3 pointer-events-none transition-all duration-700 ease-out rounded-full blur-2xl transform-gpu ${
+          showSurface ? 'opacity-85 scale-105' : 'opacity-0 scale-75'
         }`}
+        style={{
+          background:
+            'radial-gradient(ellipse at center, rgba(6, 182, 212, 0.45) 0%, rgba(59, 130, 246, 0.3) 45%, rgba(139, 92, 246, 0.22) 70%, transparent 100%)',
+          transform: 'translateZ(0)',
+          willChange: 'opacity, transform',
+        }}
+        aria-hidden="true"
+      />
+
+      {/* 2. Authentic CRETIVRA Core Logo Image Surface */}
+      <div
+        className={`relative w-full h-full transition-all duration-700 ease-out transform-gpu will-change-transform ${
+          showSurface ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+        style={{ transform: 'translateZ(0)' }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -66,10 +80,10 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage }) => {
           draggable={false}
         />
 
-        {/* Luminous Light Sweep Across Infinity Ribbon — MASKED to the logo pixels only (NO rectangular box!) */}
+        {/* 3. Luminous Light Sweep Across Infinity Ribbon — MASKED to the logo pixels only (Isolated GPU Layer) */}
         {showSurface && (stage === 'FORMATION' || stage === 'CONSCIOUS' || stage === 'IDENTITY') && (
           <div
-            className="absolute inset-0 overflow-hidden pointer-events-none"
+            className="absolute inset-0 overflow-hidden pointer-events-none transform-gpu"
             style={{
               WebkitMaskImage: 'url(/cretivra-core.png)',
               maskImage: 'url(/cretivra-core.png)',
@@ -79,35 +93,35 @@ export const LogoCore: React.FC<LogoCoreProps> = ({ stage }) => {
               maskRepeat: 'no-repeat',
               WebkitMaskPosition: 'center',
               maskPosition: 'center',
+              transform: 'translateZ(0)',
             }}
           >
             <div
-              className="w-1/2 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/80 to-transparent blur-xs pointer-events-none"
+              className="w-1/2 h-full asura-animate-sweep bg-gradient-to-r from-transparent via-white/80 to-transparent pointer-events-none transform-gpu"
+              style={{ transform: 'translateZ(0)' }}
               aria-hidden="true"
             />
           </div>
         )}
       </div>
 
-      {/* Layer 1 — The 11 Geometric Nodes with High-Intensity Photon Flares & Soft Stagger */}
+      {/* 4. Layer 1 — The 11 Geometric Nodes with High-Intensity Photon Flares & Soft Stagger */}
       {showNodes && (
-        <div className="absolute inset-0 pointer-events-none z-20">
+        <div className="absolute inset-0 pointer-events-none z-20 transform-gpu" style={{ transform: 'translateZ(0)' }}>
           {CRETIVRA_NODES.map((node, i) => {
             const isCenterNode = i === 0;
             return (
               <div
                 key={`photon-node-${i}`}
-                className="absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500 ease-out will-change-transform"
+                className="absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-transform duration-500 ease-out transform-gpu will-change-transform"
                 style={{
                   left: `${node.x * 100}%`,
                   top: `${node.y * 100}%`,
-                  background: `radial-gradient(circle, #ffffff 30%, ${node.color} 80%)`,
-                  boxShadow: isCenterNode && isHeartbeat
-                    ? `0 0 25px 8px #ffffff, 0 0 45px 16px ${node.color}, 0 0 70px 24px rgba(139, 92, 246, 0.8)`
-                    : `0 0 12px 3px ${node.color}, 0 0 20px 6px rgba(6, 182, 212, 0.5)`,
-                  transform: `scale(${isCenterNode && isHeartbeat ? 1.7 : 1})`,
+                  background: `radial-gradient(circle, #ffffff 35%, ${node.color} 80%)`,
+                  boxShadow: `0 0 12px 3px ${node.color}`,
+                  transform: `translate3d(0, 0, 0) scale(${isCenterNode && isHeartbeat ? 1.6 : 1})`,
                   opacity: showNodes ? 1 : 0,
-                  transitionDelay: `${i * 25}ms`,
+                  transitionDelay: `${i * 18}ms`,
                 }}
               />
             );
