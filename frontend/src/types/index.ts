@@ -66,6 +66,7 @@ export interface VisualAnswerData {
   has_visuals: boolean;
   intent?: string;
   primary_image?: VisualImage | null;
+  gallery?: VisualImage[];
   sections?: Array<{ header: string; image: VisualImage }>;
   carousel?: VisualImage[];
   comparison?: VisualComparisonData | null;

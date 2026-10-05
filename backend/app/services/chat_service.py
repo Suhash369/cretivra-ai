@@ -635,6 +635,9 @@ class ChatService:
 
         full_assistant_reply = ""
 
+        composed_visual_data = None
+        emitted_visuals = False
+
         try:
             async for chunk in ollama_provider.stream_chat(
                 underlying_model,
@@ -654,13 +657,39 @@ class ChatService:
                 if content:
                     full_assistant_reply += content
 
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': False, 'reasoning_status': last_reasoning_status, 'sources': sources, 'visual_loading': bool(visual_task and not visual_task.done())})}\n\n"
+                # If visual intelligence task finished in the background, compose and emit immediately
+                if visual_task and visual_task.done() and not emitted_visuals:
+                    try:
+                        ranked_images = visual_task.result()
+                        if ranked_images:
+                            composed_visual_data = visual_intelligence_service.compose_visual_answer(
+                                text_content=full_assistant_reply,
+                                images=ranked_images,
+                                intent_info=visual_intent_info
+                            )
+                            emitted_visuals = True
+                    except Exception as ve:
+                        logger.debug(f"Visual early compose notice: {ve}")
 
-            # Collect completed visual intelligence results if task was dispatched
-            composed_visual_data = None
-            if visual_task:
+                payload = {
+                    'conversation_id': conversation_id,
+                    'model_id': model_id,
+                    'content': content,
+                    'full_content': full_assistant_reply,
+                    'done': False,
+                    'reasoning_status': last_reasoning_status,
+                    'sources': sources,
+                    'visual_loading': bool(visual_task and not visual_task.done()),
+                }
+                if emitted_visuals and composed_visual_data:
+                    payload['visual_intelligence'] = composed_visual_data
+
+                yield f"data: {json.dumps(payload)}\n\n"
+
+            # Collect completed visual intelligence results if task was dispatched but not yet composed
+            if visual_task and not composed_visual_data:
                 try:
-                    ranked_images = await asyncio.wait_for(visual_task, timeout=4.5)
+                    ranked_images = await asyncio.wait_for(visual_task, timeout=3.5)
                     if ranked_images:
                         composed_visual_data = visual_intelligence_service.compose_visual_answer(
                             text_content=full_assistant_reply,
