@@ -4,7 +4,8 @@ import { IntelligenceCacheCard } from './IntelligenceCacheCard';
 import { SourceLinksCard } from './SourceLinksCard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { GeneratedImageCard } from './GeneratedImageCard';
-import type { Message } from '../../types';
+import { VisualAnswer } from '../visual';
+import type { Message, VisualAnswerData } from '../../types';
 
 export { GeneratedImageCard };
 
@@ -26,6 +27,62 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [feedback, setFeedback] = useState<'good' | 'bad' | null>(null);
+
+  // Extract visual data from props or embedded comment in persisted content
+  const { cleanContent, visualData: parsedVisualData } = React.useMemo(() => {
+    if (message.visual_intelligence) {
+      return { cleanContent: message.content, visualData: message.visual_intelligence };
+    }
+    const match = message.content?.match(/<!--\s*asura_visual_intelligence:\s*(\{.*?\})\s*-->/s);
+    if (match) {
+      try {
+        const visualData = JSON.parse(match[1]);
+        const clean = message.content.replace(/<!--\s*asura_visual_intelligence:\s*\{.*?\}\s*-->/s, '').trim();
+        return { cleanContent: clean, visualData };
+      } catch {
+        return { cleanContent: message.content, visualData: null };
+      }
+    }
+    return { cleanContent: message.content, visualData: null };
+  }, [message.content, message.visual_intelligence]);
+
+  const [activeVisualData, setActiveVisualData] = useState<VisualAnswerData | null>(parsedVisualData);
+
+  React.useEffect(() => {
+    if (parsedVisualData) {
+      setActiveVisualData(parsedVisualData);
+    }
+  }, [parsedVisualData]);
+
+  const handleRefreshVisuals = async (queryStr: string) => {
+    try {
+      const res = await fetch('/api/visual/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: queryStr, max_images: 5 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results && data.results.length > 0) {
+          const composeRes = await fetch('/api/visual/compose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: queryStr,
+              text_content: cleanContent,
+              images: data.results
+            })
+          });
+          if (composeRes.ok) {
+            const composed = await composeRes.json();
+            setActiveVisualData(composed);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error refreshing visuals:', e);
+    }
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -93,6 +150,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             </div>
           )}
 
+          {/* ASURA Visual Intelligence Renderer */}
+          {!isUser && (
+            <VisualAnswer
+              visualData={activeVisualData}
+              isLoading={message.visual_loading}
+              query={cleanContent.slice(0, 80)}
+              onRefreshVisuals={handleRefreshVisuals}
+            />
+          )}
+
           {/* Message Text / Inline Edit */}
           {isUser && isEditing ? (
             <div className="space-y-3 pt-1">
@@ -116,8 +183,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </button>
               </div>
             </div>
-          ) : message.content ? (
-            <MarkdownRenderer content={message.content} />
+          ) : cleanContent ? (
+            <MarkdownRenderer content={cleanContent} />
           ) : isGenerating ? (
             <div className="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
               <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />

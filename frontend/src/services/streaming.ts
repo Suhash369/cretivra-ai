@@ -11,6 +11,8 @@ export interface StreamChunkData {
   cache_items?: string[];
   sources?: SourceLink[];
   cancelled?: boolean;
+  visual_loading?: boolean;
+  visual_intelligence?: any;
 }
 
 export async function readSSEStream(

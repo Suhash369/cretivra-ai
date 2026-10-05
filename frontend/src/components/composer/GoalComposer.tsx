@@ -13,6 +13,7 @@ import {
   Plus,
   Headphones,
   Mic,
+  Eye,
 } from 'lucide-react';
 import { ActionMenu } from '../chat/ActionMenu';
 import type { Attachment, CretivraModel } from '../../types';
@@ -24,6 +25,9 @@ interface GoalComposerProps {
   isGenerating?: boolean;
   onStop?: () => void;
   placeholder?: string;
+  // Visual Mode
+  visualMode?: 'auto' | 'visual' | 'normal';
+  onToggleVisualMode?: (mode: 'auto' | 'visual' | 'normal') => void;
   // Attachments
   attachments: Attachment[];
   onUploadFile: (file: File) => void;
@@ -57,6 +61,8 @@ export function GoalComposer({
   isGenerating = false,
   onStop,
   placeholder = 'What do you want Asura to accomplish?',
+  visualMode = 'auto',
+  onToggleVisualMode,
   attachments,
   onUploadFile,
   onRemoveAttachment,
@@ -310,6 +316,23 @@ export function GoalComposer({
               <span>Image</span>
             </button>
           )}
+
+          {/* ASURA Visual Intelligence Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => onToggleVisualMode && onToggleVisualMode(visualMode === 'auto' ? 'visual' : visualMode === 'visual' ? 'normal' : 'auto')}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all asura-btn-interactive ${
+              visualMode === 'visual'
+                ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-sm'
+                : visualMode === 'normal'
+                ? 'bg-[var(--surface-secondary)] border-transparent text-gray-500 hover:text-gray-400'
+                : 'bg-cyan-950/30 border-cyan-500/25 text-cyan-300 hover:border-cyan-500/40'
+            }`}
+            title={`ASURA Visual Intelligence: ${visualMode.toUpperCase()} mode (Click to toggle: Auto -> Visual -> Normal)`}
+          >
+            <Eye size={13} className={visualMode === 'normal' ? 'opacity-40' : 'text-cyan-400'} />
+            <span className="capitalize">{visualMode === 'auto' ? 'Visual: Auto' : visualMode === 'visual' ? 'Visual: On' : 'Visual: Off'}</span>
+          </button>
         </div>
 
         {/* Right: Model badge + Send / Stop button */}

@@ -38,6 +38,41 @@ export interface SourceLink {
   snippet?: string;
 }
 
+export interface VisualImage {
+  id: string;
+  title: string;
+  caption?: string;
+  image_url: string;
+  thumbnail_url?: string;
+  source_url: string;
+  source_name: string;
+  license?: string;
+  artist?: string;
+  width?: number;
+  height?: number;
+  relevance_score?: number;
+  reason?: string;
+  placement?: 'primary' | 'section' | 'carousel' | 'comparison';
+  section_header?: string;
+  entity?: string;
+}
+
+export interface VisualComparisonData {
+  product_a: { entity: string; image: VisualImage };
+  product_b: { entity: string; image: VisualImage };
+}
+
+export interface VisualAnswerData {
+  has_visuals: boolean;
+  intent?: string;
+  primary_image?: VisualImage | null;
+  sections?: Array<{ header: string; image: VisualImage }>;
+  carousel?: VisualImage[];
+  comparison?: VisualComparisonData | null;
+  total_images?: number;
+  refined_queries?: string[];
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -48,6 +83,8 @@ export interface Message {
   sources?: SourceLink[];
   created_at?: string;
   attachments?: Attachment[];
+  visual_loading?: boolean;
+  visual_intelligence?: VisualAnswerData;
 }
 
 export interface Conversation {

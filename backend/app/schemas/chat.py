@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
     web_search: Optional[bool] = None
     deep_research: Optional[bool] = None
     image_mode: Optional[bool] = None
+    visual_mode: Optional[str] = "auto"  # 'auto' | 'visual' | 'normal'
 
 class EditMessageRequest(BaseModel):
     message: str

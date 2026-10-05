@@ -14,6 +14,7 @@ from app.services.image_service import image_service
 from app.services.presentation_service import presentation_service
 from app.services.pdf_service import pdf_service
 from app.services.web_search_service import web_search_service
+from app.services.visual_intelligence_service import visual_intelligence_service, VisualIntentType
 from app.providers.cloud_provider import clean_ai_response
 from app.core.logging import logger
 
@@ -28,7 +29,8 @@ class ChatService:
         system_prompt: Optional[str] = None,
         web_search: Optional[bool] = False,
         deep_research: Optional[bool] = False,
-        image_mode: Optional[bool] = False
+        image_mode: Optional[bool] = False,
+        visual_mode: Optional[str] = "auto"
     ) -> AsyncGenerator[str, None]:
         """
         Builds conversation context, calls model provider stream, yields SSE lines,
@@ -459,6 +461,22 @@ class ChatService:
             last_reasoning_status = "Deep reasoning & research in progress..."
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': []})}\n\n"
 
+        # 6. ASURA Visual Intelligence Engine analysis
+        visual_intent_info = None
+        visual_task = None
+        if visual_mode != "normal":
+            visual_intent_info = visual_intelligence_service.analyze_visual_intent(user_message_content)
+            if visual_mode == "visual" and not visual_intent_info.get("is_visual_useful"):
+                visual_intent_info["is_visual_useful"] = True
+                visual_intent_info["intent"] = VisualIntentType.PHOTO.value
+                visual_intent_info["search_queries"] = [user_message_content[:40]]
+
+            if visual_intent_info.get("is_visual_useful"):
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'visual_loading': True, 'reasoning_status': 'Finding relevant visuals...', 'cache_items': cache_items, 'sources': sources})}\n\n"
+                visual_task = asyncio.create_task(
+                    visual_intelligence_service.search_and_rank_visuals(user_message_content, visual_intent_info, max_images=5)
+                )
+
         # Formulate system prompt with current live date and directives
         today_str = datetime.now().strftime("%B %d, %Y")
         if system_prompt and system_prompt.strip() != settings.SYSTEM_PROMPT.strip():
@@ -636,15 +654,36 @@ class ChatService:
                 if content:
                     full_assistant_reply += content
 
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': done, 'reasoning_status': last_reasoning_status, 'sources': sources})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': content, 'full_content': full_assistant_reply, 'done': False, 'reasoning_status': last_reasoning_status, 'sources': sources, 'visual_loading': bool(visual_task and not visual_task.done())})}\n\n"
+
+            # Collect completed visual intelligence results if task was dispatched
+            composed_visual_data = None
+            if visual_task:
+                try:
+                    ranked_images = await asyncio.wait_for(visual_task, timeout=4.5)
+                    if ranked_images:
+                        composed_visual_data = visual_intelligence_service.compose_visual_answer(
+                            text_content=full_assistant_reply,
+                            images=ranked_images,
+                            intent_info=visual_intent_info
+                        )
+                except Exception as ve:
+                    logger.debug(f"Visual task completion notice: {ve}")
+
+            # Emit final completion chunk with visual intelligence data
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': full_assistant_reply, 'done': True, 'reasoning_status': None, 'sources': sources, 'visual_loading': False, 'visual_intelligence': composed_visual_data})}\n\n"
 
             # Save sanitized assistant response to DB
             cleaned_reply = clean_ai_response(full_assistant_reply)
+            persisted_reply = cleaned_reply
+            if composed_visual_data and composed_visual_data.get("has_visuals"):
+                persisted_reply = f"{cleaned_reply}\n\n<!-- asura_visual_intelligence: {json.dumps(composed_visual_data)} -->"
+
             conversation_service.add_message(
                 db=db,
                 conversation_id=conversation_id,
                 role="assistant",
-                content=cleaned_reply
+                content=persisted_reply
             )
 
         except Exception as e:

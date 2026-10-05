@@ -113,7 +113,14 @@ export function useChat(options?: UseChatOptions) {
 
   // Send message
   const sendMessage = useCallback(
-    async (content: string, modelId = selectedModel, forceSearch = false, forceReason = false, forceImage = false) => {
+    async (
+      content: string,
+      modelId = selectedModel,
+      forceSearch = false,
+      forceReason = false,
+      forceImage = false,
+      visualMode: 'auto' | 'visual' | 'normal' = 'auto'
+    ) => {
       if (!content.trim() || isGenerating) return;
 
       if (!getAuthToken()) {
@@ -143,6 +150,7 @@ export function useChat(options?: UseChatOptions) {
         role: 'assistant',
         content: '',
         reasoning_status: isReasoning ? 'Thinking...' : (forceImage ? 'Synthesizing visual...' : null),
+        visual_loading: visualMode !== 'normal',
       };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
@@ -166,6 +174,7 @@ export function useChat(options?: UseChatOptions) {
             web_search: forceSearch,
             deep_research: isReasoning,
             image_mode: forceImage,
+            visual_mode: visualMode,
           },
           signal: controller.signal,
           onChunk: (chunk) => {
@@ -189,7 +198,6 @@ export function useChat(options?: UseChatOptions) {
               setReasoningStatus(chunk.reasoning_status);
             }
 
-
             setMessages((prev) =>
               prev.map((msg) => {
                 if (msg.id === tempAssistantMsgId) {
@@ -200,6 +208,8 @@ export function useChat(options?: UseChatOptions) {
                     reasoning_status: chunk.reasoning_status || msg.reasoning_status,
                     cache_items: chunk.cache_items || msg.cache_items,
                     sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                    visual_loading: chunk.visual_loading !== undefined ? chunk.visual_loading : msg.visual_loading,
+                    visual_intelligence: chunk.visual_intelligence !== undefined ? chunk.visual_intelligence : msg.visual_intelligence,
                   };
                 }
                 if (msg.id === tempUserMsgId && chunk.conversation_id) {
