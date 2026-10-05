@@ -1222,23 +1222,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                     <Zap size={12} className="text-violet-500 dark:text-violet-400" />
                     <span>Playground</span>
                   </button>
-
-                  {/* ASURA Visual Intelligence Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setVisualMode(visualMode === 'auto' ? 'visual' : visualMode === 'visual' ? 'normal' : 'auto')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                      visualMode === 'visual'
-                        ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-500 dark:text-cyan-300 shadow-xs'
-                        : visualMode === 'normal'
-                        ? 'bg-slate-100 dark:bg-gray-800/80 border-slate-200 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 hover:text-slate-600'
-                        : 'bg-cyan-950/20 dark:bg-cyan-950/30 border-cyan-500/25 text-cyan-600 dark:text-cyan-300 hover:border-cyan-500/50 shadow-xs'
-                    }`}
-                    title={`ASURA Visual Intelligence: ${visualMode.toUpperCase()} mode (Click to toggle: Auto -> Visual -> Normal)`}
-                  >
-                    <Eye size={12} className={visualMode === 'normal' ? 'opacity-40' : 'text-cyan-500 dark:text-cyan-400'} />
-                    <span className="capitalize">{visualMode === 'auto' ? 'Visual: Auto' : visualMode === 'visual' ? 'Visual: On' : 'Visual: Off'}</span>
-                  </button>
                 </div>
 
                 {/* Send or Stop Generation Button */}
