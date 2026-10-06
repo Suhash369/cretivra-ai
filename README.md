@@ -141,39 +141,7 @@ cd "cretivra ai"
 
 ---
 
-### 2. Configure Backend Environment
-Create `backend/.env`:
-```env
-# Core Platform
-PROJECT_NAME="ASURA AI by Cretivra"
-DATABASE_URL="sqlite:///./cretivra.db"
-DEFAULT_MODEL="cretivra-1"
-MAX_CONTEXT_MESSAGES=30
-TEMPERATURE=0.7
-MAX_OUTPUT_TOKENS=4096
-MAX_UPLOAD_SIZE_MB=20
-ENABLE_MOCK_OLLAMA=false
 
-# Internal Infrastructure Providers
-OLLAMA_BASE_URL="http://localhost:11434"
-GROQ_API_KEY="your-groq-api-key"
-GEMINI_API_KEY="your-gemini-api-key"
-OPENROUTER_API_KEY="your-openrouter-api-key"
-TAVILY_API_KEY="your-tavily-api-key"
-
-# Asura Capabilities & Feature Flags
-WEB_SEARCH_ENABLED=true
-IMAGE_SEARCH_ENABLED=true
-IMAGE_GENERATION_ENABLED=true
-SMART_MODEL_ROUTING=true
-WEB_GROUNDING_AUTO=true
-CURRENT_INFO_AUTO=true
-IMAGE_SEARCH_AUTO=true
-VOICE_ENABLED=true
-STT_ENABLED=true
-TTS_ENABLED=true
-VOICE_STREAMING=true
-VOICE_INTERRUPTION=true
 
 # Logical Capability Mappings
 FAST_MODEL="asura-fast"
@@ -181,9 +149,7 @@ BALANCED_MODEL="asura-balanced"
 REASONING_MODEL="asura-reasoning"
 VISION_MODEL="asura-vision"
 CREATIVE_MODEL="asura-creative"
-IMAGE_GENERATION_PROVIDER="gemini"
-IMAGE_SEARCH_PROVIDER="tavily"
-```
+IMAGE_GENERATION_PROVIDER="gemi
 
 ---
 
