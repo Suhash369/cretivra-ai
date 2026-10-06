@@ -234,7 +234,90 @@ export function normalizeLinkUrl(rawHref?: string, fallbackLabel?: string): stri
   return url;
 }
 
-// Preprocessor to normalize LaTeX math expressions, strip internal thinking tags, and encode URL spaces from AI responses
+// Helper to convert raw HTML tags (lists, tables, typography) to clean Markdown
+export function cleanHtmlToMarkdown(raw: string): string {
+  if (!raw) return '';
+  let text = raw;
+
+  // 1. Convert HTML tables into Markdown tables
+  text = text.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_match, tableBody) => {
+    const rows: string[][] = [];
+    const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+    let trMatch: RegExpExecArray | null;
+    while ((trMatch = trRegex.exec(tableBody)) !== null) {
+      const cells: string[] = [];
+      const cellRegex = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi;
+      let cellMatch: RegExpExecArray | null;
+      while ((cellMatch = cellRegex.exec(trMatch[1])) !== null) {
+        cells.push(cellMatch[1].trim().replace(/\s+/g, ' '));
+      }
+      if (cells.length > 0) rows.push(cells);
+    }
+    if (rows.length === 0) return '';
+    const maxCols = Math.max(...rows.map((r) => r.length));
+    const headerRow = rows[0];
+    while (headerRow.length < maxCols) headerRow.push('');
+    const mdHeader = '| ' + headerRow.join(' | ') + ' |';
+    const mdSep = '| ' + headerRow.map(() => '---').join(' | ') + ' |';
+    const mdBody = rows
+      .slice(1)
+      .map((r) => {
+        while (r.length < maxCols) r.push('');
+        return '| ' + r.join(' | ') + ' |';
+      })
+      .join('\n');
+    return '\n\n' + mdHeader + '\n' + mdSep + (mdBody ? '\n' + mdBody : '') + '\n\n';
+  });
+
+  // 2. Convert HTML unordered lists
+  text = text.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_m, inner) => {
+    const items: string[] = [];
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let liMatch: RegExpExecArray | null;
+    while ((liMatch = liRegex.exec(inner)) !== null) {
+      items.push('- ' + liMatch[1].trim());
+    }
+    return '\n\n' + items.join('\n') + '\n\n';
+  });
+
+  // 3. Convert HTML ordered lists
+  text = text.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_m, inner) => {
+    const items: string[] = [];
+    const liRegex = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    let liMatch: RegExpExecArray | null;
+    let idx = 1;
+    while ((liMatch = liRegex.exec(inner)) !== null) {
+      items.push(`${idx++}. ` + liMatch[1].trim());
+    }
+    return '\n\n' + items.join('\n') + '\n\n';
+  });
+
+  // 4. Convert standalone <li> tags
+  text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, '\n- $1\n');
+
+  // 5. Convert HTML headings
+  text = text.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_m, lvl, content) => {
+    return '\n\n' + '#'.repeat(parseInt(lvl, 10)) + ' ' + content.trim() + '\n\n';
+  });
+
+  // 6. Convert HTML paragraphs
+  text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n\n$1\n\n');
+
+  // 7. Convert HTML formatting tags
+  text = text.replace(/<(?:b|strong)[^>]*>([\s\S]*?)<\/(?:b|strong)>/gi, '**$1**');
+  text = text.replace(/<(?:i|em)[^>]*>([\s\S]*?)<\/(?:i|em)>/gi, '*$1*');
+  text = text.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
+  text = text.replace(/<br\s*\/?>/gi, '\n');
+  text = text.replace(/<hr\s*\/?>/gi, '\n---\n');
+  text = text.replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, '[$2]($1)');
+
+  // 8. Strip non-markdown wrappers (div, span, font, section, etc.)
+  text = text.replace(/<\/?(?:span|div|font|article|section|header|footer)[^>]*>/gi, '');
+
+  return text;
+}
+
+// Preprocessor to normalize LaTeX math expressions, strip internal thinking tags, sanitize HTML, and format tables
 function preprocessMarkdown(raw: string): string {
   if (!raw) return '';
   let text = raw;
@@ -251,18 +334,19 @@ function preprocessMarkdown(raw: string): string {
     ''
   );
 
-  // 3. Convert standard LaTeX \[ ... \] display math to $$ ... $$
+  // 3. Convert raw HTML tags (e.g. <ul><li>...</li></ul>, <table>...</table>) to native Markdown
+  text = cleanHtmlToMarkdown(text);
+
+  // 4. Convert standard LaTeX \[ ... \] display math to $$ ... $$
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$\n$1\n$$');
 
-  // 4. Convert standard LaTeX \( ... \) inline math to $ ... $
+  // 5. Convert standard LaTeX \( ... \) inline math to $ ... $
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
 
-  // 5. Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
-  // Matches standalone `[` followed by typical LaTeX math commands ending with `]`
+  // 6. Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
   text = text.replace(
     /^\s*\[\s*(\\boxed\{[\s\S]*?\}|\\frac\{[\s\S]*?\}|[\w\s=+\-*/(),.]*?\\[a-zA-Z]+[\s\S]*?)\s*\]\s*$/gm,
     (match, formula) => {
-      // Guard against checkboxes [x] or markdown links [text](url)
       if (formula.startsWith('x]') || formula.startsWith(' ]') || formula.includes('](')) {
         return match;
       }
@@ -270,7 +354,7 @@ function preprocessMarkdown(raw: string): string {
     }
   );
 
-  // 6. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
+  // 7. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)\n\r]+)\)/g, (fullMatch, label, urlPart) => {
     if (urlPart.includes(' ')) {
       const encodedUrl = urlPart.replace(/ /g, '%20');
@@ -279,15 +363,75 @@ function preprocessMarkdown(raw: string): string {
     return fullMatch;
   });
 
-  // 7. Fix collapsed markdown table rows joined by || or | | without newlines (e.g. || **0** | `0 0 0 0` | ...)
+  // 8. Fix collapsed markdown table rows joined by || or | | without newlines (e.g. || **0** | `0 0 0 0` | ...)
   text = text.replace(/\|\s*\|\s*/g, '|\n| ');
   text = text.replace(/(\|\s*:[-\s:]+\|)\s*(\|)/g, '$1\n$2');
 
-  // 8. Ensure newline before table headers if glued to narrative paragraph text
+  // 9. Ensure newline before table headers if glued to narrative paragraph text
   text = text.replace(/([^\n|])\s*(\|[\w\s()$#*_\-.,]+(?:\|[\w\s()$#*_\-.,]+)+\|)\s*\n\s*(\|[\s:-]+\|)/g, '$1\n\n$2\n$3');
 
   return text.trim();
 }
+
+// Standalone AsuraTable Component for Structured Table Contracts
+export interface AsuraTableProps {
+  columns: string[];
+  rows: (string | number)[][];
+  title?: string;
+}
+
+export const AsuraTable: React.FC<AsuraTableProps> = ({ columns, rows, title }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    const tsv = [columns.join('\t'), ...rows.map((r) => r.join('\t'))].join('\n');
+    navigator.clipboard?.writeText(tsv);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-4 rounded-xl border border-slate-200 dark:border-slate-700/70 bg-white dark:bg-slate-900/60 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-3.5 py-2 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/60 text-[11px] font-mono select-none">
+        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200 font-semibold">
+          <TableIcon className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+          <span>{title || 'Table View'}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors cursor-pointer font-sans"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? 'Copied Table!' : 'Copy Table'}</span>
+        </button>
+      </div>
+      <div className="overflow-x-auto w-full custom-scrollbar">
+        <table className="w-full text-left text-sm border-collapse min-w-[600px] table-auto">
+          <thead className="bg-slate-100/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200">
+            <tr>
+              {columns.map((col, idx) => (
+                <th key={idx} className="px-4 py-3 text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-100 text-left uppercase font-sans whitespace-nowrap min-w-[120px]">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 text-slate-800 dark:text-slate-300">
+            {rows.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 even:bg-slate-50/40 dark:even:bg-slate-800/20 transition-colors">
+                {row.map((cell, cIdx) => (
+                  <td key={cIdx} className="px-4 py-3 text-[14px] text-slate-800 dark:text-slate-300 align-top leading-relaxed whitespace-normal break-normal font-sans min-w-[130px]">
+                    {String(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,

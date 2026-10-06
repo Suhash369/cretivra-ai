@@ -8,8 +8,9 @@ from app.core.logging import logger
 
 def clean_ai_response(content: str) -> str:
     """
-    Cleans assistant text responses before database persistence.
-    Strips out <think>...</think>, [THINKING]...[/THINKING], and accidental planning scaffolds.
+    Cleans assistant text responses before database persistence and delivery.
+    Strips out <think>...</think>, [THINKING]...[/THINKING], accidental planning scaffolds,
+    and converts any raw HTML tags (e.g. <ul><li>...</li></ul>, <table>...</table>) to clean Markdown.
     """
     if not content:
         return ""
@@ -29,6 +30,54 @@ def clean_ai_response(content: str) -> str:
     )
     if scaffold_match:
         cleaned = cleaned[scaffold_match.end():]
+
+    # Convert HTML tables to Markdown
+    def _convert_table(match):
+        body = match.group(1)
+        rows = []
+        for tr in re.findall(r'<tr[^>]*>([\s\S]*?)<\/tr>', body, flags=re.IGNORECASE):
+            cells = [c.strip() for c in re.findall(r'<t[hd][^>]*>([\s\S]*?)<\/t[hd]>', tr, flags=re.IGNORECASE)]
+            if cells:
+                rows.append(cells)
+        if not rows:
+            return ""
+        max_cols = max(len(r) for r in rows)
+        header = rows[0] + [""] * (max_cols - len(rows[0]))
+        md_h = "| " + " | ".join(header) + " |"
+        md_sep = "| " + " | ".join(["---"] * max_cols) + " |"
+        md_body = []
+        for r in rows[1:]:
+            r_padded = r + [""] * (max_cols - len(r))
+            md_body.append("| " + " | ".join(r_padded) + " |")
+        return "\n\n" + md_h + "\n" + md_sep + ("\n" + "\n".join(md_body) if md_body else "") + "\n\n"
+
+    cleaned = re.sub(r'<table[^>]*>([\s\S]*?)<\/table>', _convert_table, cleaned, flags=re.IGNORECASE)
+
+    # Convert HTML lists to Markdown
+    def _convert_ul(match):
+        inner = match.group(1)
+        items = re.findall(r'<li[^>]*>([\s\S]*?)<\/li>', inner, flags=re.IGNORECASE)
+        return "\n\n" + "\n".join(f"- {item.strip()}" for item in items if item.strip()) + "\n\n"
+
+    def _convert_ol(match):
+        inner = match.group(1)
+        items = re.findall(r'<li[^>]*>([\s\S]*?)<\/li>', inner, flags=re.IGNORECASE)
+        return "\n\n" + "\n".join(f"{i+1}. {item.strip()}" for i, item in enumerate(items) if item.strip()) + "\n\n"
+
+    cleaned = re.sub(r'<ul[^>]*>([\s\S]*?)<\/ul>', _convert_ul, cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<ol[^>]*>([\s\S]*?)<\/ol>', _convert_ol, cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<li[^>]*>([\s\S]*?)<\/li>', r'\n- \1\n', cleaned, flags=re.IGNORECASE)
+
+    # Convert common HTML tags
+    cleaned = re.sub(r'<h([1-6])[^>]*>([\s\S]*?)<\/h\1>', lambda m: "\n\n" + ("#" * int(m.group(1))) + " " + m.group(2).strip() + "\n\n", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<p[^>]*>([\s\S]*?)<\/p>', r'\n\n\1\n\n', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(?:b|strong)[^>]*>([\s\S]*?)<\/(?:b|strong)>', r'**\1**', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(?:i|em)[^>]*>([\s\S]*?)<\/(?:i|em)>', r'*\1*', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<code[^>]*>([\s\S]*?)<\/code>', r'`\1`', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<br\s*\/?>', '\n', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<hr\s*\/?>', '\n---\n', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)<\/a>', r'[\2](\1)', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<\/?(?:span|div|font|article|section|header|footer)[^>]*>', '', cleaned, flags=re.IGNORECASE)
 
     return cleaned.strip()
 

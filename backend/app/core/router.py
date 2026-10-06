@@ -28,7 +28,7 @@ class AsuraRouter:
     and logical model capabilities based on semantic intent, entity extraction, and conversational context.
     """
 
-    def route(
+    async def route_async(
         self,
         query: str,
         attachments: Optional[List[Dict[str, Any]]] = None,
@@ -36,6 +36,34 @@ class AsuraRouter:
         force_image_mode: Optional[bool] = None,
         selected_model: Optional[str] = None,
         conversation_history: Optional[List[Dict[str, Any]]] = None
+    ) -> RoutingDecision:
+        """
+        Asynchronous routing with dynamic office-holder resolution.
+        Resolves leaders, chief ministers, CEOs, and positions to actual persons before image search.
+        """
+        resolved_holder = None
+        if entity_detector.is_office_or_role_query(query):
+            resolved_holder = await entity_detector.resolve_office_holder(query)
+
+        return self.route(
+            query=query,
+            attachments=attachments,
+            force_web_search=force_web_search,
+            force_image_mode=force_image_mode,
+            selected_model=selected_model,
+            conversation_history=conversation_history,
+            resolved_office_holder=resolved_holder
+        )
+
+    def route(
+        self,
+        query: str,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+        force_web_search: Optional[bool] = None,
+        force_image_mode: Optional[bool] = None,
+        selected_model: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        resolved_office_holder: Optional[str] = None
     ) -> RoutingDecision:
         q = (query or "").strip()
         q_lower = q.lower()
@@ -64,6 +92,11 @@ class AsuraRouter:
         multiple_entities = entity_detector.extract_multiple_entities(q)
         if multiple_entities:
             entity = " and ".join(multiple_entities)
+
+        # If office-holder was dynamically resolved, attach real person's name
+        if resolved_office_holder:
+            entity = resolved_office_holder
+            entity_type = EntityType.POLITICIAN
 
         # 3. Defaults
         requires_web = False
@@ -110,7 +143,25 @@ class AsuraRouter:
             requires_web = False
             logical_mode = "Asura Balanced"
 
-        # 7. Person & Biographical Queries (e.g. "Who is Virat Kohli?", "Tell me about Rohit Sharma")
+        # 7. Office-Holder Queries (e.g. "Who is the current CM of Tamil Nadu?", "Current CEO of Microsoft")
+        elif entity_detector.is_office_or_role_query(q):
+            intent_val = AsuraIntent.CURRENT_INFORMATION.value
+            requires_web = settings.WEB_GROUNDING_AUTO
+            requires_current_info = True
+            clean_role = re.sub(r'^(?:who\s+is\s+|tell\s+me\s+about\s+)?(?:the\s+)?(?:current\s+)?', '', q, flags=re.IGNORECASE).rstrip('?').strip()
+            if entity:
+                # Entity resolved to specific person - search by person name directly
+                requires_images = settings.IMAGE_SEARCH_AUTO
+                image_search_query = entity
+                search_query = f"{entity} {clean_role} biography records"
+            else:
+                # If office-holder could not be verified, do NOT do generic image search (prevents random statues/monuments)
+                requires_images = False
+                image_search_query = None
+                search_query = q
+            logical_mode = "Asura Balanced"
+
+        # 8. Person & Biographical Queries (e.g. "Who is Virat Kohli?", "Tell me about Rohit Sharma")
         elif intent == AsuraIntent.PERSON or (entity and entity_type in [EntityType.PERSON, EntityType.ATHLETE, EntityType.ACTOR, EntityType.POLITICIAN]):
             intent_val = AsuraIntent.PERSON.value
             target_entity = entity or re.sub(r"^\s*who\s+(?:is|was)\s+", "", q, flags=re.IGNORECASE).rstrip("?").strip()
@@ -121,7 +172,7 @@ class AsuraRouter:
             image_search_query = target_entity
             logical_mode = "Asura Balanced"
 
-        # 8. Current Information & News (e.g. "What is the latest news about X?", "Current price of iPhone")
+        # 9. Current Information & News (e.g. "What is the latest news about X?", "Current price of iPhone")
         elif intent in [AsuraIntent.CURRENT_INFORMATION, AsuraIntent.NEWS]:
             intent_val = intent.value
             requires_web = settings.WEB_GROUNDING_AUTO
@@ -132,7 +183,7 @@ class AsuraRouter:
                 image_search_query = entity
             logical_mode = "Asura Balanced"
 
-        # 9. Places & Landmarks (e.g. "Where is Paris?", "Eiffel Tower")
+        # 10. Places & Landmarks (e.g. "Where is Paris?", "Eiffel Tower")
         elif intent == AsuraIntent.PLACE or entity_type in [EntityType.LANDMARK, EntityType.PLACE]:
             intent_val = AsuraIntent.PLACE.value
             requires_web = False

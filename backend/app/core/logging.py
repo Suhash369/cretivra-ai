@@ -9,9 +9,9 @@ class ImmediateFlushStreamHandler(logging.StreamHandler):
 def setup_logging():
     try:
         if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(line_buffering=True)
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
         if hasattr(sys.stderr, "reconfigure"):
-            sys.stderr.reconfigure(line_buffering=True)
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
     except Exception:
         pass
 

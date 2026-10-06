@@ -54,7 +54,7 @@ class AsuraResponseOrchestrator:
 
         # 1. Routing & Intent Analysis
         yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is thinking...', 'reasoning_status': 'Asura is thinking...', 'done': False})}\n\n"
-        decision: RoutingDecision = asura_router.route(
+        decision: RoutingDecision = await asura_router.route_async(
             query=query,
             attachments=attachments,
             force_web_search=force_web_search,

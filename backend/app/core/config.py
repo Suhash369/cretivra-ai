@@ -57,7 +57,7 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "provider": "groq",
         "model": "openai/gpt-oss-120b",
         "fallbacks": [
-            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "groq", "model": "openai/gpt-oss-20b"},
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
         ]
@@ -67,7 +67,7 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "model": "liquid/lfm-2.5-2.6b:free",
         "fallbacks": [
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
-            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"}
         ]
     },
@@ -77,14 +77,14 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "fallbacks": [
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"},
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
-            {"provider": "gemini", "model": "gemini-3.8-flash"}
+            {"provider": "gemini", "model": "gemini-2.5-flash"}
         ]
     },
     "vision": {
         "provider": "gemini",
         "model": "gemini-2.5-flash-image",
         "fallbacks": [
-            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "groq", "model": "openai/gpt-oss-120b"}
         ]
     },

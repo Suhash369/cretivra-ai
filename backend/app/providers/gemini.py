@@ -51,10 +51,10 @@ class GeminiProvider(AIProvider):
     def _resolve_model(self, model: str) -> List[str]:
         m = (model or "").lower()
         if "vision" in m or "image" in m:
-            return ["gemini-2.5-flash-image", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+            return ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-image"]
         elif "reason" in m or "pro" in m:
-            return ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-flash-latest"]
-        return ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"]
+            return ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-flash-latest"]
+        return ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-3.1-flash-lite"]
 
     async def chat(
         self,

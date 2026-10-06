@@ -54,6 +54,10 @@ class EntityDetector:
             if context_entity:
                 return context_entity, EntityType.PERSON
 
+        # 1.5 Check for Office / Role / Position Queries (e.g. "Who is the current chief minister of Tamil Nadu?")
+        if self.is_office_or_role_query(q):
+            return None, EntityType.POLITICIAN
+
         # 2. Who is / Who was / Tell me about [Subject]
         who_patterns = [
             r"^\s*who\s+(?:is|was)\s+([A-Za-z0-9\s\.\-'\"]+?)(?:\?|$)",
@@ -66,7 +70,8 @@ class EntityDetector:
             if m:
                 cand = m.group(1).strip().strip("'\"")
                 if len(cand) > 1 and not any(cand.lower() == w for w in ["the", "a", "an", "this", "that"]):
-                    return self._clean_entity_name(cand), EntityType.PERSON
+                    if not self.is_office_or_role_query(cand):
+                        return self._clean_entity_name(cand), EntityType.PERSON
 
         # 3. Where is / Visit / Location of [Place / Landmark]
         where_match = re.search(r"\b(?:where\s+is|map\s+of|location\s+of|capital\s+of|visit)\s+([A-Za-z\s\.\-']+?)(?:\?|$)", q, re.IGNORECASE)
@@ -121,8 +126,57 @@ class EntityDetector:
         return []
 
     def _clean_entity_name(self, name: str) -> str:
-        cleaned = re.sub(r'^(?:the|a|an|about|pictures? of|photos? of)\s+', '', name, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r'[\s\u202f\xa0]+', ' ', name or '')
+        cleaned = re.sub(r'^(?:the|a|an|about|pictures? of|photos? of)\s+', '', cleaned, flags=re.IGNORECASE).strip()
         return cleaned.title()
+
+    def is_office_or_role_query(self, query: str) -> bool:
+        """Detects if query or entity candidate is an office, title, or position rather than a literal person's name."""
+        q_lower = (query or "").lower()
+        role_patterns = [
+            r"\b(?:chief\s+minister|cm)\b",
+            r"\b(?:prime\s+minister|pm)\b",
+            r"\b(?:president|vice\s+president)\b",
+            r"\b(?:governor|lieutenant\s+governor)\b",
+            r"\b(?:ceo|chief\s+executive\s+officer)\b",
+            r"\b(?:cfo|cto|coo)\b",
+            r"\b(?:captain\s+of|skipper\s+of)\b",
+            r"\b(?:chairman|chairperson|director\s+general)\b",
+            r"\b(?:chancellor|mayor|head\s+of\s+state)\b"
+        ]
+        return any(re.search(p, q_lower) for p in role_patterns)
+
+    async def resolve_office_holder(self, query: str) -> Optional[str]:
+        """
+        Dynamically resolves the actual person holding the requested office or position.
+        Uses fast Groq inference (with temporal 2026 reality).
+        Guarantees NO static hardcoding.
+        """
+        try:
+            from app.providers.groq import GroqProvider
+            from app.core.logging import logger
+            gp = GroqProvider()
+            if not gp.is_available():
+                return None
+
+            prompt = (
+                f"Identify the real-world person who holds the office or leadership role described in: \"{query}\" "
+                "(the current incumbent). Return ONLY the person's full name (e.g., 'M. K. Stalin' or 'Pinarayi Vijayan' or 'Satya Nadella'). "
+                "Do not include any extra words, explanation, titles, or quotes."
+            )
+            resp = await gp.chat("fast", [{"role": "user", "content": prompt}])
+            raw_name = resp.get("message", {}).get("content", "").strip()
+            
+            # Normalize all unicode whitespace to standard ASCII space
+            raw_name = re.sub(r'[\s\u202f\xa0]+', ' ', raw_name).strip()
+            clean_name = re.sub(r'["\'.]', '', raw_name).strip()
+            if not raw_name or "unknown" in clean_name.lower() or len(raw_name) > 60:
+                return None
+            resolved = raw_name.strip(" '\"`.")
+            logger.info(f"[ASURA] Resolved office holder for '{query}': '{resolved}'")
+            return resolved
+        except Exception:
+            return None
 
     def _extract_recent_entity_from_context(self, context: List[Dict[str, Any]]) -> Optional[str]:
         """Extracts the active entity from previous conversation turns."""
@@ -131,13 +185,13 @@ class EntityDetector:
             if msg.get("role") == "user":
                 ent, etype = self.detect_entity(content)
                 if ent and etype != EntityType.TECHNOLOGY and ent.lower() not in ["he", "she", "it", "they"]:
-                    return ent
+                    return self._clean_entity_name(ent)
             elif msg.get("role") == "assistant":
-                m = re.search(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", content)
+                m = re.search(r"\b([A-Z][a-z]+(?:[\s\u202f\xa0]+[A-Z][a-z]+)+)\b", content)
                 if m:
                     cand = m.group(1)
                     if not any(w in cand for w in ["Asura", "Cretivra", "Artificial Intelligence", "United States"]):
-                        return cand
+                        return self._clean_entity_name(cand)
         return None
 
 entity_detector = EntityDetector()
