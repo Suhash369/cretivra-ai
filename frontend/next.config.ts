@@ -2,6 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: ['localhost:3000', '127.0.0.1:3000', '10.0.5.19:3000', '10.0.5.19'],
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_URL ||
