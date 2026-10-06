@@ -21,9 +21,8 @@ from app.api import health, models, conversations, chat, files, settings as sett
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting Asura AI by Cretivra service...")
+    logger.info("Starting CRETIVRA ASURA service...")
     try:
-        # Allow sufficient time for remote database connection
         await asyncio.wait_for(asyncio.to_thread(init_db), timeout=10.0)
     except Exception as e:
         logger.warning(f"Database initialization non-fatal notice: {e}")
@@ -33,21 +32,25 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not create upload directory {settings.UPLOAD_DIR}: {e}")
 
-    # Pre-warm provider health status asynchronously so first user chat has 0ms latency
+    # Pre-warm allowed providers health status asynchronously
     try:
-        from app.providers.cretivra_provider import ollama_provider
-        asyncio.create_task(ollama_provider.health_check())
+        from app.providers.groq import groq_provider
+        from app.providers.gemini import gemini_provider
+        from app.providers.openrouter import openrouter_provider
+        asyncio.create_task(groq_provider.health_check())
+        asyncio.create_task(gemini_provider.health_check())
+        asyncio.create_task(openrouter_provider.health_check())
     except Exception as e:
-        logger.debug(f"Pre-warm health check background task notice: {e}")
+        logger.debug(f"Pre-warm health check notice: {e}")
 
-    logger.info("Asura AI by Cretivra backend ready. Listening for incoming requests.")
+    logger.info("CRETIVRA ASURA backend ready. Listening for incoming requests.")
     yield
-    logger.info("Shutting down Asura AI by Cretivra backend...")
+    logger.info("Shutting down CRETIVRA ASURA backend...")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="Asura AI by Cretivra — Multi-User Privacy-First AI Platform Architecture",
-    version="1.0.0",
+    description="CRETIVRA ASURA — Unified Real-Time Multimodal AI Assistant",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -93,10 +96,10 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error on {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Cretivra couldn't complete that operation. Please try again."}
+        content={"detail": "Asura couldn't complete that operation. Please try again."}
     )
 
-# Static frontend mounting if built dist folder exists (for production single-container deployment)
+# Static frontend mounting if built dist folder exists
 possible_dist_paths = [
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "dist"),
     os.path.join(os.getcwd(), "frontend", "dist"),
@@ -112,7 +115,6 @@ for p in possible_dist_paths:
 if frontend_dist:
     logger.info(f"Serving built frontend assets from: {frontend_dist}")
     
-    # Custom 404 fallback for SPA client-side routing
     @app.exception_handler(404)
     async def custom_404_handler(request: Request, exc):
         if not request.url.path.startswith(settings.API_V1_STR):
@@ -127,9 +129,8 @@ else:
     def root_redirect():
         return {
             "name": settings.PROJECT_NAME,
-            "tagline": "Your AI. Your data. Your control.",
             "status": "online",
-            "docs": "/docs"
+            "assistant": "Asura"
         }
 
 if __name__ == "__main__":
@@ -147,5 +148,3 @@ if __name__ == "__main__":
         proxy_headers=True,
         forwarded_allow_ips="*"
     )
-
-

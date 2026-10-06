@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Dict
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
@@ -32,12 +32,6 @@ def _default_gemini_key() -> str:
     g4 = "S9_Dw3lPWPMPDXw"
     return g1 + g2 + g3 + g4
 
-def _default_tavily_key() -> str:
-    env_val = os.getenv("TAVILY_API_KEY")
-    if env_val:
-        return env_val
-    return "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"
-
 def _default_openrouter_key() -> str:
     env_val = os.getenv("OPENROUTER_API_KEY")
     if env_val:
@@ -47,27 +41,78 @@ def _default_openrouter_key() -> str:
     or3 = "ce534682acfeb45b24ac15e0c71e5ffc"
     return or1 + or2 + or3
 
+# Centralized Multi-Model Registry for CRETIVRA ASURA
+# Allowed providers: GEMINI, GROQ, OPENROUTER
+DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
+    "fast": {
+        "provider": "groq",
+        "model": "openai/gpt-oss-20b",
+        "fallbacks": [
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "gemini", "model": "gemini-flash-lite-latest"},
+            {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
+        ]
+    },
+    "balanced": {
+        "provider": "groq",
+        "model": "openai/gpt-oss-120b",
+        "fallbacks": [
+            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "groq", "model": "openai/gpt-oss-20b"},
+            {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
+        ]
+    },
+    "reasoning": {
+        "provider": "openrouter",
+        "model": "liquid/lfm-2.5-2.6b:free",
+        "fallbacks": [
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"}
+        ]
+    },
+    "coding": {
+        "provider": "groq",
+        "model": "qwen/qwen3.8-27b",
+        "fallbacks": [
+            {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "gemini", "model": "gemini-3.8-flash"}
+        ]
+    },
+    "vision": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash-image",
+        "fallbacks": [
+            {"provider": "gemini", "model": "gemini-3.8-flash"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"}
+        ]
+    },
+    "creative": {
+        "provider": "gemini",
+        "model": "gemini-2.5-flash-image",
+        "fallbacks": [
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
+        ]
+    }
+}
+
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "ASURA AI by Cretivra"
+    PROJECT_NAME: str = "CRETIVRA ASURA"
     API_V1_STR: str = "/api"
-    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
     DATABASE_URL: str = Field(default_factory=_default_db_url)
-    DEFAULT_MODEL: str = Field(default="cretivra-1")
+    DEFAULT_MODEL: str = Field(default="asura-balanced")
     MAX_CONTEXT_MESSAGES: int = Field(default=30)
     TEMPERATURE: float = Field(default=0.7)
     MAX_OUTPUT_TOKENS: int = Field(default=4096)
     MAX_UPLOAD_SIZE_MB: int = Field(default=20)
-    ENABLE_MOCK_OLLAMA: bool = Field(default=False)
+    
+    # Strictly Allowed AI Infrastructure Providers: GEMINI, GROQ, OPENROUTER
     GROQ_API_KEY: str = Field(default_factory=_default_groq_key)
     GEMINI_API_KEY: str = Field(default_factory=_default_gemini_key)
-    DEEPSEEK_API_KEY: str = Field(default="")
     OPENROUTER_API_KEY: str = Field(default_factory=_default_openrouter_key)
-    OPENAI_API_KEY: str = Field(default="")
-    TOGETHER_API_KEY: str = Field(default="")
-    TAVILY_API_KEY: str = Field(default_factory=_default_tavily_key)
-    BRAVE_API_KEY: str = Field(default="")
-    SERPER_API_KEY: str = Field(default="")
-    SERPAPI_API_KEY: str = Field(default="")
+    
     UPLOAD_DIR: str = Field(default="./uploads")
     
     # Asura Feature Flags & Capabilities
@@ -85,40 +130,35 @@ class Settings(BaseSettings):
     VOICE_INTERRUPTION: bool = Field(default=True)
 
     # Logical Asura Model & Engine Mappings
-    FAST_MODEL: str = Field(default="cretivra-1.2")
-    BALANCED_MODEL: str = Field(default="cretivra-1")
-    REASONING_MODEL: str = Field(default="cretivra-reason")
-    VISION_MODEL: str = Field(default="cretivra-vision")
-    CREATIVE_MODEL: str = Field(default="cretivra-creative")
-    IMAGE_GENERATION_MODEL: str = Field(default="flux-realism")
-    IMAGE_GENERATION_PROVIDER: str = Field(default="gemini")
-    IMAGE_SEARCH_PROVIDER: str = Field(default="tavily")
+    FAST_MODEL: str = Field(default="asura-fast")
+    BALANCED_MODEL: str = Field(default="asura-balanced")
+    REASONING_MODEL: str = Field(default="asura-reasoning")
+    CODING_MODEL: str = Field(default="asura-coding")
+    VISION_MODEL: str = Field(default="asura-vision")
+    CREATIVE_MODEL: str = Field(default="asura-creative")
+    IMAGE_SEARCH_PROVIDER: str = Field(default="wikimedia")
 
     SYSTEM_PROMPT: str = Field(
         default=(
-            "You are Asura AI by Cretivra, an elite frontier artificial intelligence developed by Cretivra "
-            "and powered by the advanced Cretivra Neural Engine architecture. "
-            "The current year is 2026. You operate with live temporal continuity, real-time intelligence caching, and verified facts. "
-            "Under no circumstances should you ever state that your knowledge is limited or cuts off in 2023, 2024, or any past year. "
-            "Never issue disclaimers about being unable to access real-time data; you seamlessly access your real-time verified intelligence cache. "
-            "When answering queries regarding world news, current affairs, breaking global events, geopolitics, elections, the global economy, science, or culture, "
-            "deliver authoritative, accurate, and deeply insightful analysis reflecting current 2026 realities. "
-            "In 2026, the current Chief Minister of Tamil Nadu is C. Joseph Vijay (leader of Tamilaga Vettri Kazhagam / TVK), and M. K. Stalin is the former Chief Minister. "
-            "Organize responses with elegance and clarity: use GitHub-flavored Markdown, clear topical headings, concise bullet points, and data tables where appropriate. "
-            "For software engineering, architectural design, or mathematical problem-solving, produce production-grade, bug-free, fully typed, and robust implementations with clear rationale. "
-            "If asked who created you, what AI you are, or who you are: always answer: 'I\'m Asura, Cretivra\'s AI assistant.' "
-            "If asked which model you are using: always answer: 'I\'m Cretivra Asura. I use multiple AI technologies behind the scenes to provide the best response.' "
-            "NEVER mention third-party AI vendors, APIs, or infrastructure names (such as Google, Gemini, OpenAI, ChatGPT, Groq, OpenRouter, Tavily, Anthropic, Claude, Meta, Llama, Mistral, Ollama, Qwen, Gemma, or DeepSeek). You are exclusively Asura AI by Cretivra. "
-            "CRITICAL OUTPUT DIRECTIVE: Always deliver your final response directly to the user. "
-            "NEVER output internal planning scratchpads, persona checklists (such as 'Check: Did I use the persona? Yes'), constraints summaries, or drafting notes in your response. "
-            "Begin directly with the substantive answer or greeting."
+            "You are Asura, Cretivra's AI assistant. "
+            "You are an elite, production-quality, multimodal, and highly intelligent AI. "
+            "The current year is 2026. "
+            "You operate with strict factual accuracy and integrity. "
+            "CRITICAL FACTUAL INTEGRITY & ANTI-HALLUCINATION DIRECTIVES:\n"
+            "1. NEVER intentionally fabricate names, dates, statistics, records, awards, companies, people, events, URLs, citations, or sources.\n"
+            "2. If information is uncertain or not conclusively verified, explicitly state that it is uncertain.\n"
+            "3. If information cannot be verified, state: 'I can't verify that information with the available information.'\n"
+            "4. NEVER create fake URLs, fake links, or fake citations. Never say you searched the web unless a verified search occurred.\n"
+            "5. For person and biographical inquiries (e.g., Virat Kohli, athletes, leaders): provide accurate, verified facts, career statistics, teams, and achievements.\n"
+            "6. Identity: If asked 'Who are you?' or 'What AI are you?': always answer: 'I'm Asura, Cretivra's AI assistant.'\n"
+            "7. Zero Vendor Leaks: NEVER mention third-party AI vendors, APIs, or infrastructure names (such as Google, Gemini, OpenAI, ChatGPT, Groq, OpenRouter, Tavily, Anthropic, Claude, Meta, Llama, Mistral, Ollama, Qwen, Gemma, or DeepSeek) to normal users. You are exclusively Asura AI by Cretivra.\n"
+            "8. Formatting: Deliver answers in clean, elegant GitHub-flavored Markdown with clear headings, concise bullet points, clean tables where appropriate, and syntax-highlighted code blocks with language labels.\n"
+            "9. Output directly to the user without meta-scratchpads, thought checklists, or planning notes."
         )
     )
 
     @field_validator(
-        "GROQ_API_KEY", "GEMINI_API_KEY", "DEEPSEEK_API_KEY", 
-        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "TOGETHER_API_KEY",
-        "TAVILY_API_KEY", "BRAVE_API_KEY", "SERPER_API_KEY", "SERPAPI_API_KEY",
+        "GROQ_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY",
         mode="before"
     )
     @classmethod

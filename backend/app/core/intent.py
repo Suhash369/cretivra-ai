@@ -21,7 +21,6 @@ class AsuraIntent(str, Enum):
     TECHNICAL = "TECHNICAL"
     OTHER = "OTHER"
 
-# Semantic indicators for live temporal / current information queries
 TEMPORAL_INDICATORS = [
     r"\blatest\b",
     r"\btoday\b",
@@ -47,7 +46,6 @@ TEMPORAL_INDICATORS = [
     r"\bstock\s+price\b"
 ]
 
-# Conversational & non-web patterns
 NON_WEB_PATTERNS = [
     r"^\s*(?:what\s+is|explain|describe)\s+(?:a\s+)?(?:pointer\s+in\s+c|binary\s+tree|recursion|polymorphism|interface|closure|async\s+await)\b",
     r"^\s*(?:calculate|solve|evaluate)\s+[-+]?\d+",
@@ -57,7 +55,6 @@ NON_WEB_PATTERNS = [
     r"^\s*(?:translate|proofread)\b"
 ]
 
-# Explicit image generation triggers
 IMAGE_GENERATION_PATTERNS = [
     r"\b(?:generate|create|design|draw|paint|sketch|make)\s+(?:an?|the|some)?\s*(?:image|picture|photo|logo|poster|illustration|artwork|visual|wallpaper|render)\b",
     r"\b(?:create\s+a\s+logo|design\s+a\s+poster|generate\s+a\s+futuristic|create\s+a\s+cinematic|generate\s+a\s+product\s+concept)\b",
@@ -65,7 +62,6 @@ IMAGE_GENERATION_PATTERNS = [
     r"^\s*/(?:image|draw|art|flux)\b"
 ]
 
-# Explicit real image search triggers
 IMAGE_SEARCH_PATTERNS = [
     r"\b(?:show\s+me|images?\s+of|photos?\s+of|pictures?\s+of|look\s+like)\b",
     r"\b(?:real\s+images?\s+of|real\s+photos?\s+of)\b"
@@ -73,9 +69,9 @@ IMAGE_SEARCH_PATTERNS = [
 
 class IntentDetector:
     """
-    Intelligent semantic intent classification for Cretivra Asura.
+    Intelligent semantic intent classification for CRETIVRA ASURA.
     Distinguishes factual general knowledge, live current events, real person/place queries,
-    real image searches, and creative generative media.
+    real image searches, technical/embedded engineering, and creative generative media.
     """
 
     def detect_intent(
@@ -101,43 +97,49 @@ class IntentDetector:
         if re.search(r"\b(?:translate\s+(?:this|the\s+following|to|into)\b)", q_lower):
             return AsuraIntent.TRANSLATION, {"reasoning": "Text translation requested."}
 
-        # 4. Code & Programming
-        if re.search(r"\b(?:write\s+a\s+(?:python|javascript|typescript|c|c\+\+|java|go|rust|sql)?\s*(?:function|script|code|class|component|hook|query))\b", q_lower) or re.search(r"\b(?:debug|refactor|fix\s+syntax\s+error|implement\s+algorithm)\b", q_lower):
+        # 4. Embedded Systems & Technical Hardware / Architecture
+        if re.search(r"\b(?:stm32|esp32|gpio|uart|spi|i2c|pwm|adc|dac|interrupts?|driver|microcontroller|embedded\s+c|pinout|datasheet|register|cortex|timer|hardware)\b", q_lower):
+            if re.search(r"\b(?:write|code|driver|implement|develop|create\s+a\s+driver)\b", q_lower):
+                return AsuraIntent.CODE, {"reasoning": "Embedded software engineering / driver synthesis request."}
+            return AsuraIntent.TECHNICAL, {"reasoning": "Embedded hardware or technical architecture request."}
+
+        # 5. General Code & Programming
+        if re.search(r"\b(?:write|implement|code|build|refactor|debug|fix)\s+(?:a\s+)?(?:python|javascript|typescript|c|c\+\+|java|go|rust|sql|react|vue)?\s*(?:function|script|code|class|component|hook|query|driver|algorithm|program)\b", q_lower):
             return AsuraIntent.CODE, {"reasoning": "Software engineering or code synthesis request."}
 
-        # 5. Image Generation (Creative creation of new synthetic visual)
+        # 6. Image Generation
         for pattern in IMAGE_GENERATION_PATTERNS:
             if re.search(pattern, q_lower):
                 return AsuraIntent.IMAGE_GENERATION, {"reasoning": "Creative image synthesis requested."}
 
-        # 6. Technical Explanations (e.g. "What is a pointer in C?")
+        # 7. Real Image Search
+        for pattern in IMAGE_SEARCH_PATTERNS:
+            if re.search(pattern, q_lower):
+                return AsuraIntent.IMAGE_SEARCH, {"reasoning": "Explicit request for real photos / visual imagery."}
+
+        # 8. Technical Non-Web Patterns (e.g. "What is a pointer in C?")
         if any(re.search(pat, q_lower) for pat in NON_WEB_PATTERNS):
             if "pointer" in q_lower or "c" in q_lower or "algorithm" in q_lower:
                 return AsuraIntent.CODE, {"reasoning": "Technical programming concept definition."}
             return AsuraIntent.GENERAL_KNOWLEDGE, {"reasoning": "General knowledge query not requiring live web search."}
 
-        # 7. Real Image Search (e.g. "Show me Virat Kohli", "Images of Chennai", "Show me Tesla Model 3")
-        for pattern in IMAGE_SEARCH_PATTERNS:
-            if re.search(pattern, q_lower):
-                return AsuraIntent.IMAGE_SEARCH, {"reasoning": "Explicit request for real photos / visual imagery."}
-
-        # 8. News & Breaking Events
+        # 9. News & Breaking Events
         if re.search(r"\b(?:news|headlines|breaking|happening\s+now|world\s+news|daily\s+briefing)\b", q_lower):
             return AsuraIntent.NEWS, {"reasoning": "News and breaking headlines request."}
 
-        # 9. Temporal / Current Information (e.g. "What is the latest news about...", "Current price of...", "Who is currently...")
+        # 10. Temporal / Current Information
         if any(re.search(ind, q_lower) for ind in TEMPORAL_INDICATORS):
             return AsuraIntent.CURRENT_INFORMATION, {"reasoning": "Semantic temporal indicator detected requiring live grounding."}
 
-        # 10. Person Query (e.g. "Who is Virat Kohli?")
+        # 11. Person Query (e.g. "Who is Virat Kohli?")
         if re.search(r"^\s*who\s+(?:is|was)\s+([A-Za-z0-9\s\.\-]+)\??\s*$", q_lower):
             return AsuraIntent.PERSON, {"reasoning": "Biographical subject inquiry for real individual."}
 
-        # 11. Place / Landmark Query (e.g. "Where is Paris?", "Capital of Peru")
+        # 12. Place / Landmark Query (e.g. "Where is Paris?", "Capital of Peru")
         if re.search(r"^\s*(?:where\s+is|map\s+of|location\s+of|capital\s+of)\s+([A-Za-z\s]+)\??\s*$", q_lower):
             return AsuraIntent.PLACE, {"reasoning": "Geographic location or place inquiry."}
 
-        # 12. Product Query (e.g. "iPhone 16 specs", "Tesla Model 3 review")
+        # 13. Product Query
         if re.search(r"\b(?:iphone|galaxy\s*s|macbook|pixel|playstation|xbox|tesla\s*model)\b", q_lower):
             return AsuraIntent.PRODUCT, {"reasoning": "Consumer product inquiry."}
 

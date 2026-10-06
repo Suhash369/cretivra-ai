@@ -6,15 +6,13 @@ from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.database.models import UserDB, MessageDB
 from app.api.auth import get_optional_user, get_required_user
-from app.services.chat_service import chat_service
 from app.services.conversation_service import conversation_service
 from app.schemas.chat import ChatRequest, EditMessageRequest
+from app.schemas.asura_response import AsuraStructuredResponse
+from app.services.response_orchestrator import response_orchestrator
 from app.core.logging import logger
 
 router = APIRouter(prefix="", tags=["Chat"])
-
-from app.schemas.asura_response import AsuraStructuredResponse
-from app.services.response_orchestrator import response_orchestrator
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache, no-transform",
@@ -39,8 +37,8 @@ async def chat_endpoint(
     if not conversation_id:
         conv = conversation_service.create_conversation(
             db=db,
-            title="New Conversation",
-            model_id=payload.model_id,
+            title=payload.message.strip()[:40],
+            model_id=payload.model_id or "asura-balanced",
             user_id=user_id
         )
         conversation_id = conv.id
@@ -74,7 +72,8 @@ async def chat_stream(
     db: Session = Depends(get_db)
 ):
     """
-    Streaming SSE chat endpoint supporting per-user conversation isolation. Strictly authenticated.
+    Streaming SSE chat endpoint supporting per-user conversation isolation.
+    Orchestrates intelligent routing, entity detection, real image search, and model fallback.
     """
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
@@ -84,8 +83,8 @@ async def chat_stream(
     if not conversation_id:
         conv = conversation_service.create_conversation(
             db=db,
-            title="New Conversation",
-            model_id=payload.model_id,
+            title=payload.message.strip()[:45],
+            model_id=payload.model_id or "asura-balanced",
             user_id=current_user.id
         )
         conversation_id = conv.id
@@ -103,17 +102,14 @@ async def chat_stream(
         content=payload.message.strip()
     )
 
-    generator = chat_service.generate_response_stream(
+    generator = response_orchestrator.orchestrate_chat_stream(
         db=db,
         conversation_id=conversation_id,
-        user_message_content=payload.message.strip(),
-        model_id=payload.model_id,
+        user_message=payload.message.strip(),
         attachments=payload.attachments,
-        system_prompt=payload.system_prompt,
-        web_search=payload.web_search,
-        deep_research=payload.deep_research,
-        image_mode=payload.image_mode,
-        visual_mode=payload.visual_mode
+        force_web_search=payload.web_search,
+        force_image_mode=payload.image_mode,
+        selected_model=payload.model_id
     )
 
     return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
@@ -127,12 +123,10 @@ async def edit_message(
 ):
     """
     Edits a user message, truncates later messages, and streams fresh assistant response.
-    Validates ownership BEFORE mutating any database records.
     """
     if not payload.message or not payload.message.strip():
         raise HTTPException(status_code=400, detail="Message content cannot be empty.")
 
-    # 1. Pre-validation and ownership check BEFORE mutation
     target_msg = db.query(MessageDB).filter(MessageDB.id == message_id).first()
     if not target_msg:
         raise HTTPException(status_code=404, detail="Message not found.")
@@ -144,16 +138,15 @@ async def edit_message(
     if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to this conversation.")
 
-    # 2. Safely mutate message now that authorization is verified
     result = conversation_service.edit_message(db, message_id, payload.message.strip())
     conv_id = result["conversation_id"]
-    model_id = conv.model_id if conv else "cretivra-1"
+    model_id = conv.model_id if conv else "asura-balanced"
 
-    generator = chat_service.generate_response_stream(
+    generator = response_orchestrator.orchestrate_chat_stream(
         db=db,
         conversation_id=conv_id,
-        user_message_content=payload.message.strip(),
-        model_id=model_id
+        user_message=payload.message.strip(),
+        selected_model=model_id
     )
 
     return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
@@ -166,9 +159,7 @@ async def regenerate_message(
 ):
     """
     Regenerates assistant response for a conversation starting after the preceding user prompt.
-    Validates ownership BEFORE mutating any database records.
     """
-    # 1. Pre-validation and ownership check BEFORE mutation
     target_msg = db.query(MessageDB).filter(MessageDB.id == message_id).first()
     if not target_msg:
         raise HTTPException(status_code=404, detail="Target message not found.")
@@ -180,7 +171,6 @@ async def regenerate_message(
     if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to this conversation.")
 
-    # 2. Safely prepare regeneration now that authorization is verified
     result = conversation_service.prepare_regeneration(db, message_id)
     conv_id = result["conversation_id"]
 
@@ -197,11 +187,11 @@ async def regenerate_message(
     if not last_user_msg:
         raise HTTPException(status_code=400, detail="No user message found to regenerate.")
 
-    generator = chat_service.generate_response_stream(
+    generator = response_orchestrator.orchestrate_chat_stream(
         db=db,
         conversation_id=conv_id,
-        user_message_content=last_user_msg.content,
-        model_id=conv.model_id
+        user_message=last_user_msg.content,
+        selected_model=conv.model_id
     )
 
     return StreamingResponse(generator, media_type="text/event-stream", headers=SSE_HEADERS)
@@ -226,7 +216,6 @@ async def delete_message(
     if conv.user_id and (not current_user or current_user.id != conv.user_id):
         raise HTTPException(status_code=403, detail="Access denied to delete this message.")
 
-    # If deleting a user question, also delete the subsequent assistant response
     if target_msg.role == "user":
         subsequent_assistant = db.query(MessageDB).filter(
             MessageDB.conversation_id == target_msg.conversation_id,
@@ -239,4 +228,3 @@ async def delete_message(
     db.delete(target_msg)
     db.commit()
     return None
-

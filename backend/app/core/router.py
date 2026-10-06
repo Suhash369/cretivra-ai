@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.core.intent import intent_detector, AsuraIntent
 from app.core.entity import entity_detector, EntityType
+from app.core.logging import logger
 
 class RoutingDecision(BaseModel):
     intent: str
@@ -22,9 +23,9 @@ class RoutingDecision(BaseModel):
 
 class AsuraRouter:
     """
-    Asura Intelligent Router for Cretivra Asura.
+    Intelligent Router for CRETIVRA ASURA.
     Decides routing, tool selection, web grounding necessity, real image search vs generative media,
-    and logical model capabilities based on semantic intent and entity extraction.
+    and logical model capabilities based on semantic intent, entity extraction, and conversational context.
     """
 
     def route(
@@ -33,7 +34,8 @@ class AsuraRouter:
         attachments: Optional[List[Dict[str, Any]]] = None,
         force_web_search: Optional[bool] = None,
         force_image_mode: Optional[bool] = None,
-        selected_model: Optional[str] = None
+        selected_model: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None
     ) -> RoutingDecision:
         q = (query or "").strip()
         q_lower = q.lower()
@@ -50,15 +52,20 @@ class AsuraRouter:
                 else:
                     has_doc_attachment = True
 
-        # 1. Detect Intent & Entity
+        # 1. Detect Intent
         intent, intent_meta = intent_detector.detect_intent(
             q,
             has_image_attachment=has_image_attachment,
             has_doc_attachment=has_doc_attachment
         )
-        entity, entity_type = entity_detector.detect_entity(q)
 
-        # 2. Defaults
+        # 2. Extract Entity with Conversational Context (handles follow-ups like 'How old is he?')
+        entity, entity_type = entity_detector.detect_entity(q, conversation_context=conversation_history)
+        multiple_entities = entity_detector.extract_multiple_entities(q)
+        if multiple_entities:
+            entity = " and ".join(multiple_entities)
+
+        # 3. Defaults
         requires_web = False
         requires_current_info = False
         requires_images = False
@@ -69,13 +76,13 @@ class AsuraRouter:
         image_search_query = None
         image_gen_prompt = None
 
-        # 3. Vision Mode
+        # 4. Vision Mode
         if has_image_attachment or intent == AsuraIntent.VISION:
             requires_vision = True
             logical_mode = "Asura Vision"
             intent_val = AsuraIntent.VISION.value
 
-        # 4. Image Generation Intent
+        # 5. Image Generation Intent (e.g. "Generate a futuristic Cretivra office")
         elif intent == AsuraIntent.IMAGE_GENERATION or force_image_mode is True:
             requires_image_gen = True
             logical_mode = "Asura Creative"
@@ -94,29 +101,7 @@ class AsuraRouter:
             ).strip()
             image_gen_prompt = clean_prompt or q
 
-        # 5. Person & Biographical Queries (e.g. "Who is Virat Kohli?")
-        elif intent == AsuraIntent.PERSON:
-            intent_val = AsuraIntent.PERSON.value
-            target_entity = entity or re.sub(r"^\s*who\s+(?:is|was)\s+", "", q, flags=re.IGNORECASE).rstrip("?").strip()
-            requires_web = settings.WEB_GROUNDING_AUTO
-            requires_current_info = True
-            requires_images = settings.IMAGE_SEARCH_AUTO
-            search_query = f"{target_entity} biography profile achievements"
-            image_search_query = target_entity
-            logical_mode = "Asura Balanced"
-
-        # 6. Current Information & News (e.g. "What is the latest news about Virat Kohli?", "Current price of iPhone")
-        elif intent in [AsuraIntent.CURRENT_INFORMATION, AsuraIntent.NEWS]:
-            intent_val = intent.value
-            requires_web = settings.WEB_GROUNDING_AUTO
-            requires_current_info = True
-            search_query = q
-            if entity and entity_type in [EntityType.PERSON, EntityType.ATHLETE, EntityType.ACTOR, EntityType.POLITICIAN]:
-                requires_images = settings.IMAGE_SEARCH_AUTO
-                image_search_query = entity
-            logical_mode = "Asura Balanced"
-
-        # 7. Real Image Search (e.g. "Show me Virat Kohli", "Images of Chennai")
+        # 6. Real Image Search (e.g. "Show me Virat Kohli", "Pictures of Paris")
         elif intent == AsuraIntent.IMAGE_SEARCH:
             intent_val = AsuraIntent.IMAGE_SEARCH.value
             requires_images = True
@@ -125,35 +110,90 @@ class AsuraRouter:
             requires_web = False
             logical_mode = "Asura Balanced"
 
-        # 8. Places & Landmarks (e.g. "Where is Paris?", "Eiffel Tower")
-        elif intent == AsuraIntent.PLACE or entity_type == EntityType.LANDMARK:
+        # 7. Person & Biographical Queries (e.g. "Who is Virat Kohli?", "Tell me about Rohit Sharma")
+        elif intent == AsuraIntent.PERSON or (entity and entity_type in [EntityType.PERSON, EntityType.ATHLETE, EntityType.ACTOR, EntityType.POLITICIAN]):
+            intent_val = AsuraIntent.PERSON.value
+            target_entity = entity or re.sub(r"^\s*who\s+(?:is|was)\s+", "", q, flags=re.IGNORECASE).rstrip("?").strip()
+            requires_web = settings.WEB_GROUNDING_AUTO
+            requires_current_info = True
+            requires_images = settings.IMAGE_SEARCH_AUTO
+            search_query = f"{target_entity} biography records achievements"
+            image_search_query = target_entity
+            logical_mode = "Asura Balanced"
+
+        # 8. Current Information & News (e.g. "What is the latest news about X?", "Current price of iPhone")
+        elif intent in [AsuraIntent.CURRENT_INFORMATION, AsuraIntent.NEWS]:
+            intent_val = intent.value
+            requires_web = settings.WEB_GROUNDING_AUTO
+            requires_current_info = True
+            search_query = q
+            if entity:
+                requires_images = settings.IMAGE_SEARCH_AUTO
+                image_search_query = entity
+            logical_mode = "Asura Balanced"
+
+        # 9. Places & Landmarks (e.g. "Where is Paris?", "Eiffel Tower")
+        elif intent == AsuraIntent.PLACE or entity_type in [EntityType.LANDMARK, EntityType.PLACE]:
             intent_val = AsuraIntent.PLACE.value
             requires_web = False
             requires_images = settings.IMAGE_SEARCH_AUTO
             image_search_query = entity or q
             logical_mode = "Asura Balanced"
 
-        # 9. Code & Calculations & General Knowledge (e.g. "What is a pointer in C?")
-        elif intent in [AsuraIntent.CODE, AsuraIntent.CALCULATION, AsuraIntent.GENERAL_KNOWLEDGE]:
+        # 10. Code & Technical Hardware / Architecture
+        elif intent in [AsuraIntent.CODE, AsuraIntent.TECHNICAL]:
             intent_val = intent.value
             requires_web = False
             requires_current_info = False
             requires_images = False
             requires_image_gen = False
-            logical_mode = "Asura Fast" if intent in [AsuraIntent.CALCULATION, AsuraIntent.CODE] else "Asura Balanced"
+            logical_mode = "Asura Coding" if intent == AsuraIntent.CODE else "Asura Balanced"
+
+        elif intent == AsuraIntent.CALCULATION:
+            intent_val = AsuraIntent.CALCULATION.value
+            requires_web = False
+            requires_current_info = False
+            requires_images = False
+            requires_image_gen = False
+            logical_mode = "Asura Fast"
+
+        # 11. General Knowledge & Simple Prompts (e.g. "What is a pointer in C?", "What is 2+2?")
+        elif intent == AsuraIntent.GENERAL_KNOWLEDGE:
+            intent_val = intent.value
+            requires_web = False
+            requires_current_info = False
+            requires_images = False
+            requires_image_gen = False
+            # Simple short queries default to Fast mode for low latency
+            if len(q.split()) <= 8 and not any(w in q_lower for w in ["compare", "architect", "deep", "analyze"]):
+                logical_mode = "Asura Fast"
+            else:
+                logical_mode = "Asura Balanced"
 
         else:
             intent_val = intent.value
             logical_mode = "Asura Balanced"
 
-        # Honor explicit force_web_search flag from client
+        # Handle explicit client mode overrides
+        if selected_model:
+            sm = selected_model.lower()
+            if any(k in sm for k in ["reason", "deep", "r1"]):
+                logical_mode = "Asura Reasoning"
+            elif any(k in sm for k in ["code", "coder"]):
+                logical_mode = "Asura Coding"
+            elif any(k in sm for k in ["fast", "mini", "quick"]):
+                logical_mode = "Asura Fast"
+            elif any(k in sm for k in ["vision"]):
+                logical_mode = "Asura Vision"
+            elif any(k in sm for k in ["creative", "art"]):
+                logical_mode = "Asura Creative"
+
         if force_web_search is True:
             requires_web = True
             search_query = search_query or q
         elif force_web_search is False:
             requires_web = False
 
-        # Enforce global capability settings
         if not getattr(settings, "WEB_SEARCH_ENABLED", True):
             requires_web = False
         if not getattr(settings, "IMAGE_SEARCH_ENABLED", True):
@@ -161,9 +201,11 @@ class AsuraRouter:
         if not getattr(settings, "IMAGE_GENERATION_ENABLED", True):
             requires_image_gen = False
 
-        # If user explicitly selected reasoning or deep research model
-        if selected_model and any(k in selected_model.lower() for k in ["reason", "deepseek", "r1"]):
-            logical_mode = "Asura Reasoning"
+        logger.info(
+            f"[ASURA] intent={intent_val} entity={entity} "
+            f"requires_images={requires_images} requires_web={requires_web} "
+            f"logical_mode={logical_mode}"
+        )
 
         return RoutingDecision(
             intent=intent_val,

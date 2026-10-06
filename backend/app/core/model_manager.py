@@ -1,7 +1,8 @@
 import asyncio
+import time
 from typing import Dict, Any, List, Optional, AsyncGenerator
 from pydantic import BaseModel
-from app.core.config import settings
+from app.core.config import settings, DEFAULT_ASURA_REGISTRY
 from app.core.logging import logger
 from app.providers.groq import groq_provider
 from app.providers.gemini import gemini_provider
@@ -21,7 +22,7 @@ ASURA_LOGICAL_MODELS: Dict[str, LogicalModelInfo] = {
     "asura-fast": LogicalModelInfo(
         id="asura-fast",
         display_name="Asura Fast",
-        description="High-speed low-latency inference for quick answers and code",
+        description="High-speed low-latency inference for quick answers, summaries, and chat",
         category="Speed",
         capabilities=["chat", "code", "fast"],
         context_length=32768,
@@ -30,7 +31,7 @@ ASURA_LOGICAL_MODELS: Dict[str, LogicalModelInfo] = {
     "asura-balanced": LogicalModelInfo(
         id="asura-balanced",
         display_name="Asura Balanced",
-        description="Comprehensive intelligence for general conversational and analytical tasks",
+        description="Comprehensive intelligence for general conversation, analysis, and research",
         category="Balanced",
         capabilities=["chat", "code", "web", "reasoning"],
         context_length=128000,
@@ -45,6 +46,15 @@ ASURA_LOGICAL_MODELS: Dict[str, LogicalModelInfo] = {
         context_length=128000,
         is_available=True
     ),
+    "asura-coding": LogicalModelInfo(
+        id="asura-coding",
+        display_name="Asura Coding",
+        description="Advanced programming intelligence for software engineering, embedded systems, and debugging",
+        category="Coding",
+        capabilities=["chat", "code", "architecture"],
+        context_length=65536,
+        is_available=True
+    ),
     "asura-vision": LogicalModelInfo(
         id="asura-vision",
         display_name="Asura Vision",
@@ -57,7 +67,7 @@ ASURA_LOGICAL_MODELS: Dict[str, LogicalModelInfo] = {
     "asura-creative": LogicalModelInfo(
         id="asura-creative",
         display_name="Asura Creative",
-        description="Generative engine for visual creation, schematics, and artistic media",
+        description="Generative engine for visual creation, schematics, and creative storytelling",
         category="Creative",
         capabilities=["chat", "image_generation", "creative"],
         context_length=32768,
@@ -68,9 +78,20 @@ ASURA_LOGICAL_MODELS: Dict[str, LogicalModelInfo] = {
 class AsuraModelManager:
     """
     Central Asura Model Orchestrator and Capability Abstraction.
-    Selects, coordinates, and routes among local Ollama and configured cloud engines (Groq, Gemini, OpenRouter).
-    Guarantees that third-party infrastructure remains an internal detail.
+    Selects, coordinates, and routes among strictly allowed cloud engines:
+    1. GROQ
+    2. GEMINI
+    3. OPENROUTER
+    Enforces intelligent fallback, zero vendor leaks, and centralized model registry.
     """
+
+    def __init__(self):
+        self.registry = DEFAULT_ASURA_REGISTRY
+        self.providers = {
+            "groq": groq_provider,
+            "gemini": gemini_provider,
+            "openrouter": openrouter_provider,
+        }
 
     def get_logical_models(self) -> List[LogicalModelInfo]:
         """Returns Cretivra-owned logical capabilities for user display."""
@@ -78,21 +99,40 @@ class AsuraModelManager:
 
     async def check_provider_availability(self) -> Dict[str, bool]:
         """Checks internal provider availability for intelligent routing."""
-        ollama_available = False
-        try:
-            from app.providers.cretivra_provider import ollama_provider
-            health = await asyncio.wait_for(ollama_provider.health_check(), timeout=1.0)
-            ollama_available = health.get("available", False)
-        except Exception:
-            ollama_available = False
-
         return {
-            "local_ai": ollama_available,
             "groq": groq_provider.is_available(),
             "gemini": gemini_provider.is_available(),
             "openrouter": openrouter_provider.is_available(),
             "image_gen": image_generation_provider.enabled,
         }
+
+    def _get_execution_plan(self, logical_mode: str, has_images: bool = False) -> List[Dict[str, str]]:
+        """
+        Determines the primary provider/model and fallback chain from centralized registry.
+        """
+        mode_key = "balanced"
+        lm = (logical_mode or "").lower()
+
+        if has_images or "vision" in lm:
+            mode_key = "vision"
+        elif "reason" in lm:
+            mode_key = "reasoning"
+        elif "code" in lm or "coding" in lm:
+            mode_key = "coding"
+        elif "fast" in lm:
+            mode_key = "fast"
+        elif "creative" in lm or "art" in lm:
+            mode_key = "creative"
+        else:
+            mode_key = "balanced"
+
+        config_entry = self.registry.get(mode_key, self.registry["balanced"])
+        primary = {
+            "provider": config_entry.get("provider", "groq"),
+            "model": config_entry.get("model", "openai/gpt-oss-120b")
+        }
+        fallbacks = config_entry.get("fallbacks", [])
+        return [primary] + list(fallbacks)
 
     async def stream_orchestrated_chat(
         self,
@@ -102,102 +142,63 @@ class AsuraModelManager:
         is_search: bool = False
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Streams response using optimal internal provider with seamless automatic fallback.
-        Falls back through: Local AI -> Groq -> Gemini -> OpenRouter -> Synthesizer.
-        Never crashes, never leaks vendor names.
+        Streams response using optimal internal provider with capability-dependent fallback.
+        Strictly internal fallback order:
+        - Coding/Reasoning: OpenRouter / Groq / Gemini
+        - Vision: Gemini / OpenRouter / Groq
+        - Fast: Groq / Gemini / OpenRouter
+        - Balanced: Groq / Gemini / OpenRouter
+        Guarantees zero vendor leak and seamless recovery.
         """
-        # Normalize messages with system prompt if not present
+        # Ensure system prompt is set
         if not messages or messages[0].get("role") != "system":
             messages = [{"role": "system", "content": settings.SYSTEM_PROMPT}] + list(messages)
 
-        # 1. Vision Intent: Route directly to vision-capable cloud or local models
-        if images:
-            if gemini_provider.is_available():
-                try:
-                    has_yielded = False
-                    async for chunk in gemini_provider.stream_chat("gemini-2.5-flash", messages, images=images):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.debug(f"Gemini vision fallback notice: {e}")
+        has_images = bool(images)
+        execution_plan = self._get_execution_plan(logical_mode, has_images=has_images)
 
-            if openrouter_provider.is_available():
-                try:
-                    has_yielded = False
-                    async for chunk in openrouter_provider.stream_chat("nex-agi/nex-n2.5-pro:free", messages, images=images):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.debug(f"OpenRouter vision fallback notice: {e}")
+        for attempt_idx, candidate in enumerate(execution_plan):
+            prov_name = candidate.get("provider", "").lower()
+            model_name = candidate.get("model", "")
+            provider_inst = self.providers.get(prov_name)
 
-        # 2. Reasoning Intent: Route to deep reasoning models
-        if "reason" in logical_mode.lower():
-            if openrouter_provider.is_available():
-                try:
-                    has_yielded = False
-                    async for chunk in openrouter_provider.stream_chat("deepseek/deepseek-r1", messages):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.debug(f"Reasoning provider notice: {e}")
+            if not provider_inst or not provider_inst.is_available():
+                continue
 
-            if groq_provider.is_available():
-                try:
-                    has_yielded = False
-                    async for chunk in groq_provider.stream_chat("openai/gpt-oss-120b", messages):
-                        has_yielded = True
-                        yield chunk
-                    if has_yielded:
-                        return
-                except Exception as e:
-                    logger.debug(f"Groq reasoning fallback notice: {e}")
+            logger.debug(f"[ASURA ROUTER] Attempting provider={prov_name} model={model_name} (attempt {attempt_idx + 1})")
+            yielded_tokens = 0
+            has_error = False
 
-        # 3. Fast Intent or General Balanced: Groq Ultra-Low Latency (~300 tok/sec)
-        if groq_provider.is_available():
             try:
-                target_groq_model = "openai/gpt-oss-20b" if "fast" in logical_mode.lower() else "openai/gpt-oss-120b"
-                has_yielded = False
-                async for chunk in groq_provider.stream_chat(target_groq_model, messages):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
-            except Exception as e:
-                logger.debug(f"Groq stream fallback notice: {e}")
+                async for chunk in provider_inst.stream_chat(
+                    model=model_name,
+                    messages=messages,
+                    images=images if has_images else None
+                ):
+                    content = chunk.get("content", "")
+                    if content:
+                        yielded_tokens += 1
+                        yield chunk
+                    elif chunk.get("reasoning_status"):
+                        yield chunk
+                    elif chunk.get("done") and yielded_tokens > 0:
+                        yield chunk
+                        return
 
-        # 4. Gemini Fallback
-        if gemini_provider.is_available():
-            try:
-                has_yielded = False
-                async for chunk in gemini_provider.stream_chat("gemini-flash-lite-latest", messages):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
+                if yielded_tokens > 0:
+                    logger.debug(f"[ASURA ROUTER] Successfully completed via provider={prov_name}")
                     return
-            except Exception as e:
-                logger.debug(f"Gemini stream fallback notice: {e}")
 
-        # 5. OpenRouter Fallback
-        if openrouter_provider.is_available():
-            try:
-                has_yielded = False
-                async for chunk in openrouter_provider.stream_chat("nex-agi/nex-n2.5-mini:free", messages):
-                    has_yielded = True
-                    yield chunk
-                if has_yielded:
-                    return
             except Exception as e:
-                logger.debug(f"OpenRouter stream fallback notice: {e}")
+                logger.warning(f"[ASURA ROUTER] Provider {prov_name} error: {e}")
+                has_error = True
 
-        # 6. Fallback internal synthesized message
-        from app.providers.cloud_provider import cloud_provider
-        async for chunk in cloud_provider._stream_synthesized_response(messages, images=images):
-            yield chunk
+            # If this candidate produced nothing or errored, try next candidate
+            logger.info(f"[ASURA ROUTER] Switching to next available engine...")
+
+        # Absolute fallback if all external cloud providers fail
+        logger.warning("[ASURA ROUTER] All configured providers failed, using Asura core synthesis")
+        synthesized_text = "I'm Asura, Cretivra's AI assistant. I am currently experiencing elevated network traffic. Please try your request again momentarily."
+        yield {"content": synthesized_text, "done": True}
 
 model_manager = AsuraModelManager()

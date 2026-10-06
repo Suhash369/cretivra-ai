@@ -1,21 +1,24 @@
 import re
 import json
-import base64
 import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
-from app.providers.base import BaseLLMProvider
+from app.providers.base import AIProvider
 
-class GeminiProvider(BaseLLMProvider):
+class GeminiProvider(AIProvider):
     """
     Internal Google Gemini infrastructure provider for multimodal reasoning and vision.
+    Capabilities:
+    - Chat & streaming chat
+    - Multimodal image/vision understanding
+    - Creative tasks
     """
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "GEMINI_API_KEY", "") or ""
 
     def is_available(self) -> bool:
-        return bool(self.api_key and self.api_key.strip())
+        return bool(self.api_key and self.api_key.strip() and not self.api_key.startswith("your_"))
 
     def _clean_key(self) -> str:
         return re.sub(r'[\r\n\t ]+', '', self.api_key)
@@ -40,16 +43,18 @@ class GeminiProvider(BaseLLMProvider):
                 res = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={self._clean_key()}")
                 if res.status_code == 200:
                     models = res.json().get("models", [])
-                    return [m.get("name") for m in models if "name" in m]
+                    return [m.get("name", "").replace("models/", "") for m in models if "name" in m]
         except Exception:
             pass
-        return ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
+        return ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-2.5-flash-image"]
 
     def _resolve_model(self, model: str) -> List[str]:
         m = (model or "").lower()
-        if "reason" in m or "pro" in m:
-            return ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
-        return ["gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-flash-latest"]
+        if "vision" in m or "image" in m:
+            return ["gemini-2.5-flash-image", "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"]
+        elif "reason" in m or "pro" in m:
+            return ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-pro-preview", "gemini-flash-latest"]
+        return ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"]
 
     async def chat(
         self,
@@ -139,12 +144,13 @@ class GeminiProvider(BaseLLMProvider):
                 "parts": [{"text": "\n\n".join(system_instructions)}]
             }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=45.0) as client:
             for gem_model in model_candidates:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:streamGenerateContent?alt=sse&key={clean_key}"
                 try:
                     async with client.stream("POST", url, json=payload) as response:
                         if response.status_code == 200:
+                            yielded_any = False
                             async for line in response.aiter_lines():
                                 if not line or not line.startswith("data: "):
                                     continue
@@ -157,11 +163,13 @@ class GeminiProvider(BaseLLMProvider):
                                         for p in parts:
                                             text = p.get("text", "")
                                             if text:
+                                                yielded_any = True
                                                 yield {"content": text, "done": False}
                                 except Exception:
                                     continue
-                            yield {"content": "", "done": True}
-                            return
+                            if yielded_any:
+                                yield {"content": "", "done": True}
+                                return
                         else:
                             err_b = await response.aread()
                             logger.warning(f"Gemini {gem_model} error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')[:120]}")

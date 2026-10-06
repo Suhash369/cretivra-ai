@@ -13,18 +13,31 @@ interface ImageCardProps {
 export const ImageCard: React.FC<ImageCardProps> = ({ image, onOpenModal }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [usingDirectFallback, setUsingDirectFallback] = useState(false);
 
   if (error) return null;
 
-  const displaySrc = image.thumbnail || image.url;
-  const safeSrc = getImageProxyUrl(displaySrc) || displaySrc;
-  const domain = image.source_domain || (image.source_url ? (() => {
+  const rawSrc = image.thumbnailUrl || image.thumbnail || image.url;
+  const proxiedSrc = getImageProxyUrl(rawSrc);
+  const currentSrc = usingDirectFallback ? rawSrc : (proxiedSrc || rawSrc);
+
+  const sourceLink = image.sourceUrl || image.source_url;
+  const domain = image.sourceName || image.source_domain || (sourceLink ? (() => {
     try {
-      return new URL(image.source_url).hostname.replace(/^www\./, '');
+      return new URL(sourceLink).hostname.replace(/^www\./, '');
     } catch {
       return 'web';
     }
   })() : 'web');
+
+  const handleError = () => {
+    if (!usingDirectFallback && rawSrc !== proxiedSrc) {
+      // Try direct URL if proxy fails
+      setUsingDirectFallback(true);
+    } else {
+      setError(true);
+    }
+  };
 
   return (
     <div className="group relative rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-800/80 bg-slate-900/40 backdrop-blur-xs flex flex-col transition-all duration-200 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-950/20">
@@ -38,11 +51,11 @@ export const ImageCard: React.FC<ImageCardProps> = ({ image, onOpenModal }) => {
           </div>
         )}
         <img
-          src={safeSrc}
-          alt={image.title || 'Image from Asura web search'}
+          src={currentSrc}
+          alt={image.title || 'Verified photograph from Asura'}
           loading="lazy"
           onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
+          onError={handleError}
           className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
@@ -64,17 +77,17 @@ export const ImageCard: React.FC<ImageCardProps> = ({ image, onOpenModal }) => {
 
       <div className="p-2.5 flex flex-col gap-1 bg-slate-900/80 border-t border-slate-800/60">
         <p className="text-[11px] font-medium text-slate-200 line-clamp-1 group-hover:text-cyan-400 transition-colors">
-          {image.title || 'Web Image'}
+          {image.title || 'Verified Image'}
         </p>
         <div className="flex items-center justify-between text-[10px] text-slate-400">
           <span className="truncate max-w-[120px] font-mono text-slate-400">{domain}</span>
-          {image.source_url && (
+          {sourceLink && (
             <a
-              href={image.source_url}
+              href={sourceLink}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-0.5 text-cyan-400 hover:text-cyan-300 transition-colors"
-              title="Visit source page"
+              title="Visit verified source"
             >
               <span>Source</span>
               <ExternalLink className="w-2.5 h-2.5" />
@@ -93,7 +106,7 @@ export const ImageGallery: React.FC<{ images?: AsuraImageItem[] }> = ({ images }
     return null;
   }
 
-  const validImages = images.filter((img) => img && (img.url || img.thumbnail));
+  const validImages = images.filter((img) => img && (img.url || img.thumbnail || img.thumbnailUrl));
   if (validImages.length === 0) return null;
 
   return (
@@ -139,9 +152,9 @@ export const ImageGallery: React.FC<{ images?: AsuraImageItem[] }> = ({ images }
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {selectedImage.source_url && (
+                {(selectedImage.sourceUrl || selectedImage.source_url) && (
                   <a
-                    href={selectedImage.source_url}
+                    href={selectedImage.sourceUrl || selectedImage.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-cyan-400 flex items-center gap-1.5"

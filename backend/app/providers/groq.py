@@ -1,13 +1,18 @@
 import re
+import json
 import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
-from app.providers.base import BaseLLMProvider
+from app.providers.base import AIProvider
 
-class GroqProvider(BaseLLMProvider):
+class GroqProvider(AIProvider):
     """
     Internal Groq infrastructure provider for ultra-fast LPU inference.
+    Capabilities:
+    - Fast chat and low-latency answers (~300 tokens/sec)
+    - General conversational and analytical responses
+    - Code synthesis with Qwen
     """
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "GROQ_API_KEY", "") or ""
@@ -48,10 +53,10 @@ class GroqProvider(BaseLLMProvider):
 
     def _resolve_model(self, model_id: str) -> str:
         m = (model_id or "").lower()
-        if any(k in m for k in ["fast", "1.2", "mini", "quick"]):
-            return "openai/gpt-oss-20b"
-        elif any(k in m for k in ["code", "qwen", "coder"]):
+        if any(k in m for k in ["code", "qwen", "coder", "embed"]):
             return "qwen/qwen3.8-27b"
+        elif any(k in m for k in ["fast", "quick", "mini", "speed"]):
+            return "openai/gpt-oss-20b"
         return "openai/gpt-oss-120b"
 
     async def chat(
@@ -86,43 +91,59 @@ class GroqProvider(BaseLLMProvider):
             "Content-Type": "application/json"
         }
 
+        # Filter messages: Ensure role and content are clean
+        cleaned_messages = []
+        for m in messages:
+            c = m.get("content", "")
+            if not c:
+                continue
+            cleaned_messages.append({
+                "role": m.get("role", "user"),
+                "content": str(c)
+            })
+
+        if not cleaned_messages:
+            cleaned_messages = [{"role": "user", "content": "Hello"}]
+
         temp = (options or {}).get("temperature", settings.TEMPERATURE)
         max_tokens = (options or {}).get("max_tokens", 4096)
 
         payload = {
             "model": target_model,
-            "messages": messages,
+            "messages": cleaned_messages,
             "stream": True,
             "temperature": temp,
             "max_tokens": max_tokens
         }
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
-                if response.status_code != 200:
-                    err_b = await response.aread()
-                    logger.warning(f"Groq stream error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')}")
-                    return
-
-                import json
-                async for line in response.aiter_lines():
-                    if not line or not line.startswith("data: "):
-                        continue
-                    data_str = line[6:].strip()
-                    if data_str == "[DONE]":
-                        yield {"content": "", "done": True}
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            try:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    if response.status_code != 200:
+                        err_b = await response.aread()
+                        logger.warning(f"Groq stream error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')}")
                         return
-                    try:
-                        data = json.loads(data_str)
-                        delta = data.get("choices", [{}])[0].get("delta", {})
-                        content = delta.get("content", "")
-                        reasoning = delta.get("reasoning_content") or delta.get("reasoning")
-                        if reasoning:
-                            yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
-                        if content:
-                            yield {"content": content, "done": False}
-                    except Exception:
-                        continue
-                yield {"content": "", "done": True}
+
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            yield {"content": "", "done": True}
+                            return
+                        try:
+                            data = json.loads(data_str)
+                            delta = data.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content", "")
+                            reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                            if reasoning:
+                                yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
+                            if content:
+                                yield {"content": content, "done": False}
+                        except Exception:
+                            continue
+                    yield {"content": "", "done": True}
+            except Exception as e:
+                logger.warning(f"Groq streaming exception: {e}")
 
 groq_provider = GroqProvider()

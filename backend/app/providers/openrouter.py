@@ -3,11 +3,13 @@ import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
-from app.providers.base import BaseLLMProvider
+from app.providers.base import AIProvider
 
-class OpenRouterProvider(BaseLLMProvider):
+class OpenRouterProvider(AIProvider):
     """
-    Internal OpenRouter infrastructure provider for frontier models & fallbacks.
+    Internal OpenRouter infrastructure provider for multi-model access.
+    Treated as a first-class provider offering multiple configurable models
+    for reasoning, coding, and general tasks.
     """
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or getattr(settings, "OPENROUTER_API_KEY", "") or ""
@@ -31,15 +33,42 @@ class OpenRouterProvider(BaseLLMProvider):
         return {"status": "error", "available": False}
 
     async def list_models(self) -> List[str]:
-        return ["nex-agi/nex-n2.5-mini:free", "nex-agi/nex-n2.5-pro:free", "meta-llama/llama-3.3-70b-instruct"]
+        if not self.is_available():
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.get("https://openrouter.ai/api/v1/models")
+                if res.status_code == 200:
+                    data = res.json()
+                    return [m.get("id") for m in data.get("data", []) if "id" in m]
+        except Exception:
+            pass
+        return [
+            "liquid/lfm-2.5-2.6b:free",
+            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+            "nvidia/nemotron-3.5-lightning:free",
+            "google/gemma-4-26b-a4b-it:free"
+        ]
 
     def _resolve_model(self, model: str) -> List[str]:
         m = (model or "").lower()
-        if "reason" in m or "deepseek" in m:
-            return ["deepseek/deepseek-r1", "nex-agi/nex-n2.5-pro:free", "meta-llama/llama-3.3-70b-instruct"]
+        if "reason" in m or "logic" in m or "math" in m:
+            return [
+                "liquid/lfm-2.5-2.6b:free",
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                "nvidia/nemotron-3.5-lightning:free"
+            ]
         elif "code" in m or "coder" in m:
-            return ["qwen/qwen-2.5-coder-32b-instruct", "nex-agi/nex-n2.5-mini:free"]
-        return ["nex-agi/nex-n2.5-mini:free", "nex-agi/nex-n2.5-pro:free", "openai/gpt-4o-mini"]
+            return [
+                "liquid/lfm-2.5-2.6b:free",
+                "nvidia/nemotron-3.5-lightning:free",
+                "google/gemma-4-26b-a4b-it:free"
+            ]
+        return [
+            "liquid/lfm-2.5-2.6b:free",
+            "nvidia/nemotron-3.5-lightning:free",
+            "google/gemma-4-26b-a4b-it:free"
+        ]
 
     async def chat(
         self,
@@ -73,13 +102,25 @@ class OpenRouterProvider(BaseLLMProvider):
             "X-Title": "Cretivra Asura"
         }
 
-        formatted_messages = [dict(m) for m in messages]
+        formatted_messages = []
+        for m in messages:
+            content_val = m.get("content", "")
+            if not content_val:
+                continue
+            formatted_messages.append({
+                "role": m.get("role", "user"),
+                "content": str(content_val)
+            })
+
+        if not formatted_messages:
+            formatted_messages = [{"role": "user", "content": "Hello"}]
+
         if images:
             for idx in range(len(formatted_messages) - 1, -1, -1):
                 if formatted_messages[idx].get("role") == "user":
                     user_content = formatted_messages[idx].get("content", "")
                     content_parts = []
-                    if isinstance(user_content, str) and user_content.strip():
+                    if user_content.strip():
                         content_parts.append({"type": "text", "text": user_content})
                     for img in images:
                         durl = img.get("data_url")
@@ -90,9 +131,9 @@ class OpenRouterProvider(BaseLLMProvider):
 
         candidate_models = self._resolve_model(model)
         temp = (options or {}).get("temperature", settings.TEMPERATURE)
-        max_tokens = (options or {}).get("max_tokens", 2048)
+        max_tokens = (options or {}).get("max_tokens", 4096)
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=45.0) as client:
             for target_model in candidate_models:
                 payload = {
                     "model": target_model,
@@ -104,6 +145,7 @@ class OpenRouterProvider(BaseLLMProvider):
                 try:
                     async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as response:
                         if response.status_code == 200:
+                            yielded_any = False
                             async for line in response.aiter_lines():
                                 if not line or not line.startswith("data: "):
                                     continue
@@ -117,13 +159,15 @@ class OpenRouterProvider(BaseLLMProvider):
                                     content = delta.get("content", "")
                                     reasoning = delta.get("reasoning_content") or delta.get("reasoning")
                                     if reasoning:
-                                        yield {"content": "", "reasoning_status": "Thinking with deep reasoning...", "done": False}
+                                        yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
                                     if content:
+                                        yielded_any = True
                                         yield {"content": content, "done": False}
                                 except Exception:
                                     continue
-                            yield {"content": "", "done": True}
-                            return
+                            if yielded_any:
+                                yield {"content": "", "done": True}
+                                return
                         else:
                             logger.warning(f"OpenRouter {target_model} stream error ({response.status_code})")
                 except Exception as e:

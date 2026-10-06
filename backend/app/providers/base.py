@@ -1,13 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Dict, Any, List, Optional, Tuple
+from typing import AsyncGenerator, Dict, Any, List, Optional
 
-class BaseLLMProvider(ABC):
+class AIProvider(ABC):
+    """
+    Common Unified AI Provider interface for CRETIVRA ASURA.
+    Implemented by GeminiProvider, GroqProvider, and OpenRouterProvider.
+    """
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Checks if provider has valid configured credentials."""
+        pass
+
     @abstractmethod
     async def health_check(self) -> Dict[str, Any]:
+        """Checks provider connectivity and health status."""
         pass
 
     @abstractmethod
     async def list_models(self) -> List[str]:
+        """Lists available models from the provider."""
         pass
 
     @abstractmethod
@@ -17,6 +28,7 @@ class BaseLLMProvider(ABC):
         messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
+        """Synchronous non-streaming chat request."""
         pass
 
     @abstractmethod
@@ -27,34 +39,34 @@ class BaseLLMProvider(ABC):
         options: Optional[Dict[str, Any]] = None,
         images: Optional[List[Dict[str, Any]]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Streaming chat request yielding chunks: {content, reasoning_status, done}."""
         pass
 
+    async def structured_response(
+        self,
+        model: str,
+        messages: List[Dict[str, Any]],
+        options: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Structured chat response helper."""
+        return await self.chat(model, messages, options=options)
 
-class BaseSearchProvider(ABC):
-    @abstractmethod
-    async def search(self, query: str, max_results: int = 5) -> Dict[str, Any]:
-        pass
-
+# Backward-compatible alias
+BaseLLMProvider = AIProvider
 
 class BaseImageSearchProvider(ABC):
     @abstractmethod
     async def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """
-        Search for real images matching the query.
+        Search for real images matching query.
         Returns list of dicts with:
-        url, thumbnail, title, source_url, source_domain, attribution
+        url, thumbnailUrl, title, sourceUrl, sourceName, attribution, width, height
         """
         pass
 
     @abstractmethod
     async def validate_result(self, result: Dict[str, Any]) -> bool:
-        """Validates that candidate image result has real URL and legitimate source."""
         pass
-
-    @abstractmethod
-    async def get_image_details(self, image_id: str) -> Optional[Dict[str, Any]]:
-        pass
-
 
 class BaseImageGenerationProvider(ABC):
     @abstractmethod
@@ -65,22 +77,14 @@ class BaseImageGenerationProvider(ABC):
         style: Optional[str] = None,
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """
-        Generates a new image matching prompt.
-        Returns: {url, thumbnail, prompt, provider_meta}
-        """
         pass
-
 
 class BaseSTTProvider(ABC):
     @abstractmethod
     async def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/webm") -> str:
-        """Transcribes user spoken audio into text."""
         pass
-
 
 class BaseTTSProvider(ABC):
     @abstractmethod
     async def synthesize(self, text: str, voice: Optional[str] = "Breeze") -> Optional[str]:
-        """Synthesizes text into audio data URL or audio bytes."""
         pass

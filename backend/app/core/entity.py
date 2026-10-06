@@ -17,98 +17,127 @@ class EntityType(str, Enum):
     TECHNOLOGY = "TECHNOLOGY"
     OTHER = "OTHER"
 
-# Known prominent entities and categories for instant authoritative disambiguation
-KNOWN_ENTITIES = {
-    "virat kohli": ("Virat Kohli", EntityType.ATHLETE),
-    "kohli": ("Virat Kohli", EntityType.ATHLETE),
-    "rohit sharma": ("Rohit Sharma", EntityType.ATHLETE),
-    "ms dhoni": ("MS Dhoni", EntityType.ATHLETE),
-    "lionel messi": ("Lionel Messi", EntityType.ATHLETE),
-    "messi": ("Lionel Messi", EntityType.ATHLETE),
-    "cristiano ronaldo": ("Cristiano Ronaldo", EntityType.ATHLETE),
-    "ronaldo": ("Cristiano Ronaldo", EntityType.ATHLETE),
-    "vijay": ("Vijay", EntityType.ACTOR),
-    "thalapathy vijay": ("Vijay", EntityType.POLITICIAN),
-    "actor vijay": ("Vijay", EntityType.ACTOR),
-    "c. joseph vijay": ("Vijay", EntityType.POLITICIAN),
-    "c joseph vijay": ("Vijay", EntityType.POLITICIAN),
-    "joseph vijay": ("Vijay", EntityType.POLITICIAN),
-    "shah rukh khan": ("Shah Rukh Khan", EntityType.ACTOR),
-    "srk": ("Shah Rukh Khan", EntityType.ACTOR),
-    "rajinikanth": ("Rajinikanth", EntityType.ACTOR),
-    "kamal haasan": ("Kamal Haasan", EntityType.ACTOR),
-    "elon musk": ("Elon Musk", EntityType.PERSON),
-    "narendra modi": ("Narendra Modi", EntityType.POLITICIAN),
-    "modi": ("Narendra Modi", EntityType.POLITICIAN),
-    "donald trump": ("Donald Trump", EntityType.POLITICIAN),
-    "trump": ("Donald Trump", EntityType.POLITICIAN),
-    "steve jobs": ("Steve Jobs", EntityType.HISTORICAL_PERSON),
-    "albert einstein": ("Albert Einstein", EntityType.HISTORICAL_PERSON),
-    "einstein": ("Albert Einstein", EntityType.HISTORICAL_PERSON),
-    "isaac newton": ("Isaac Newton", EntityType.HISTORICAL_PERSON),
-    "nikola tesla": ("Nikola Tesla", EntityType.HISTORICAL_PERSON),
-    "sundar pichai": ("Sundar Pichai", EntityType.PERSON),
-    "sam altman": ("Sam Altman", EntityType.PERSON),
-    "chennai": ("Chennai", EntityType.PLACE),
-    "paris": ("Paris", EntityType.PLACE),
-    "tokyo": ("Tokyo", EntityType.PLACE),
-    "eiffel tower": ("Eiffel Tower", EntityType.LANDMARK),
-    "taj mahal": ("Taj Mahal", EntityType.LANDMARK),
-    "colosseum": ("Colosseum", EntityType.LANDMARK),
-    "apple": ("Apple Inc.", EntityType.COMPANY),
-    "google": ("Google", EntityType.COMPANY),
-    "tesla": ("Tesla", EntityType.COMPANY),
-    "microsoft": ("Microsoft", EntityType.COMPANY),
-    "openai": ("OpenAI", EntityType.ORGANIZATION),
-    "iphone": ("iPhone", EntityType.PRODUCT),
-    "iphone 16": ("iPhone 16", EntityType.PRODUCT),
-    "macbook": ("MacBook", EntityType.PRODUCT),
-    "tesla model 3": ("Tesla Model 3", EntityType.PRODUCT),
+TECHNICAL_TERMS = {
+    "stm32", "esp32", "gpio", "uart", "spi", "i2c", "pwm", "adc", "dac",
+    "arm", "cortex", "avr", "pic", "microcontroller", "embedded", "driver",
+    "pinout", "datasheet", "interrupt", "interrupts", "firmware", "register",
+    "pointer", "array", "struct", "class", "function", "algorithm", "react",
+    "python", "javascript", "typescript", "compiler", "kernel", "linux",
+    "f401re", "nucleo", "arduino", "raspberry", "pi", "freertos", "hal"
 }
 
 class EntityDetector:
     """
-    Entity extraction & disambiguation module for Cretivra Asura.
-    Identifies persons, athletes, actors, politicians, landmarks, products, and organizations.
+    Dynamic Entity extraction & disambiguation module for CRETIVRA ASURA.
+    Extracts persons, landmarks, places, products, and concepts dynamically from any prompt.
+    Supports pronoun & conversational context resolution.
+    Accurately identifies technical & embedded hardware concepts without misclassifying them as persons.
     """
 
-    def detect_entity(self, query: str) -> Tuple[Optional[str], EntityType]:
-        q = query.strip()
+    def detect_entity(
+        self,
+        query: str,
+        conversation_context: Optional[List[Dict[str, Any]]] = None
+    ) -> Tuple[Optional[str], EntityType]:
+        q = (query or "").strip()
         q_lower = q.lower()
 
-        # 1. Direct dictionary match against known prominent entities
-        clean_stripped = re.sub(r'^[^\w]+|[^\w]+$', '', q_lower).strip()
-        for key, (canonical_name, etype) in KNOWN_ENTITIES.items():
-            if key in q_lower or clean_stripped == key:
-                return canonical_name, etype
+        # 0. Check for technical / embedded architecture concepts
+        for t in TECHNICAL_TERMS:
+            if re.search(rf"\b{re.escape(t)}\b", q_lower):
+                return None, EntityType.TECHNOLOGY
 
-        # 2. Extract subject from "Who is [Subject]?"
-        who_match = re.search(r"^\s*who\s+(?:is|was)\s+([A-Za-z0-9\s\.\-]+?)(?:\?|$)", q, re.IGNORECASE)
-        if who_match:
-            cand = who_match.group(1).strip()
-            cand_lower = cand.lower()
-            if cand_lower in KNOWN_ENTITIES:
-                return KNOWN_ENTITIES[cand_lower]
-            return cand.title(), EntityType.PERSON
+        # 1. Check for pronoun referential queries (e.g. "How old is he?", "What are his records?")
+        has_pronoun = bool(re.search(r"\b(he|him|his|she|her|hers|they|them|their|it|its)\b", q_lower))
+        if has_pronoun and conversation_context:
+            context_entity = self._extract_recent_entity_from_context(conversation_context)
+            if context_entity:
+                return context_entity, EntityType.PERSON
 
-        # 3. Extract location from "Where is [Place]?" or "Location of [Place]"
-        where_match = re.search(r"\b(?:where\s+is|map\s+of|location\s+of|capital\s+of)\s+([A-Za-z\s]+?)(?:\?|$)", q, re.IGNORECASE)
+        # 2. Who is / Who was / Tell me about [Subject]
+        who_patterns = [
+            r"^\s*who\s+(?:is|was)\s+([A-Za-z0-9\s\.\-'\"]+?)(?:\?|$)",
+            r"^\s*(?:tell\s+me\s+about|biography\s+of|profile\s+of|who's)\s+([A-Za-z0-9\s\.\-'\"]+?)(?:\?|$)",
+            r"^\s*(?:what\s+do\s+you\s+know\s+about)\s+([A-Za-z0-9\s\.\-'\"]+?)(?:\?|$)",
+            r"\b(?:career\s+of|records\s+of|stats\s+of|achievements\s+of)\s+([A-Za-z0-9\s\.\-'\"]+?)(?:\?|$)"
+        ]
+        for pat in who_patterns:
+            m = re.search(pat, q, re.IGNORECASE)
+            if m:
+                cand = m.group(1).strip().strip("'\"")
+                if len(cand) > 1 and not any(cand.lower() == w for w in ["the", "a", "an", "this", "that"]):
+                    return self._clean_entity_name(cand), EntityType.PERSON
+
+        # 3. Where is / Visit / Location of [Place / Landmark]
+        where_match = re.search(r"\b(?:where\s+is|map\s+of|location\s+of|capital\s+of|visit)\s+([A-Za-z\s\.\-']+?)(?:\?|$)", q, re.IGNORECASE)
         if where_match:
-            place = where_match.group(1).strip()
-            return place.title(), EntityType.PLACE
+            place = where_match.group(1).strip().strip("'\"")
+            if len(place) > 2:
+                return self._clean_entity_name(place), EntityType.PLACE
 
-        # 4. Extract subject from "Show me [Entity]" or "Images of [Entity]"
-        show_match = re.search(r"\b(?:show\s+me|images?\s+of|photos?\s+of|pictures?\s+of)\s+([A-Za-z0-9\s]+?)(?:\?|$)", q, re.IGNORECASE)
+        # 4. Show me / Pictures of / Photos of [Subject]
+        show_match = re.search(r"\b(?:show\s+me|images?\s+of|photos?\s+of|pictures?\s+of)\s+([A-Za-z0-9\s\.\-]+?)(?:\?|$)", q, re.IGNORECASE)
         if show_match:
-            subject = show_match.group(1).strip().title()
-            return subject, EntityType.OTHER
+            subject = show_match.group(1).strip().strip("'\"")
+            if len(subject) > 1:
+                return self._clean_entity_name(subject), EntityType.OTHER
 
-        # 5. Extract company/product
-        if any(w in q_lower for w in ["iphone", "ipad", "macbook", "galaxy", "pixel", "ps5", "xbox"]):
-            prod_match = re.search(r"\b(iphone(?:\s*\d+)?(?:\s*pro)?|galaxy\s*s\d+|macbook(?:\s*pro|\s*air)?|pixel\s*\d+|tesla\s*model\s*[3ysx])\b", q_lower)
-            if prod_match:
-                return prod_match.group(1).title(), EntityType.PRODUCT
+        # 5. Dynamic Proper Noun Extraction (Capitalized multi-word phrases)
+        words = q.split()
+        proper_noun_sequences = []
+        current_seq = []
+        stop_words = {"Who", "What", "Where", "When", "Why", "How", "Can", "Could", "Would", "Should", "Is", "Are", "Was", "Were", "Tell", "Show", "Give", "Explain", "Write"}
+
+        for w in words:
+            clean_w = re.sub(r'^[^\w]+|[^\w]+$', '', w)
+            if not clean_w:
+                continue
+            clean_lower = clean_w.lower()
+            if clean_lower in TECHNICAL_TERMS:
+                current_seq = []
+                continue
+            if clean_w[0].isupper() and clean_w not in stop_words:
+                current_seq.append(clean_w)
+            else:
+                if len(current_seq) >= 2:
+                    proper_noun_sequences.append(" ".join(current_seq))
+                current_seq = []
+        if len(current_seq) >= 2:
+            proper_noun_sequences.append(" ".join(current_seq))
+
+        if proper_noun_sequences:
+            return proper_noun_sequences[0], EntityType.PERSON
 
         return None, EntityType.OTHER
+
+    def extract_multiple_entities(self, query: str) -> List[str]:
+        """Extracts multiple entities from comparison requests (e.g. Compare Virat Kohli with Rohit Sharma)."""
+        q = (query or "").strip()
+        comp_match = re.search(r"\bcompare\s+([A-Za-z0-9\s\.\-']+?)\s+(?:with|and|to|vs|versus)\s+([A-Za-z0-9\s\.\-']+?)(?:\?|$)", q, re.IGNORECASE)
+        if comp_match:
+            e1 = self._clean_entity_name(comp_match.group(1).strip())
+            e2 = self._clean_entity_name(comp_match.group(2).strip())
+            return [e1, e2]
+        return []
+
+    def _clean_entity_name(self, name: str) -> str:
+        cleaned = re.sub(r'^(?:the|a|an|about|pictures? of|photos? of)\s+', '', name, flags=re.IGNORECASE).strip()
+        return cleaned.title()
+
+    def _extract_recent_entity_from_context(self, context: List[Dict[str, Any]]) -> Optional[str]:
+        """Extracts the active entity from previous conversation turns."""
+        for msg in reversed(context):
+            content = msg.get("content", "")
+            if msg.get("role") == "user":
+                ent, etype = self.detect_entity(content)
+                if ent and etype != EntityType.TECHNOLOGY and ent.lower() not in ["he", "she", "it", "they"]:
+                    return ent
+            elif msg.get("role") == "assistant":
+                m = re.search(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", content)
+                if m:
+                    cand = m.group(1)
+                    if not any(w in cand for w in ["Asura", "Cretivra", "Artificial Intelligence", "United States"]):
+                        return cand
+        return None
 
 entity_detector = EntityDetector()

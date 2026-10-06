@@ -14,12 +14,14 @@ from app.providers.image_search import image_search_provider
 from app.providers.image_generation import image_generation_provider
 from app.schemas.asura_response import AsuraStructuredResponse, AsuraImage, AsuraSource, AsuraGeneratedImage
 from app.providers.cloud_provider import clean_ai_response
+from app.database.models import MessageDB
 
 class AsuraResponseOrchestrator:
     """
     Central response orchestration engine for CRETIVRA ASURA.
     Coordinates router, entity analysis, concurrent tool execution, context construction,
     streaming generation, citations, images, and structured contract generation.
+    Strictly uses ONLY Gemini, Groq, and OpenRouter backend providers.
     """
 
     async def orchestrate_chat_stream(
@@ -36,14 +38,29 @@ class AsuraResponseOrchestrator:
         start_time = time.time()
         query = user_message.strip()
 
+        # 0. Fetch recent conversation context for follow-up resolution
+        conversation_history = []
+        if db and conversation_id:
+            try:
+                db_msgs = db.query(MessageDB).filter(
+                    MessageDB.conversation_id == conversation_id
+                ).order_by(MessageDB.created_at.asc()).all()
+                conversation_history = [
+                    {"role": m.role, "content": m.content}
+                    for m in db_msgs[-settings.MAX_CONTEXT_MESSAGES:]
+                ]
+            except Exception as e:
+                logger.debug(f"Could not load conversation history: {e}")
+
         # 1. Routing & Intent Analysis
-        yield f"data: {json.dumps({'assistant': 'asura', 'status': 'Asura is thinking...', 'reasoning_status': 'Asura is thinking...', 'done': False})}\n\n"
+        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is thinking...', 'reasoning_status': 'Asura is thinking...', 'done': False})}\n\n"
         decision: RoutingDecision = asura_router.route(
             query=query,
             attachments=attachments,
             force_web_search=force_web_search,
             force_image_mode=force_image_mode,
-            selected_model=selected_model
+            selected_model=selected_model,
+            conversation_history=conversation_history
         )
 
         tools_executed = []
@@ -52,9 +69,9 @@ class AsuraResponseOrchestrator:
         web_context = ""
         generated_image_obj = None
 
-        # 2. Direct Image Generation Path
+        # 2. Direct Image Generation Path (e.g. "Generate a futuristic office")
         if decision.requires_image_generation:
-            yield f"data: {json.dumps({'assistant': 'asura', 'status': 'Asura is creating your image...', 'reasoning_status': 'Asura is creating your image...', 'done': False})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is creating your image...', 'reasoning_status': 'Asura is creating your image...', 'done': False})}\n\n"
             tools_executed.append("image_generation")
             try:
                 gen_res = await image_generation_provider.generate(
@@ -74,7 +91,7 @@ class AsuraResponseOrchestrator:
                 img_markdown = f"![{decision.image_generation_prompt or 'Generated visual'}]({gen_res['url']})\n\n"
                 answer_text = f"Here is your visual creation for **{decision.image_generation_prompt or query}**:\n\n{img_markdown}"
             else:
-                answer_text = "Asura couldn't generate the image right now. Please try again."
+                answer_text = "Asura can't generate that image right now."
 
             related_qs = [
                 f"Create a variation of this {decision.image_generation_prompt or 'image'}",
@@ -109,7 +126,7 @@ class AsuraResponseOrchestrator:
                 metadata=meta
             )
 
-            yield f"data: {json.dumps({'assistant': 'asura', 'content': answer_text, 'full_content': answer_text, 'done': True, 'structured_response': structured_resp.dict(), 'sources': [], 'images': [], 'generated_image': generated_image_obj.dict() if generated_image_obj else None})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': answer_text, 'full_content': answer_text, 'done': True, 'structured_response': structured_resp.dict(), 'sources': [], 'images': [], 'generated_image': generated_image_obj.dict() if generated_image_obj else None})}\n\n"
             if db and conversation_id and answer_text:
                 try:
                     from app.services.conversation_service import conversation_service
@@ -121,17 +138,17 @@ class AsuraResponseOrchestrator:
         # 3. Concurrent Tool Execution (Web Grounding + Real Image Search)
         tasks = []
         if decision.requires_web:
-            yield f"data: {json.dumps({'assistant': 'asura', 'status': 'Asura is checking current information...', 'reasoning_status': 'Asura is searching the web...', 'done': False})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is checking current information...', 'reasoning_status': 'Asura is checking current information...', 'done': False})}\n\n"
             tools_executed.append("web_grounding")
             tasks.append(("web", web_grounding_service.ground_query(decision.search_query or query)))
 
         if decision.requires_images:
-            yield f"data: {json.dumps({'assistant': 'asura', 'status': 'Asura is finding relevant images...', 'reasoning_status': 'Asura is finding relevant images...', 'done': False})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is finding relevant images...', 'reasoning_status': 'Asura is finding relevant images...', 'done': False})}\n\n"
             tools_executed.append("image_search")
             tasks.append(("image", image_search_provider.search(decision.image_search_query or query, max_results=4)))
 
         if decision.requires_vision:
-            yield f"data: {json.dumps({'assistant': 'asura', 'status': 'Asura is analyzing your image...', 'reasoning_status': 'Asura is analyzing your image...', 'done': False})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is analyzing your image...', 'reasoning_status': 'Asura is analyzing your image...', 'done': False})}\n\n"
             tools_executed.append("vision")
 
         # Execute selected tools in parallel
@@ -149,29 +166,43 @@ class AsuraResponseOrchestrator:
                         web_context = "[Asura Notice]: Live web grounding could not verify current facts for this query."
                 elif kind == "image" and isinstance(res, list):
                     images = [AsuraImage(**img) for img in res if isinstance(img, dict)]
+                    logger.info(f"[ASURA] image_results={len(images)} response_images={len(images)}")
+
+        # Yield images immediately so UI renders them without waiting for LLM completion
+        if images:
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.dict() for img in images], 'sources': [s.dict() for s in sources]})}\n\n"
 
         # 4. Context Formulation
         today_str = datetime.now().strftime("%B %d, %Y")
         base_system = (
             f"{settings.SYSTEM_PROMPT}\n\n"
-            f"[TEMPORAL GROUNDING]: Today is {today_str} (Year 2026). You operate with live continuity and verified facts.\n"
+            f"[TEMPORAL REALITY]: Today is {today_str} (Year 2026).\n"
         )
         if decision.requires_vision:
             base_system += "\n[VISION ACTIVE]: Inspect and analyze attached visual images in detail.\n"
 
         prompt_content = query
-        if web_context:
+        if web_context and "Live web grounding could not" not in web_context:
             prompt_content = (
-                f"User Question: {query}\n\n"
-                f"[Verified Asura Web Intelligence Cache]:\n{web_context}\n\n"
-                f"Directive: Deliver an authoritative, helpful, and beautifully structured response citing facts accurately. "
-                f"When citing sources, use clean markdown citations like [Domain](URL). Include a clean summary."
+                f"Question: {query}\n\n"
+                f"[Verified Encyclopedic & Intelligence Grounding]:\n{web_context}\n\n"
+                f"Directive: Deliver an authoritative, beautifully structured, and completely accurate answer. "
+                f"Cite facts faithfully without fabricating any dates, statistics, awards, or URLs."
+            )
+        elif decision.requires_current_information and not web_context:
+            prompt_content = (
+                f"Question: {query}\n\n"
+                f"Directive: Answer only verified facts. If the latest live details are uncertain or cannot be verified, "
+                f"state transparently: 'I can't verify that information with the available information.'"
             )
 
         messages = [
-            {"role": "system", "content": base_system},
-            {"role": "user", "content": prompt_content}
+            {"role": "system", "content": base_system}
         ]
+        # Include conversation history for context continuity
+        if conversation_history:
+            messages.extend(conversation_history[-8:])
+        messages.append({"role": "user", "content": prompt_content})
 
         # 5. Model Streaming Execution
         full_text = ""
@@ -187,15 +218,15 @@ class AsuraResponseOrchestrator:
                 if delta:
                     full_text += delta
 
-                status_event = "Asura is preparing your response..." if not delta else None
-                yield f"data: {json.dumps({'assistant': 'asura', 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images]})}\n\n"
+                status_event = "Asura is preparing your response..." if not delta and not reasoning else None
+                yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images]})}\n\n"
         except Exception as e:
             logger.error(f"Error in Asura model orchestration: {e}")
             err_notice = "\n\nAsura is temporarily unable to process this request. Please try again."
             full_text += err_notice
-            yield f"data: {json.dumps({'assistant': 'asura', 'content': err_notice, 'full_content': full_text, 'done': False})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': err_notice, 'full_content': full_text, 'done': False})}\n\n"
 
-        # 6. Generate 2-4 Contextual Related Questions
+        # 6. Generate Contextual Follow-Up Questions
         related_qs = self._generate_related_questions(query, decision)
 
         latency_ms = int((time.time() - start_time) * 1000)
@@ -231,7 +262,7 @@ class AsuraResponseOrchestrator:
         )
 
         # 7. Final structured response event
-        yield f"data: {json.dumps({'assistant': 'asura', 'content': '', 'full_content': cleaned_answer, 'done': True, 'structured_response': structured_response.dict(), 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images], 'related_questions': related_qs})}\n\n"
+        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': cleaned_answer, 'done': True, 'structured_response': structured_response.dict(), 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images], 'related_questions': related_qs})}\n\n"
 
         # Persist assistant response to DB
         from app.services.conversation_service import conversation_service
@@ -298,14 +329,14 @@ class AsuraResponseOrchestrator:
             elif decision.entity_type in ["ACTOR"]:
                 return [
                     f"What are {entity}'s recent movies and projects?",
-                    f"What is {entity}'s political or social work?",
-                    f"What major awards has {entity} won?"
+                    f"What major awards has {entity} won?",
+                    f"What is {entity}'s public work?"
                 ]
             elif decision.entity_type in ["POLITICIAN"]:
                 return [
-                    f"What are {entity}'s key current policies and initiatives?",
-                    f"What is {entity}'s recent public announcement?",
-                    f"What is {entity}'s background and political career?"
+                    f"What are {entity}'s key policies and initiatives?",
+                    f"What is {entity}'s political career history?",
+                    f"What are current developments regarding {entity}?"
                 ]
             elif decision.entity_type in ["PLACE", "LANDMARK"]:
                 return [
@@ -319,13 +350,6 @@ class AsuraResponseOrchestrator:
                     f"How does {entity} compare with its main competitors?",
                     f"What is the current pricing and availability of {entity}?"
                 ]
-
-        if intent in ["CURRENT_INFORMATION", "NEWS"]:
-            return [
-                "What are the latest updates on this development?",
-                "What are analysts saying about this?",
-                "What are the historical precedents for this event?"
-            ]
 
         if intent in ["CODE", "TECHNICAL"]:
             return [

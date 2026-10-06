@@ -77,10 +77,15 @@ export interface VisualAnswerData {
 export interface AsuraImageItem {
   url: string;
   thumbnail?: string;
+  thumbnailUrl?: string;
   title?: string;
   source_url?: string;
+  sourceUrl?: string;
   source_domain?: string;
+  sourceName?: string;
   attribution?: string;
+  width?: number;
+  height?: number;
 }
 
 export interface Message {
