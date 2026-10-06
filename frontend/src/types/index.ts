@@ -74,6 +74,15 @@ export interface VisualAnswerData {
   refined_queries?: string[];
 }
 
+export interface AsuraImageItem {
+  url: string;
+  thumbnail?: string;
+  title?: string;
+  source_url?: string;
+  source_domain?: string;
+  attribution?: string;
+}
+
 export interface Message {
   id: string;
   conversation_id: string;
@@ -82,6 +91,9 @@ export interface Message {
   reasoning_status?: string | null;
   cache_items?: string[];
   sources?: SourceLink[];
+  images?: AsuraImageItem[];
+  related_questions?: string[];
+  metadata?: Record<string, any>;
   created_at?: string;
   attachments?: Attachment[];
   visual_loading?: boolean;

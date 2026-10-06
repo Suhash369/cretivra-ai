@@ -70,6 +70,9 @@ import { SuggestionBox } from './components/feedback/SuggestionBox';
 import { IntelligenceCacheCard } from './components/chat/IntelligenceCacheCard';
 import { SourceLinksCard } from './components/chat/SourceLinksCard';
 import { MarkdownRenderer } from './components/chat/MarkdownRenderer';
+import { ImageGallery } from './components/chat/ImageGallery';
+import { RelatedQuestions } from './components/chat/RelatedQuestions';
+import { DeveloperDiagnosticsCard } from './components/chat/DeveloperDiagnosticsCard';
 import { CretivraMark } from './components/common/CretivraLogo';
 import { ConfirmModal } from './components/common/ConfirmModal';
 import { ActionMenu } from './components/chat/ActionMenu';
@@ -1250,7 +1253,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         {!isCenter && (
           <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
             {isCurrentImg
-              ? 'Asura FLUX.1 Art Studio generates visuals in real time at zero cost.'
+              ? 'Asura Creative Studio generates visuals in real time at zero cost.'
               : webSearchEnabled
               ? 'Real-time intelligence cache synchronized with 2026 facts.'
               : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
@@ -1529,9 +1532,27 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                           />
                           <SourceLinksCard sources={m.sources} messageContent={m.content} />
 
+                          {m.images && m.images.length > 0 && (
+                            <ImageGallery images={m.images} />
+                          )}
+
                           <div className="text-[15px] leading-relaxed text-[var(--foreground)]">
                             <MarkdownRenderer content={m.content} />
                           </div>
+
+                          {m.related_questions && m.related_questions.length > 0 && (
+                            <RelatedQuestions
+                              questions={m.related_questions}
+                              onSelectQuestion={(q) => {
+                                setInput(q);
+                                sendMessage(q, selectedModel);
+                              }}
+                            />
+                          )}
+
+                          {m.metadata && (
+                            <DeveloperDiagnosticsCard metadata={m.metadata} />
+                          )}
 
                           {/* Assistant Hover Action Toolbar */}
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1 text-[var(--muted-foreground)]">

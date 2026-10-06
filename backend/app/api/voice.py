@@ -99,6 +99,7 @@ async def voice_chat(
     }
 
 @router.post("/synthesize")
+@router.post("/tts")
 async def synthesize_voice(payload: VoiceSynthesizeRequest):
     """
     Text-to-speech synthesis using Gemini Flash TTS.
@@ -116,6 +117,7 @@ async def synthesize_voice(payload: VoiceSynthesizeRequest):
     }
 
 @router.post("/transcribe")
+@router.post("/stt")
 async def transcribe_audio_file(
     file: UploadFile = File(...)
 ):

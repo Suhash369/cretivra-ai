@@ -1,164 +1,293 @@
-# ASURA AI by Cretivra
+# CRETIVRA ASURA
 
-> **"Your AI. Your data. Your control."**  
-> *Think beyond.*
+> **The Unified Multimodal Real-Time AI Assistant by Cretivra**  
+> *"Think Beyond. One Assistant. Infinite Intelligence."*
 
-Asura AI by Cretivra is a serious, frontier and local-first, privacy-respecting AI platform powered by the Cretivra Engine with an abstraction layer for model registry branding, real-time response streaming, document attachment intelligence, persistent history, and responsive user experience.
+**Cretivra Asura** is a production-quality, multimodal, web-grounded, real-time AI assistant. Engineered with a proprietary routing engine, Asura unifies conversational language models, real-time web intelligence, factual image search, generative visual synthesis, multimodal document understanding, and natural conversational voice with barge-in interruption into one seamless, private, and cohesive experience.
 
----
-
-## 🎨 Frontend Stack, Components & Design System
-
-### **1. Technology Stack**
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite 8
-- **Styling**: Tailwind CSS v4
-- **Icons**: Lucide React (`lucide-react`)
-- **Markdown & Math**: `react-markdown`, `remark-gfm`, `rehype-highlight`, `katex`
-- **Utilities**: `clsx`, `tailwind-merge`
+Third-party AI providers and search services operate exclusively as **internal backend infrastructure**. Users interact solely with **Asura**, experiencing a single unified identity: **Cretivra Asura**.
 
 ---
 
-### **2. Frontend Components Architecture**
+## 🏛️ System Architecture
 
-| Component | Path | Description |
-| :--- | :--- | :--- |
-| **`App.tsx`** | `src/App.tsx` | Root layout, header bar, model switcher, navigation & state orchestrator |
-| **`CretivraLogo`** | `src/components/common/CretivraLogo.tsx` | Vector SVG infinity network logo component |
-| **`LandingScreen`** | `src/components/chat/LandingScreen.tsx` | Centered hero greeting ("What can I help with today?") & 2x2 prompt cards |
-| **`ChatMessage`** | `src/components/chat/ChatMessage.tsx` | Full-width message feed with Markdown, code copy action, edit prompt, regenerate |
-| **`ChatComposer`** | `src/components/chat/ChatComposer.tsx` | Multiline expanding input box, file attachment chips, model selector, stop button |
-| **`DragAndDropOverlay`** | `src/components/chat/DragAndDropOverlay.tsx` | Visual drag-and-drop file upload zone |
-| **`Sidebar`** | `src/components/sidebar/Sidebar.tsx` | Collapsible sidebar with conversation history grouped by date (Today, Yesterday, 7 Days, Older) |
-| **`SearchModal`** | `src/components/sidebar/SearchModal.tsx` | Local instant conversation search modal (`⌘K`) |
-| **`ModelSelector`** | `src/components/model-selector/ModelSelector.tsx` | Cretivra Model Registry selector pill hiding raw underlying model names |
-| **`HealthModal`** | `src/components/settings/HealthModal.tsx` | System health check dashboard (`/health`) |
-| **`SettingsModal`** | `src/components/settings/SettingsModal.tsx` | System settings for temperature, max context, theme, and data clearing |
-| **`ShareModal`** | `src/components/settings/ShareModal.tsx` | Conversation sharing snapshot modal |
-| **`ImageStudioModal`** | `src/components/image-studio/ImageStudioModal.tsx` | Full-featured AI Image Generation Studio with aspect ratios, styles, and prompt enhancement |
-
----
-
-### **3. Color Palette Tokens**
-
-#### **Background Surfaces (Dark Obsidian Theme)**
-- **Base Background**: `#060911` / `rgb(6, 9, 17)`
-- **Sidebar & Modals**: `#0d121f` / `rgb(13, 18, 31)`
-- **Elevated Cards**: `#151c2e` / `rgb(21, 28, 46)`
-- **Borders & Dividers**: `#232d45` / `rgb(35, 45, 69)`
-
-#### **Brand Accents & Gradients**
-- **Electric Cyan**: `#06b6d4` (Logo glow, active tab highlights, primary CTA)
-- **Cyber Blue**: `#3b82f6` (Midpoint gradient fill, link text, code icons)
-- **Vibrant Violet**: `#8b5cf6` (Deep reasoning badge, purple ambient glow)
-- **Royal Purple**: `#a855f7` (Creative studio badges, category tags)
-
-#### **Status & Functional Indicators**
-- **Emerald Green**: `#10b981` (Connected status dot, success state, Python/Code badges)
-- **Amber Gold**: `#f59e0b` (Warning/Offline status dot, fast model category tag)
-- **Rose Red**: `#f43f5e` (Error banner, stream stop generation button)
-
----
-
-### **4. Visual Effects & Animations**
-
-- **Animated Logo Pulse (`animate-logo-pulse`)**: Pulses cyan-violet drop-shadow glow.
-- **Animated Shimmer Text (`gradient-text-animated`)**: Animated multi-color text shift (`#38bdf8` -> `#818cf8` -> `#c084fc`).
-- **Ambient Glow Mesh (`animate-ambient-glow`)**: Soft background radial orb translation.
-- **Glassmorphism Panel (`glass-panel`)**: `backdrop-filter: blur(16px)` dark glass container.
-- **Gradient Border Glow (`gradient-border-glow`)**: 1px border gradient mask for interactive cards.
-
----
-
-## 🏗 System Architecture
-
-```mermaid
-graph TD
-    User["User Interface (React 19 + TS + Tailwind)"] -->|SSE Stream / REST| FastAPI["FastAPI Backend Engine"]
-    FastAPI -->|Persistence| DB[(SQLite Database)]
-    FastAPI -->|Resolve Model ID| Registry["CretivraModelRegistry"]
-    Registry -->|Dynamic Routing| Core["Cretivra Neural Core"]
-    Core -->|Inference| Model["Cretivra Foundation Models"]
 ```
+                    ┌─────────────────────────┐
+                    │     USER INTERACTION    │
+                    │   (React / Next.js UI)  │
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  ASURA INTELLIGENT      │
+                    │         ROUTER          │
+                    └────────────┬────────────┘
+                                 │
+            ┌────────────────────┼────────────────────┐
+            ▼                    ▼                    ▼
+     [Intent Detector]   [Entity Detector]    [Capability Router]
+     - 16 Intent Types   - Person, Place,     - Asura Fast
+     - Temporal Filter     Company, Product   - Asura Balanced
+                         - Athletes, Actors   - Asura Reasoning
+                                              - Asura Vision
+                                              - Asura Creative
+            └────────────────────┬────────────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │ CONCURRENT TOOL ENGINE  │
+                    │  (Async Parallel Ops)   │
+                    └────────────┬────────────┘
+            ┌────────────────────┴────────────────────┐
+            ▼                                         ▼
+   [Web Intelligence]                        [Real Image Search]
+   - Live Fact Grounding                     - Real Subject Photos
+   - Source Preservation                     - Attribution & Domain
+   - Deduplication & Citations               - Full Lightbox Gallery
+            │                                         │
+            └────────────────────┬────────────────────┘
+                                 ▼
+                    ┌─────────────────────────┐
+                    │     CONTEXT BUILDER     │
+                    │ (2026 Grounding & RAG)  │
+                    └────────────┬────────────┘
+                                 ▼
+                    ┌─────────────────────────┐
+                    │   ASURA MODEL MANAGER   │
+                    │ (Fallback Orchestration)│
+                    └────────────┬────────────┘
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  RESPONSE ORCHESTRATOR  │
+                    │  - Streaming SSE Chunks │
+                    │  - Real Web Sources     │
+                    │  - Real Images Gallery  │
+                    │  - Related Questions    │
+                    │  - Developer Diagnostic │
+                    └────────────┬────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  STRUCTURED ASURA UI    │
+                    └─────────────────────────┘
+```
+
+---
+
+## ⚡ Core Capabilities
+
+### 1. Unified Identity & Strict Abstraction
+- The user **never** sees or hears third-party vendor names (`Ollama`, `Gemini`, `Groq`, `OpenRouter`, `Tavily`, `Llama`, `Qwen`).
+- Standard messages, loading indicators, audio streams, and errors are 100% branded:
+  - *"Asura is thinking..."*
+  - *"Asura is searching the web..."*
+  - *"Asura is finding relevant images..."*
+  - *"Asura is analyzing your image..."*
+  - *"Asura is creating your image..."*
+- If asked *"What AI are you?"*, Asura answers:  
+  **"I'm Asura, Cretivra's AI assistant."**
+- If asked *"Which model are you using?"*, Asura answers:  
+  **"I'm Cretivra Asura. I use multiple AI technologies behind the scenes to provide the best response."**
+
+### 2. Intelligent Intent & Entity Router
+Classifies incoming prompts into 16 intent categories without calling unnecessary services:
+- **`GENERAL_KNOWLEDGE`** & **`CODE`**: Routed directly to high-speed local or cloud inference without unnecessary web lookups.
+- **`CURRENT_INFORMATION`** & **`NEWS`**: Trigger real-time web grounding with source citations.
+- **`PERSON`**, **`PLACE`**, **`PRODUCT`**: Extract specific named entities and retrieve real verified images in parallel with biography synthesis.
+- **`IMAGE_GENERATION`**: Independent creative synthesis route. Never confuses factual image requests with synthetic generative prompts.
+- **`VISION`**: High-detail circuit, schematic, photo, and chart analysis.
+
+### 3. Factual Web Intelligence & Source Citations
+- Recognizes temporal indicators (*"latest"*, *"today"*, *"current"*, *"2026"*, *"recent"*, *"breaking"*).
+- Gathers real-time search context, filters duplicate links, and embeds clean source metadata (`title`, `url`, `domain`, `snippet`).
+- Displays interactive `SourceLinksCard` components with direct domain badges.
+- Factual current information is never fabricated: if the web search infrastructure is unreachable, Asura explicitly informs the user that real-time information could not be verified.
+
+### 4. Real Web Image Search vs. Generative Media
+- **Image Search**: Queries for real entities (e.g. *"Who is Virat Kohli?"*, *"Show me Chennai"*) fetch authentic, verified images with source links and attributions via `ImageGallery`.
+- **Image Generation**: Creative requests (e.g. *"Generate a futuristic Chennai skyline"*) trigger the generative pipeline and display an *"Asura generated this image"* badge.
+
+### 5. Conversational Voice with Barge-In Interruption
+- Full-duplex conversational voice pipeline:
+  `Microphone -> STT -> Asura Router -> Streaming LLM -> TTS -> Audio Playback`.
+- **Barge-In / Interruption**: When the user speaks or taps the orb while Asura is speaking, current audio playback immediately terminates and the new user input is processed instantly.
+
+### 6. Developer & Admin Diagnostics Layer
+- An optional diagnostics toggle located in **Settings > AI Model & Parameters**.
+- Hidden by default from normal users.
+- When toggled on, renders a discrete diagnostics dropdown disclosing:
+  - Routing Decision & Intent
+  - Internal Provider & Model
+  - Latency (ms)
+  - Executed Tools & Tokens
 
 ---
 
 ## 🚀 Quickstart Guide
 
 ### Prerequisites
-- [Python 3.10+](https://www.python.org/)
-- [Node.js 18+](https://nodejs.org/)
-- Cretivra AI Engine runtime
+- **Python**: 3.10+ (tested with Python 3.14)
+- **Node.js**: 18+ (tested with Node.js 24)
+- **Git**
+- Optional: [Ollama](https://ollama.com/) running locally on `http://localhost:11434`
 
-### 1. Initialize Cretivra Neural Core
+---
+
+### 1. Clone & Setup Workspace
 ```bash
-# Verify Cretivra models registry:
-python -m app.services.model_registry
+git clone https://github.com/Suhash369/cretivra-ai.git
+cd "cretivra ai"
 ```
 
-### 2. Configure Backend
+---
+
+### 2. Configure Backend Environment
+Create `backend/.env`:
+```env
+# Core Platform
+PROJECT_NAME="ASURA AI by Cretivra"
+DATABASE_URL="sqlite:///./cretivra.db"
+DEFAULT_MODEL="cretivra-1"
+MAX_CONTEXT_MESSAGES=30
+TEMPERATURE=0.7
+MAX_OUTPUT_TOKENS=4096
+MAX_UPLOAD_SIZE_MB=20
+ENABLE_MOCK_OLLAMA=false
+
+# Internal Infrastructure Providers
+OLLAMA_BASE_URL="http://localhost:11434"
+GROQ_API_KEY="your-groq-api-key"
+GEMINI_API_KEY="your-gemini-api-key"
+OPENROUTER_API_KEY="your-openrouter-api-key"
+TAVILY_API_KEY="your-tavily-api-key"
+
+# Asura Capabilities & Feature Flags
+WEB_SEARCH_ENABLED=true
+IMAGE_SEARCH_ENABLED=true
+IMAGE_GENERATION_ENABLED=true
+SMART_MODEL_ROUTING=true
+WEB_GROUNDING_AUTO=true
+CURRENT_INFO_AUTO=true
+IMAGE_SEARCH_AUTO=true
+VOICE_ENABLED=true
+STT_ENABLED=true
+TTS_ENABLED=true
+VOICE_STREAMING=true
+VOICE_INTERRUPTION=true
+
+# Logical Capability Mappings
+FAST_MODEL="asura-fast"
+BALANCED_MODEL="asura-balanced"
+REASONING_MODEL="asura-reasoning"
+VISION_MODEL="asura-vision"
+CREATIVE_MODEL="asura-creative"
+IMAGE_GENERATION_PROVIDER="gemini"
+IMAGE_SEARCH_PROVIDER="tavily"
+```
+
+---
+
+### 3. Install & Run Backend
 ```bash
-# Create environment file
-cp .env.example .env
+cd backend
+python -m venv venv
 
-# Set up Python virtual environment
-python -m venv backend/venv
+# Windows (PowerShell)
+.\venv\Scripts\activate
+# Linux/macOS
+source venv/bin/activate
 
-# Activate venv:
-# Windows:
-.\backend\venv\Scripts\activate
-# Linux/macOS:
-source backend/venv/bin/activate
-
-# Install backend dependencies
-pip install -r backend/requirements.txt
-
-# Run FastAPI backend server (Port 8000)
-$env:PYTHONPATH="backend"
+pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
+Backend health check is accessible at `http://localhost:8000/api/health`.
 
-### 3. Configure Frontend
+---
+
+### 4. Install & Run Frontend
+In a separate terminal:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-Open your browser at `http://localhost:5173`.
+Open your browser at `http://localhost:3000`.
 
 ---
 
-## 🧪 Running Tests
+## 📡 REST & Streaming APIs
 
-```bash
-$env:PYTHONPATH="backend"
-.\backend\venv\Scripts\pytest backend/tests
+All endpoints are hosted under `/api/*` and preserve user-facing Cretivra Asura branding:
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/health` | Comprehensive health check returning active capabilities. |
+| `POST` | `/api/chat` | Non-streaming chat returning `AsuraStructuredResponse`. |
+| `POST` | `/api/chat/stream` | Server-Sent Events (SSE) streaming with tool status, sources, and images. |
+| `POST` | `/api/search` | Web grounding query search returning verified sources. |
+| `POST` | `/api/images/search` | Factual real-world image search returning image items with domains. |
+| `POST` | `/api/images/generate`| Direct creative image generation returning image URLs and metadata. |
+| `POST` | `/api/vision` | Multimodal image and diagram inspection endpoint. |
+| `POST` | `/api/voice/chat` | Conversational voice turn with spoken reply and speech audio. |
+| `POST` | `/api/voice/stt` | Speech-to-Text transcription. |
+| `POST` | `/api/voice/tts` | Text-to-Speech audio synthesis. |
+| `GET` | `/api/models` | List available logical Asura capabilities. |
+
+### Health Check Response Example
+```json
+GET /api/health
+{
+  "status": "ok",
+  "asura": true,
+  "web_search": true,
+  "image_search": true,
+  "image_generation": true,
+  "voice": true,
+  "vision": true
+}
 ```
 
-All unit & integration tests verify model resolution, health check, conversation persistence, streaming logic, message editing, regeneration, file validation, and settings.
-
 ---
 
-## 🐳 Docker Deployment
+## 🧪 Testing & Validation
+
+The test suite validates intent routing, temporal grounding, factual image search, generative fallbacks, and voice continuity.
 
 ```bash
-docker-compose up --build
+cd backend
+.\venv\Scripts\python.exe test_asura_extended.py
 ```
-Access Cretivra AI at `http://localhost:8000`.
+
+### Verified Test Cases:
+- **Test 1 (`General Knowledge / Code`)**: `"What is a pointer in C?"` -> Correctly classified as `CODE`, executes on `Asura Fast` without unnecessary web searches.
+- **Test 2 (`Entity / Person`)**: `"Who is Virat Kohli?"` -> Extracted as `PERSON`, executes parallel web grounding + real image retrieval, returns biography + sources + real images + follow-up questions.
+- **Test 3 (`Breaking News`)**: `"What is the latest news about Virat Kohli?"` -> Classified as `NEWS`, searches current web intelligence and cites verified sources.
+- **Test 4 (`Current Pricing`)**: `"What is the current price of iPhone?"` -> Classified as `CURRENT_INFORMATION`, triggers web grounding with citations.
+- **Test 5 (`Creative Visual`)**: `"Generate a futuristic Chennai skyline."` -> Classified as `IMAGE_GENERATION`, produces an image with the *"Asura generated this image"* badge.
+- **Test 6 (`Logo Synthesis`)**: `"Create a logo for Asura AI."` -> Routed to creative synthesis.
+- **Test 7 (`Multimodal Vision`)**: Upload of circuit diagram with `"Explain this circuit."` -> Routed to `Asura Vision`.
+- **Test 8 (`Voice Pipeline`)**: Voice prompt -> Router -> Spoken response -> Speech synthesis.
+- **Test 9 (`Barge-In / Interruption`)**: Interrupting during speech synthesis halts playback immediately.
+- **Test 10 (`Web Search Fallback`)**: When web search is disabled, Asura gracefully communicates that real-time information could not be verified while maintaining conversational chat.
+- **Test 11 (`Local AI Fallback`)**: If local Ollama is offline, the model manager seamlessly cascades to cloud providers.
+- **Test 12 (`Image Search Failure`)**: If image search times out, the text response continues to render without broken image elements.
+- **Test 13 (`Image Generation Failure`)**: If image generation fails, a clear Asura notification is displayed without crashing.
+- **Test 14 (`Voice Failure Fallback`)**: If voice audio synthesis is unavailable, text chat remains 100% operational.
 
 ---
 
-## 📚 Project Documentation
+## 🛡️ Internal Infrastructure Details
 
-- [User Authentication & Data Storage Architecture](docs/data_security.md)
-- [100% Free ($0.00) AI Providers Guide](docs/zero_cost_ai.md)
-- [Frontier Intelligence & Neural Optimization Guide](docs/model_training.md)
-- [100% Free Cloud Production Hosting (Vercel + Render + Supabase + Colab)](docs/cloud_architecture.md)
-- [Production Hosting & Deployment Guide](docs/hosting_guide.md)
-- [Frontend Design System & Components](docs/design_system.md)
-- [Architecture & Data Flow](docs/architecture.md)
-- [API Reference](docs/api.md)
-- [Model Registry Mapping](docs/models.md)
-- [Cretivra Engine Guide](docs/cretivra_engine.md)
-- [Development Guide](docs/development.md)
-- [Multi-Version Roadmap](docs/roadmap.md)
+For backend developers and systems administrators, Cretivra Asura coordinates the following underlying technologies:
+- **Fast LPU Inference**: Groq (Llama-3.3-70b-versatile, ~300 tok/s)
+- **Multimodal & Vision**: Google Gemini (gemini-2.5-flash)
+- **Local Private Inference**: Ollama (`http://localhost:11434`)
+- **Web Grounding & Image Search**: Tavily Search Engine API
+- **Generative Media**: Google Gemini Image Gen with high-resolution FLUX/SDXL proxy fallback
+- **Relational Storage**: SQLite with SQLAlchemy ORM (`cretivra.db`)
+
+---
+
+## 📄 License
+
+Proprietary software developed by Cretivra. All rights reserved.

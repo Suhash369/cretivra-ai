@@ -13,6 +13,10 @@ export interface StreamChunkData {
   cancelled?: boolean;
   visual_loading?: boolean;
   visual_intelligence?: any;
+  images?: any[];
+  related_questions?: string[];
+  generated_image?: any;
+  metadata?: Record<string, any>;
 }
 
 export async function readSSEStream(

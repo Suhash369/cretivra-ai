@@ -36,33 +36,33 @@ export interface VoiceAssistantEngine {
 
 export const VOICE_ASSISTANT_ENGINES: VoiceAssistantEngine[] = [
   {
-    id: 'cretivra-neural',
-    name: 'Cretivra Neural Voice',
+    id: 'asura-neural',
+    name: 'Asura Neural Voice',
     badge: 'Flagship',
-    desc: 'Adaptive intelligence with live 2026 temporal awareness & smart routing',
+    desc: 'Adaptive intelligence with live temporal awareness & smart routing',
     provider: 'hybrid',
     icon: Sparkles,
   },
   {
-    id: 'cretivra-turbo',
-    name: 'Cretivra Turbo Voice',
+    id: 'asura-turbo',
+    name: 'Asura Fast Voice',
     badge: 'Ultra-Fast',
-    desc: 'Lightning-fast 250ms voice latency powered by high-speed neural hardware',
+    desc: 'Lightning-fast voice latency powered by high-speed neural hardware',
     provider: 'groq',
     icon: Zap,
   },
   {
-    id: 'cretivra-vision',
-    name: 'Cretivra Vision Voice',
+    id: 'asura-vision',
+    name: 'Asura Multimodal Voice',
     badge: 'Multimodal',
     desc: 'Deep multimodal voice perception and contextual reasoning',
     provider: 'gemini',
     icon: Eye,
   },
   {
-    id: 'cretivra-frontier',
-    name: 'Cretivra Frontier Voice',
-    badge: 'Deep Reason',
+    id: 'asura-frontier',
+    name: 'Asura Reasoning Voice',
+    badge: 'Reasoning',
     desc: 'Frontier-grade knowledge, complex analysis & philosophical dialogue',
     provider: 'openrouter',
     icon: Cpu,
@@ -755,7 +755,7 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
               {voiceState === 'listening'
                 ? 'Listening...'
                 : voiceState === 'thinking'
-                ? 'Thinking with Cretivra...'
+                ? 'Asura is thinking...'
                 : voiceState === 'speaking'
                 ? 'Speaking (Tap orb to interrupt)'
                 : 'Ready'}

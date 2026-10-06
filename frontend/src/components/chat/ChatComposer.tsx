@@ -113,7 +113,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message Cretivra..."
+          placeholder="Message Asura..."
           className="w-full px-4 pt-3.5 pb-2 rounded-2xl bg-transparent text-gray-100 placeholder-gray-500 text-sm focus:outline-none resize-none max-h-52 overflow-y-auto leading-relaxed"
         />
 

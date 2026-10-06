@@ -4,6 +4,9 @@ import { IntelligenceCacheCard } from './IntelligenceCacheCard';
 import { SourceLinksCard } from './SourceLinksCard';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { GeneratedImageCard } from './GeneratedImageCard';
+import { ImageGallery } from './ImageGallery';
+import { RelatedQuestions } from './RelatedQuestions';
+import { DeveloperDiagnosticsCard } from './DeveloperDiagnosticsCard';
 import { VisualAnswer } from '../visual';
 import type { Message, VisualAnswerData } from '../../types';
 
@@ -13,6 +16,7 @@ interface ChatMessageProps {
   message: Message;
   onEditMessage?: (id: string, newContent: string) => void;
   onRegenerateMessage?: (id: string) => void;
+  onSelectRelatedQuestion?: (question: string) => void;
   isGenerating?: boolean;
 }
 
@@ -20,6 +24,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   onEditMessage,
   onRegenerateMessage,
+  onSelectRelatedQuestion,
   isGenerating = false,
 }) => {
   const isUser = message.role === 'user';
@@ -131,6 +136,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 cacheItems={message.cache_items}
               />
               <SourceLinksCard sources={message.sources} messageContent={message.content} />
+              {message.images && message.images.length > 0 && (
+                <ImageGallery images={message.images} />
+              )}
             </>
           )}
 
@@ -188,9 +196,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           ) : isGenerating ? (
             <div className="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
               <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-              <span>{message.reasoning_status || 'Formulating response...'}</span>
+              <span>{message.reasoning_status || 'Asura is thinking...'}</span>
             </div>
           ) : null}
+
+          {/* Related Follow-Up Questions */}
+          {!isUser && message.related_questions && message.related_questions.length > 0 && (
+            <RelatedQuestions
+              questions={message.related_questions}
+              onSelectQuestion={onSelectRelatedQuestion}
+            />
+          )}
+
+          {/* Optional Developer / Admin Diagnostics */}
+          {!isUser && message.metadata && (
+            <DeveloperDiagnosticsCard metadata={message.metadata} />
+          )}
 
           {/* Assistant / User Action Toolbar */}
           {!isEditing && (

@@ -16,6 +16,66 @@ class CretivraModel(BaseModel):
     is_available: bool = True  # Computed at runtime based on Ollama tags / mock mode
 
 DEFAULT_MODEL_REGISTRY: Dict[str, CretivraModel] = {
+    "asura-balanced": CretivraModel(
+        id="asura-balanced",
+        display_name="Asura Balanced",
+        description="Core intelligence for conversation, web analysis, and software engineering",
+        provider="asura_engine",
+        underlying_model="llama3.1",
+        capabilities=["chat", "code", "web", "reasoning"],
+        context_length=128000,
+        enabled=True,
+        version="2.0",
+        category="Balanced"
+    ),
+    "asura-fast": CretivraModel(
+        id="asura-fast",
+        display_name="Asura Fast",
+        description="Ultra-high-speed processing for quick answers, translations, and scripts",
+        provider="asura_engine",
+        underlying_model="llama3.2",
+        capabilities=["chat", "code", "fast"],
+        context_length=32768,
+        enabled=True,
+        version="2.0",
+        category="Fast"
+    ),
+    "asura-reasoning": CretivraModel(
+        id="asura-reasoning",
+        display_name="Asura Reasoning",
+        description="Deep analytical reasoning for complex mathematics, architecture, and logic",
+        provider="asura_engine",
+        underlying_model="deepseek-r1",
+        capabilities=["chat", "reasoning", "deep_research"],
+        context_length=128000,
+        enabled=True,
+        version="2.0",
+        category="Reasoning"
+    ),
+    "asura-vision": CretivraModel(
+        id="asura-vision",
+        display_name="Asura Vision",
+        description="Multimodal visual understanding for photos, circuits, diagrams, and OCR",
+        provider="asura_engine",
+        underlying_model="gemini-vision",
+        capabilities=["chat", "vision", "ocr"],
+        context_length=128000,
+        enabled=True,
+        version="2.0",
+        category="Vision"
+    ),
+    "asura-creative": CretivraModel(
+        id="asura-creative",
+        display_name="Asura Creative",
+        description="Generative synthesis for concepts, artistic compositions, and schematics",
+        provider="asura_engine",
+        underlying_model="flux-realism",
+        capabilities=["chat", "image", "creative"],
+        context_length=32768,
+        enabled=True,
+        version="2.0",
+        category="Creative"
+    ),
     "cretivra-1": CretivraModel(
         id="cretivra-1",
         display_name="Cretivra 1",

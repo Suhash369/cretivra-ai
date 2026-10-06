@@ -13,11 +13,59 @@ from app.core.logging import logger
 
 router = APIRouter(prefix="", tags=["Chat"])
 
+from app.schemas.asura_response import AsuraStructuredResponse
+from app.services.response_orchestrator import response_orchestrator
+
 SSE_HEADERS = {
     "Cache-Control": "no-cache, no-transform",
     "Connection": "keep-alive",
     "X-Accel-Buffering": "no",
 }
+
+@router.post("/chat", response_model=AsuraStructuredResponse)
+async def chat_endpoint(
+    payload: ChatRequest,
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Non-streaming Asura chat endpoint returning structured Cretivra Asura contract.
+    """
+    if not payload.message or not payload.message.strip():
+        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+
+    user_id = current_user.id if current_user else None
+    conversation_id = payload.conversation_id
+    if not conversation_id:
+        conv = conversation_service.create_conversation(
+            db=db,
+            title="New Conversation",
+            model_id=payload.model_id,
+            user_id=user_id
+        )
+        conversation_id = conv.id
+    else:
+        conv = conversation_service.get_conversation(db, conversation_id)
+        if conv and conv.user_id and user_id and current_user.id != conv.user_id:
+            raise HTTPException(status_code=403, detail="Access denied to this conversation.")
+
+    conversation_service.add_message(
+        db=db,
+        conversation_id=conversation_id,
+        role="user",
+        content=payload.message.strip()
+    )
+
+    result = await response_orchestrator.orchestrate_chat_sync(
+        db=db,
+        conversation_id=conversation_id,
+        user_message=payload.message.strip(),
+        attachments=payload.attachments,
+        force_web_search=payload.web_search,
+        force_image_mode=payload.image_mode,
+        selected_model=payload.model_id
+    )
+    return result
 
 @router.post("/chat/stream")
 async def chat_stream(

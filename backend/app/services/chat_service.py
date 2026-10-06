@@ -102,7 +102,7 @@ class ChatService:
             model_info = registry.get_model(model_id)
             engine_name = model_info.display_name if (model_info and is_dedicated_image_model) else "Cretivra Vision Engine"
 
-            status_text = f"Synthesizing visual diagram with {engine_name}..." if is_technical_diagram else f"Synthesizing visual with {engine_name}..."
+            status_text = "Asura is creating your image..."
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': status_text})}\n\n"
             await asyncio.sleep(0.3)
 
@@ -150,7 +150,7 @@ class ChatService:
                 target_aspect = "3:4" if is_poster else "1:1"
                 target_engine = "flux-realism"
 
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Architecting creative visual composition with Cretivra Neural Core...'})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Asura is creating your image...'})}\n\n"
                 
                 # Expand prompt with Creative Director engine
                 expanded = await image_service.expand_prompt_creative(final_image_prompt)
@@ -444,12 +444,12 @@ class ChatService:
                 "Temporal grounding synchronized (2026)",
                 "Synthesizing cached intelligence insights"
             ]
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Consulting real-time web intelligence cache...', 'cache_items': cache_items, 'sources': []})}\n\n"
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Asura is checking current information...', 'cache_items': cache_items, 'sources': []})}\n\n"
             search_data = await web_search_service.search_with_sources(user_message_content)
             if search_data and search_data.get("context_text"):
                 live_web_context = search_data["context_text"]
                 sources = search_data.get("sources", [])
-                last_reasoning_status = "Synthesized from real-time intelligence"
+                last_reasoning_status = "Asura verified current information"
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': sources})}\n\n"
         elif is_deep_research_active:
             cache_items = [
@@ -458,7 +458,7 @@ class ChatService:
                 "Self-consistency verification passes",
                 "Formulating comprehensive analytical report"
             ]
-            last_reasoning_status = "Deep reasoning & research in progress..."
+            last_reasoning_status = "Asura is thinking..."
             yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': []})}\n\n"
 
         # 6. ASURA Visual Intelligence Engine analysis
@@ -472,7 +472,7 @@ class ChatService:
                 visual_intent_info["search_queries"] = [user_message_content[:40]]
 
             if visual_intent_info.get("is_visual_useful"):
-                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'visual_loading': True, 'reasoning_status': 'Finding relevant visuals...', 'cache_items': cache_items, 'sources': sources})}\n\n"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'visual_loading': True, 'reasoning_status': 'Asura is finding relevant images...', 'cache_items': cache_items, 'sources': sources})}\n\n"
                 visual_task = asyncio.create_task(
                     visual_intelligence_service.search_and_rank_visuals(user_message_content, visual_intent_info, max_images=5)
                 )
@@ -699,8 +699,22 @@ class ChatService:
                 except Exception as ve:
                     logger.debug(f"Visual task completion notice: {ve}")
 
-            # Emit final completion chunk with visual intelligence data
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': full_assistant_reply, 'done': True, 'reasoning_status': None, 'sources': sources, 'visual_loading': False, 'visual_intelligence': composed_visual_data})}\n\n"
+            # Compute 2-4 contextual related questions
+            from app.core.router import asura_router
+            from app.services.response_orchestrator import response_orchestrator
+            routing_decision = asura_router.route(user_message_content)
+            related_questions = response_orchestrator._generate_related_questions(user_message_content, routing_decision)
+
+            # Extract list of images for frontend gallery
+            extracted_images = []
+            if composed_visual_data:
+                if composed_visual_data.get("primary_image"):
+                    extracted_images.append(composed_visual_data["primary_image"])
+                if composed_visual_data.get("gallery"):
+                    extracted_images.extend(composed_visual_data["gallery"])
+
+            # Emit final completion chunk with visual intelligence and related questions
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': full_assistant_reply, 'done': True, 'reasoning_status': None, 'sources': sources, 'images': extracted_images, 'related_questions': related_questions, 'visual_loading': False, 'visual_intelligence': composed_visual_data})}\n\n"
 
             # Save sanitized assistant response to DB
             cleaned_reply = clean_ai_response(full_assistant_reply)

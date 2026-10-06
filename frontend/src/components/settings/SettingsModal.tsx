@@ -39,6 +39,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
   });
 
+  const [devMode, setDevMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('cretivra_developer_mode') === 'true';
+    }
+    return false;
+  });
+
   const [savedNotice, setSavedNotice] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -309,6 +316,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     className="w-full p-2.5 rounded-xl bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--foreground)] focus:outline-none focus:border-cyan-500"
                   />
                   <p className="text-[11px] text-[var(--muted-foreground)] mt-1">Number of previous conversational turns remembered for context continuity.</p>
+                </div>
+
+                <div className="pt-3 border-t border-[var(--border)]">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-xs text-[var(--foreground)]">Developer Mode Diagnostics</h4>
+                      <p className="text-[11px] text-[var(--muted-foreground)]">
+                        Show internal routing, tools, latency, and tokens on assistant replies.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={devMode}
+                        onChange={(e) => {
+                          setDevMode(e.target.checked);
+                          localStorage.setItem('cretivra_developer_mode', String(e.target.checked));
+                          window.dispatchEvent(new Event('storage'));
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}

@@ -3,8 +3,39 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Response, Query
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any, Tuple
 from app.services.image_service import image_service
+from app.providers.image_search import image_search_provider
 
 router = APIRouter(prefix="/images", tags=["images"])
+
+class ImageSearchRequest(BaseModel):
+    query: str = Field(..., description="Entity or topic to search real images for")
+    max_results: Optional[int] = Field(4, ge=1, le=10)
+
+@router.api_route("/search", methods=["GET", "POST"])
+async def search_images_endpoint(
+    query: Optional[str] = Query(None),
+    payload: Optional[ImageSearchRequest] = None
+):
+    """
+    Retrieves authentic, real-world verified images for a subject or entity.
+    """
+    target_query = ""
+    max_count = 4
+    if payload and payload.query:
+        target_query = payload.query.strip()
+        max_count = payload.max_results or 4
+    elif query:
+        target_query = query.strip()
+
+    if not target_query:
+        raise HTTPException(status_code=400, detail="Search query cannot be empty.")
+
+    images = await image_search_provider.search(target_query, max_results=max_count)
+    return {
+        "query": target_query,
+        "images": images,
+        "count": len(images)
+    }
 
 class ImageGenerateRequest(BaseModel):
     prompt: str = Field(..., description="Text description of the visual to generate")
@@ -44,8 +75,8 @@ async def proxy_image(
     Proxies visual media from synthesis engines to avoid client-side CORS,
     Cloudflare Turnstile token rejections on localhost, and adblocker issues.
     """
-    if not url or not url.startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="Invalid image URL.")
+    from app.core.security import validate_safe_url
+    validate_safe_url(url)
 
     data, content_type = await image_service.fetch_image_bytes(url)
     if not data:

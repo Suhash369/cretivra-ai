@@ -132,11 +132,11 @@ export function WorkspaceSidebar({
           </div>
           {!isCollapsed && (
             <div className="flex flex-col overflow-hidden animate-fade">
-              <span className="text-[14px] font-semibold text-[var(--foreground)] tracking-wider leading-none">
-                ASURA
+              <span className="text-[13px] font-bold text-[var(--foreground)] tracking-wider leading-none">
+                CRETIVRA
               </span>
-              <span className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-widest mt-0.5">
-                Cretivra
+              <span className="text-[11px] font-semibold text-[#06B6D4] tracking-widest mt-0.5">
+                ASURA
               </span>
             </div>
           )}

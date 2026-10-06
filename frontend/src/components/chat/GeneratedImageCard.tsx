@@ -33,27 +33,8 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
 
   if (!src && !activeSrc) return null;
 
-  // Determine model engine badge
-  let badgeLabel = 'Cretivra Vision';
-  const checkUrl = activeSrc || src || '';
-  if (
-    checkUrl.includes('nanobanana') ||
-    checkUrl.includes('/gemini/') ||
-    checkUrl.includes('model=gemini') ||
-    checkUrl.includes('vision')
-  ) {
-    badgeLabel = 'Cretivra Vision';
-  } else if (checkUrl.includes('model=flux-anime') || (alt && alt.toLowerCase().includes('anime'))) {
-    badgeLabel = 'Anime Studio';
-  } else if (checkUrl.includes('model=flux-3d') || (alt && alt.toLowerCase().includes('3d'))) {
-    badgeLabel = '3D Octane';
-  } else if (checkUrl.includes('model=flux-realism') || (alt && alt.toLowerCase().includes('photo'))) {
-    badgeLabel = 'SDXL Realism';
-  } else if (checkUrl.includes('model=turbo')) {
-    badgeLabel = 'Turbo Speed';
-  } else if (checkUrl.includes('model=flux')) {
-    badgeLabel = 'FLUX.1 Art';
-  }
+  // Asura Creative Engine
+  const badgeLabel = 'Asura generated this image';
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -145,7 +126,7 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
         {!loaded && !hasError && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/95 animate-pulse text-gray-400 gap-2.5 p-4">
             <ImageIcon className="w-8 h-8 text-purple-400/70 animate-bounce" />
-            <span className="text-xs text-purple-300 font-mono text-center">Synthesizing high-res visual with {badgeLabel}...</span>
+            <span className="text-xs text-purple-300 font-mono text-center">Asura is creating your image...</span>
           </div>
         )}
         {hasError ? (
@@ -153,7 +134,7 @@ export const GeneratedImageCard: React.FC<{ src?: string; alt?: string }> = ({ s
             <div className="p-3 rounded-2xl bg-rose-950/50 border border-rose-800/50 text-rose-400">
               <ImageIcon className="w-6 h-6" />
             </div>
-            <p className="text-xs text-rose-300 font-medium">Image generation timed out</p>
+            <p className="text-xs text-rose-300 font-medium">Asura couldn't generate the image right now.</p>
             <button
               type="button"
               onClick={handleRetry}

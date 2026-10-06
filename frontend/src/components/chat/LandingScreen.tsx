@@ -10,7 +10,7 @@ const SUGGESTED_PROMPTS = [
   {
     icon: <Sparkles className="w-4 h-4 text-purple-400" />,
     title: 'Generate an AI Image',
-    subtitle: 'high-resolution FLUX.1 cyber visual art',
+    subtitle: 'high-resolution creative visual art',
     prompt: 'Generate an image of a futuristic cyberpunk city with neon reflections and glowing flying cars, ultra-detailed 8k',
   },
   {

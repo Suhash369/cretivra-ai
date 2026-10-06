@@ -70,6 +70,29 @@ class Settings(BaseSettings):
     SERPAPI_API_KEY: str = Field(default="")
     UPLOAD_DIR: str = Field(default="./uploads")
     
+    # Asura Feature Flags & Capabilities
+    WEB_SEARCH_ENABLED: bool = Field(default=True)
+    IMAGE_SEARCH_ENABLED: bool = Field(default=True)
+    IMAGE_GENERATION_ENABLED: bool = Field(default=True)
+    SMART_MODEL_ROUTING: bool = Field(default=True)
+    WEB_GROUNDING_AUTO: bool = Field(default=True)
+    CURRENT_INFO_AUTO: bool = Field(default=True)
+    IMAGE_SEARCH_AUTO: bool = Field(default=True)
+    VOICE_ENABLED: bool = Field(default=True)
+    STT_ENABLED: bool = Field(default=True)
+    TTS_ENABLED: bool = Field(default=True)
+    VOICE_STREAMING: bool = Field(default=True)
+    VOICE_INTERRUPTION: bool = Field(default=True)
+
+    # Logical Asura Model & Engine Mappings
+    FAST_MODEL: str = Field(default="cretivra-1.2")
+    BALANCED_MODEL: str = Field(default="cretivra-1")
+    REASONING_MODEL: str = Field(default="cretivra-reason")
+    VISION_MODEL: str = Field(default="cretivra-vision")
+    CREATIVE_MODEL: str = Field(default="cretivra-creative")
+    IMAGE_GENERATION_MODEL: str = Field(default="flux-realism")
+    IMAGE_GENERATION_PROVIDER: str = Field(default="gemini")
+    IMAGE_SEARCH_PROVIDER: str = Field(default="tavily")
 
     SYSTEM_PROMPT: str = Field(
         default=(
@@ -83,9 +106,9 @@ class Settings(BaseSettings):
             "In 2026, the current Chief Minister of Tamil Nadu is C. Joseph Vijay (leader of Tamilaga Vettri Kazhagam / TVK), and M. K. Stalin is the former Chief Minister. "
             "Organize responses with elegance and clarity: use GitHub-flavored Markdown, clear topical headings, concise bullet points, and data tables where appropriate. "
             "For software engineering, architectural design, or mathematical problem-solving, produce production-grade, bug-free, fully typed, and robust implementations with clear rationale. "
-            "Maintain an articulate, objective, helpful, and confident demeanor. "
-            "If asked who created you or what model you are, always state that you are Asura AI by Cretivra, built by Cretivra using the Cretivra Neural Engine. "
-            "NEVER mention third-party AI vendors, APIs, or models (such as Google, Gemini, OpenAI, ChatGPT, Groq, OpenRouter, Anthropic, Claude, Meta, Llama, Mistral, Ollama, or DeepSeek). You are exclusively Asura AI by Cretivra powered by the Cretivra Neural Engine. "
+            "If asked who created you, what AI you are, or who you are: always answer: 'I\'m Asura, Cretivra\'s AI assistant.' "
+            "If asked which model you are using: always answer: 'I\'m Cretivra Asura. I use multiple AI technologies behind the scenes to provide the best response.' "
+            "NEVER mention third-party AI vendors, APIs, or infrastructure names (such as Google, Gemini, OpenAI, ChatGPT, Groq, OpenRouter, Tavily, Anthropic, Claude, Meta, Llama, Mistral, Ollama, Qwen, Gemma, or DeepSeek). You are exclusively Asura AI by Cretivra. "
             "CRITICAL OUTPUT DIRECTIVE: Always deliver your final response directly to the user. "
             "NEVER output internal planning scratchpads, persona checklists (such as 'Check: Did I use the persona? Yes'), constraints summaries, or drafting notes in your response. "
             "Begin directly with the substantive answer or greeting."

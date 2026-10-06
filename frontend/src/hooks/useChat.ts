@@ -208,6 +208,9 @@ export function useChat(options?: UseChatOptions) {
                     reasoning_status: chunk.reasoning_status || msg.reasoning_status,
                     cache_items: chunk.cache_items || msg.cache_items,
                     sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                    images: (chunk.images && chunk.images.length > 0) ? chunk.images : msg.images,
+                    related_questions: (chunk.related_questions && chunk.related_questions.length > 0) ? chunk.related_questions : msg.related_questions,
+                    metadata: chunk.metadata ? { ...(msg.metadata || {}), ...chunk.metadata } : msg.metadata,
                     visual_loading: chunk.visual_loading !== undefined ? chunk.visual_loading : msg.visual_loading,
                     visual_intelligence: chunk.visual_intelligence !== undefined ? chunk.visual_intelligence : msg.visual_intelligence,
                   };
@@ -227,7 +230,7 @@ export function useChat(options?: UseChatOptions) {
             if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
               setError('Session expired or authentication required. Please sign in again.');
             } else {
-              setError("Cretivra couldn't complete that response. Please try again.");
+              setError("Asura is temporarily unable to process this request. Please try again.");
             }
           },
           onComplete: () => {
@@ -285,7 +288,16 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
+                    ? {
+                        ...msg,
+                        content: chunk.full_content,
+                        reasoning_status: chunk.reasoning_status,
+                        cache_items: chunk.cache_items || msg.cache_items,
+                        sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                        images: (chunk.images && chunk.images.length > 0) ? chunk.images : msg.images,
+                        related_questions: (chunk.related_questions && chunk.related_questions.length > 0) ? chunk.related_questions : msg.related_questions,
+                        metadata: chunk.metadata ? { ...(msg.metadata || {}), ...chunk.metadata } : msg.metadata,
+                      }
                     : msg
                 )
               );
@@ -298,7 +310,7 @@ export function useChat(options?: UseChatOptions) {
               if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
                 setError('Session expired or authentication required. Please sign in again.');
               } else {
-                setError("Cretivra couldn't complete that response. Please try again.");
+                setError("Asura is temporarily unable to process this request. Please try again.");
               }
             },
             onComplete: () => {
@@ -321,7 +333,16 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
+                    ? {
+                        ...msg,
+                        content: chunk.full_content,
+                        reasoning_status: chunk.reasoning_status,
+                        cache_items: chunk.cache_items || msg.cache_items,
+                        sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                        images: (chunk.images && chunk.images.length > 0) ? chunk.images : msg.images,
+                        related_questions: (chunk.related_questions && chunk.related_questions.length > 0) ? chunk.related_questions : msg.related_questions,
+                        metadata: chunk.metadata ? { ...(msg.metadata || {}), ...chunk.metadata } : msg.metadata,
+                      }
                     : msg
                 )
               );
@@ -334,7 +355,7 @@ export function useChat(options?: UseChatOptions) {
               if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
                 setError('Session expired or authentication required. Please sign in again.');
               } else {
-                setError("Cretivra couldn't complete that response. Please try again.");
+                setError("Asura is temporarily unable to process this request. Please try again.");
               }
             },
             onComplete: () => {
@@ -387,7 +408,16 @@ export function useChat(options?: UseChatOptions) {
               setMessages((prev) =>
                 prev.map((msg) =>
                   msg.id === tempAssistantMsgId
-                    ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
+                    ? {
+                        ...msg,
+                        content: chunk.full_content,
+                        reasoning_status: chunk.reasoning_status,
+                        cache_items: chunk.cache_items || msg.cache_items,
+                        sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                        images: (chunk.images && chunk.images.length > 0) ? chunk.images : msg.images,
+                        related_questions: (chunk.related_questions && chunk.related_questions.length > 0) ? chunk.related_questions : msg.related_questions,
+                        metadata: chunk.metadata ? { ...(msg.metadata || {}), ...chunk.metadata } : msg.metadata,
+                      }
                     : msg
                 )
               );
@@ -400,7 +430,7 @@ export function useChat(options?: UseChatOptions) {
               if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
                 setError('Session expired or authentication required. Please sign in again.');
               } else {
-                setError("Cretivra couldn't complete that response. Please try again.");
+                setError("Asura is temporarily unable to process this request. Please try again.");
               }
             },
             onComplete: () => {
@@ -425,7 +455,16 @@ export function useChat(options?: UseChatOptions) {
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === tempAssistantMsgId
-                      ? { ...msg, content: chunk.full_content, reasoning_status: chunk.reasoning_status, cache_items: chunk.cache_items || msg.cache_items, sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources }
+                      ? {
+                          ...msg,
+                          content: chunk.full_content,
+                          reasoning_status: chunk.reasoning_status,
+                          cache_items: chunk.cache_items || msg.cache_items,
+                          sources: (chunk.sources && chunk.sources.length > 0) ? chunk.sources : msg.sources,
+                          images: (chunk.images && chunk.images.length > 0) ? chunk.images : msg.images,
+                          related_questions: (chunk.related_questions && chunk.related_questions.length > 0) ? chunk.related_questions : msg.related_questions,
+                          metadata: chunk.metadata ? { ...(msg.metadata || {}), ...chunk.metadata } : msg.metadata,
+                        }
                       : msg
                   )
                 );
@@ -438,7 +477,7 @@ export function useChat(options?: UseChatOptions) {
                 if (err?.message?.includes('401') || err?.message?.toLowerCase().includes('auth') || err?.message?.toLowerCase().includes('session')) {
                   setError('Session expired or authentication required. Please sign in again.');
                 } else {
-                  setError("Cretivra couldn't complete that response. Please try again.");
+                  setError("Asura is temporarily unable to process this request. Please try again.");
                 }
               },
               onComplete: () => {

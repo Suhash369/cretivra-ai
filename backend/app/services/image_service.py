@@ -13,10 +13,14 @@ logger = logging.getLogger("cretivra.images")
 
 class ImageService:
     """
-    State-of-the-Art Image Generation Service for Asura AI by Cretivra.
-    Supports Google Gemini Vision/Imagen, FLUX.1, SDXL, Turbo, Anime, and 3D CGI rendering engines.
-    100% Watermark-free, zero-cost, with multi-engine resilience.
+    State-of-the-Art Image Service for Asura AI by Cretivra.
+    Distinguishes Real Image Search from Synthetic Generative Media.
     """
+
+    async def search_real_images(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
+        """Searches authentic real images with provenance, source domain, and attribution."""
+        from app.providers.image_search import image_search_provider
+        return await image_search_provider.search(query, max_results=max_results)
 
     ASPECT_RATIO_MAP: Dict[str, Tuple[int, int]] = {
         "1:1": (1024, 1024),
