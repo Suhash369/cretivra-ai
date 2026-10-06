@@ -29,7 +29,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } catch {}
     return {
       ollama_base_url: 'http://localhost:11434',
-      default_model: 'cretivra-1',
+      default_model: 'asura-balanced',
       temperature: 0.7,
       max_context_messages: 30,
       max_output_tokens: 4096,

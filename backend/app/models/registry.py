@@ -375,11 +375,21 @@ class CretivraModelRegistry:
         self._models[model.id] = model
 
     def resolve_underlying_model(self, model_id: str) -> str:
-        model = self.get_model(model_id)
+        alias_map = {
+            "cretivra-1": "asura-balanced",
+            "cretivra-1.1": "asura-balanced",
+            "cretivra-1.2": "asura-fast",
+            "cretivra-fast": "asura-fast",
+            "cretivra-reason": "asura-reasoning",
+            "cretivra-coder": "asura-coding",
+            "cretivra-vision": "asura-vision",
+            "cretivra-creative": "asura-creative"
+        }
+        resolved_id = alias_map.get(model_id, model_id)
+        model = self.get_model(resolved_id)
         if not model:
-            # Fallback to default model if unknown ID is passed
-            default_m = self.get_model("cretivra-1")
-            return default_m.underlying_model if default_m else "llama3"
+            default_m = self.get_model("asura-balanced")
+            return default_m.underlying_model if default_m else "balanced"
         return model.underlying_model
 
     def update_availability_from_ollama_tags(self, installed_tags: List[str], mock_mode: bool = False):

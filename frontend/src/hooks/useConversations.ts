@@ -122,7 +122,7 @@ export function useConversations(user?: any) {
     });
   }, [conversations]);
 
-  const handleCreateNew = async (model_id = 'cretivra-1'): Promise<Conversation> => {
+  const handleCreateNew = async (model_id = 'asura-balanced'): Promise<Conversation> => {
     try {
       const newConv = await createConversation('New Conversation', model_id);
       const nextList = [newConv, ...conversations.filter((c) => c.id !== newConv.id)];
@@ -154,7 +154,7 @@ export function useConversations(user?: any) {
         const fullConv: Conversation = {
           id: conv.id,
           title: conv.title || 'New Conversation',
-          model_id: conv.model_id || 'cretivra-1',
+          model_id: conv.model_id || 'asura-balanced',
           created_at: conv.created_at || new Date().toISOString(),
           updated_at: new Date().toISOString(),
           messages: conv.messages || [],

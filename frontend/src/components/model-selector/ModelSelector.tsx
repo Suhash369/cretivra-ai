@@ -19,11 +19,11 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedModel = models.find((m) => m.id === selectedModelId) || models[0] || {
-    id: 'cretivra-1',
-    display_name: 'Cretivra 1',
-    description: 'General AI Assistant',
+    id: 'asura-balanced',
+    display_name: 'Asura Balanced',
+    description: 'Core intelligence & web synthesis',
     category: 'Balanced',
-    capabilities: ['chat'],
+    capabilities: ['chat', 'code', 'web', 'reasoning'],
     is_available: true,
   };
 

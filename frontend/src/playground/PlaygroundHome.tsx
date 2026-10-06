@@ -91,7 +91,7 @@ const QUICK_ACTIONS = [
 export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProps) {
   const [prompt, setPrompt] = useState(initialPrompt || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('cretivra-1');
+  const [selectedModel, setSelectedModel] = useState('asura-balanced');
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -157,10 +157,12 @@ export function PlaygroundHome({ onStartRun, initialPrompt }: PlaygroundHomeProp
                   aria-label="Select Foundation Model Tier"
                   className="bg-transparent border-0 text-xs font-mono text-slate-800 dark:text-slate-300 focus:outline-none cursor-pointer"
                 >
-                  <option value="cretivra-1" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra 1 (Balanced)</option>
-                  <option value="cretivra-coder" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra Coder Pro</option>
-                  <option value="cretivra-reason" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra Reason</option>
-                  <option value="cretivra-1.1" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Cretivra 1.1 (Multimodal)</option>
+                  <option value="asura-balanced" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Balanced</option>
+                  <option value="asura-coding" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Coding</option>
+                  <option value="asura-reasoning" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Reasoning</option>
+                  <option value="asura-fast" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Fast</option>
+                  <option value="asura-vision" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Vision</option>
+                  <option value="asura-creative" className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100">Asura Creative</option>
                 </select>
               </div>
             </div>

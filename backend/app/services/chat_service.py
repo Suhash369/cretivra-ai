@@ -24,7 +24,7 @@ class ChatService:
         db: Session,
         conversation_id: str,
         user_message_content: str,
-        model_id: str = "cretivra-1",
+        model_id: str = "asura-balanced",
         attachments: Optional[List[Dict[str, Any]]] = None,
         system_prompt: Optional[str] = None,
         web_search: Optional[bool] = False,
@@ -554,7 +554,6 @@ class ChatService:
             f"{base_sys}\n\n"
             f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
             f"You possess real-time intelligence and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Refer to your real-time verified intelligence.\n"
-            f"Authoritative 2026 Leadership: The current Chief Minister of Tamil Nadu is C. Joseph Vijay (Tamilaga Vettri Kazhagam / TVK), and M. K. Stalin is the former Chief Minister.\n"
             f"{deep_directive}"
             f"{vis_directive}"
             f"{diagram_directive}"
@@ -564,13 +563,6 @@ class ChatService:
         )
 
         formatted_messages = [{"role": "system", "content": sys_content}]
-
-        # Append authoritative directive for Tamil Nadu CM queries
-        if re.search(r"\b(cm|chief\s*minister)\b.*\b(tamil\s*nadu|tamilnadu|tn)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(cm|chief\s*minister)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(head of government|leader)\b", user_message_content, re.IGNORECASE):
-            formatted_messages[0]["content"] += (
-                "\n\n[AUTHORITATIVE 2026 LEADERSHIP TRUTH]: In 2026, the current Chief Minister of Tamil Nadu is C. Joseph Vijay "
-                "(Tamilaga Vettri Kazhagam / TVK), and M. K. Stalin is the former Chief Minister. State authoritatively and directly that C. Joseph Vijay is the current Chief Minister."
-            )
 
         # Append recent history
         recent_history = messages_db[-settings.MAX_CONTEXT_MESSAGES:]

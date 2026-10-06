@@ -1012,11 +1012,11 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
   };
 
   const currentModelObj = availableModels.find((m) => m.id === selectedModel) || availableModels[0] || {
-    id: 'cretivra-1',
-    display_name: 'Cretivra 1',
-    description: 'Balanced performance',
+    id: 'asura-balanced',
+    display_name: 'Asura Balanced',
+    description: 'Balanced everyday intelligence & web synthesis',
     category: 'Balanced',
-    capabilities: ['chat'],
+    capabilities: ['chat', 'code', 'web', 'reasoning'],
   };
 
   const isCurrentImg = isImageModel(currentModelObj as CretivraModel);

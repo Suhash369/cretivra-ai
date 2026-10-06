@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
     message: str
-    model_id: str = "cretivra-1"
+    model_id: str = "asura-balanced"
     attachments: Optional[List[Dict[str, Any]]] = None
     system_prompt: Optional[str] = None
     web_search: Optional[bool] = None

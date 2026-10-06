@@ -11,23 +11,40 @@ export function useChat(options?: UseChatOptions) {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [availableModels, setAvailableModels] = useState<CretivraModel[]>([]);
+  const normalizeModel = (id?: string | null): string => {
+    if (!id) return 'asura-balanced';
+    if (id === 'cretivra-1' || id === 'cretivra-1.1') return 'asura-balanced';
+    if (id === 'cretivra-1.2' || id === 'cretivra-fast') return 'asura-fast';
+    if (id === 'cretivra-reason') return 'asura-reasoning';
+    if (id === 'cretivra-coder') return 'asura-coding';
+    if (id === 'cretivra-vision') return 'asura-vision';
+    if (id === 'cretivra-creative') return 'asura-creative';
+    if (id.startsWith('asura-')) return id;
+    return 'asura-balanced';
+  };
+
   const [selectedModel, setSelectedModelState] = useState<string>(() => {
     try {
       const stored = localStorage.getItem('cretivra_selected_model');
-      if (stored) return stored;
+      if (stored) {
+        const norm = normalizeModel(stored);
+        localStorage.setItem('cretivra_selected_model', norm);
+        return norm;
+      }
       const settings = localStorage.getItem('cretivra_system_settings');
       if (settings) {
         const parsed = JSON.parse(settings);
-        if (parsed.default_model) return parsed.default_model;
+        if (parsed.default_model) return normalizeModel(parsed.default_model);
       }
     } catch {}
-    return 'cretivra-1';
+    return 'asura-balanced';
   });
 
   const setSelectedModel = useCallback((modelId: string) => {
-    setSelectedModelState(modelId);
+    const norm = normalizeModel(modelId);
+    setSelectedModelState(norm);
     try {
-      localStorage.setItem('cretivra_selected_model', modelId);
+      localStorage.setItem('cretivra_selected_model', norm);
     } catch {}
   }, []);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -47,6 +64,17 @@ export function useChat(options?: UseChatOptions) {
       .then((models) => {
         if (models && models.length > 0) {
           setAvailableModels(models);
+          setSelectedModelState((curr) => {
+            const exists = models.some((m) => m.id === curr);
+            if (!exists) {
+              const fallback = models[0]?.id || 'asura-balanced';
+              try {
+                localStorage.setItem('cretivra_selected_model', fallback);
+              } catch {}
+              return fallback;
+            }
+            return curr;
+          });
         }
       })
       .catch((err) => console.error('Failed to load Cretivra models:', err));

@@ -38,14 +38,12 @@ interface ModelOption {
 }
 
 const AVAILABLE_MODELS: ModelOption[] = [
-  { id: 'cretivra-1', name: 'Asura Cretivra 1', provider: 'Cretivra Neural Core', badge: 'Balanced', isCretivra: true, desc: 'Everyday high-precision reasoning & conversational agent' },
-  { id: 'cretivra-reason', name: 'Asura Cretivra Reason', provider: 'Cretivra Deep Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
-  { id: 'cretivra-coder', name: 'Asura Cretivra Coder Pro', provider: 'Cretivra Code Core', badge: 'Code Specialist', isCretivra: true, desc: 'Full-stack software engineering & algorithm architecture' },
-  { id: 'cretivra-omni', name: 'Asura Cretivra Omni 4', provider: 'Cretivra Frontier Core', badge: 'Multimodal', isCretivra: true, desc: 'Frontier multimodal intelligence with tool integration' },
-  { id: 'cretivra-voice', name: 'Asura Cretivra Voice Ultra', provider: 'Cretivra Voice Core', badge: 'Realtime Voice', isCretivra: true, desc: 'Ultra-low latency speech synthesis & auditory cognition' },
-  { id: 'cretivra-vision', name: 'Asura Cretivra Vision Ultra', provider: 'Cretivra Vision Studio', badge: 'Visual Studio', isCretivra: true, desc: 'Next-gen photorealistic visual synthesis & perception' },
-  { id: 'cretivra-turbo', name: 'Asura Cretivra Turbo', provider: 'Cretivra Ultra Core', badge: 'Turbo Speed', isCretivra: true, desc: 'Sub-100ms real-time inference & streaming synthesis' },
-  { id: 'cretivra-deep-c1', name: 'Asura Cretivra Deep C1', provider: 'Cretivra Frontier Core', badge: 'Frontier Reason', isCretivra: true, desc: 'Frontier autonomous execution & multi-agent planner' },
+  { id: 'asura-balanced', name: 'Asura Balanced', provider: 'Cretivra Neural Core', badge: 'Balanced', isCretivra: true, desc: 'Everyday high-precision reasoning & conversational agent' },
+  { id: 'asura-reasoning', name: 'Asura Reasoning', provider: 'Cretivra Deep Core', badge: 'Deep Reasoning', isCretivra: true, desc: 'Chain-of-thought mathematical & logical deduction' },
+  { id: 'asura-coding', name: 'Asura Coding', provider: 'Cretivra Code Core', badge: 'Code Specialist', isCretivra: true, desc: 'Full-stack software engineering & algorithm architecture' },
+  { id: 'asura-fast', name: 'Asura Fast', provider: 'Cretivra Ultra Core', badge: 'Ultra Fast', isCretivra: true, desc: 'High-velocity real-time inference & quick querying' },
+  { id: 'asura-vision', name: 'Asura Vision', provider: 'Cretivra Vision Studio', badge: 'Visual Studio', isCretivra: true, desc: 'Next-gen photorealistic visual perception & synthesis' },
+  { id: 'asura-creative', name: 'Asura Creative', provider: 'Cretivra Frontier Core', badge: 'Creative Synthesis', isCretivra: true, desc: 'Generative ideation, schematics, and concept designs' },
 ];
 
 const BENCHMARK_PRESETS = [
@@ -97,8 +95,8 @@ const DEFAULT_METRICS: TelemetryMetrics = {
 
 export function TestBenchClient() {
   const [activeTab, setActiveTab] = useState<'arena' | 'scorecard'>('arena');
-  const [modelA, setModelA] = useState<string>('cretivra-1');
-  const [modelB, setModelB] = useState<string>('cretivra-omni');
+  const [modelA, setModelA] = useState<string>('asura-balanced');
+  const [modelB, setModelB] = useState<string>('asura-reasoning');
   const [prompt, setPrompt] = useState<string>(BENCHMARK_PRESETS[0].prompt);
 
   const [isRunning, setIsRunning] = useState<boolean>(false);

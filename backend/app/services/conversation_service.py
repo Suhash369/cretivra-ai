@@ -11,12 +11,23 @@ class ConversationService:
         self,
         db: Session,
         title: str = "New Conversation",
-        model_id: str = "cretivra-1",
+        model_id: str = "asura-balanced",
         user_id: Optional[str] = None
     ) -> ConversationDB:
+        alias_map = {
+            "cretivra-1": "asura-balanced",
+            "cretivra-1.1": "asura-balanced",
+            "cretivra-1.2": "asura-fast",
+            "cretivra-fast": "asura-fast",
+            "cretivra-reason": "asura-reasoning",
+            "cretivra-coder": "asura-coding",
+            "cretivra-vision": "asura-vision",
+            "cretivra-creative": "asura-creative"
+        }
+        resolved_model_id = alias_map.get(model_id, model_id)
         conv = ConversationDB(
             title=title,
-            model_id=model_id,
+            model_id=resolved_model_id,
             user_id=user_id
         )
         db.add(conv)

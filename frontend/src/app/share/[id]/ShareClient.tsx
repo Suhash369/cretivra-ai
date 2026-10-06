@@ -131,7 +131,7 @@ export function ShareClient({ conversationId }: { conversationId: string }) {
                   </div>
                 )}
                 <span className="px-2 py-0.5 rounded-full bg-[var(--bg-card)] border border-[var(--border)] font-mono text-[11px] text-cyan-400">
-                  {conversation?.model_id || 'cretivra-1'}
+                  {conversation?.model_id || 'asura-balanced'}
                 </span>
                 <span className="text-[11px] text-gray-500">
                   {conversation?.messages?.length || 0} messages

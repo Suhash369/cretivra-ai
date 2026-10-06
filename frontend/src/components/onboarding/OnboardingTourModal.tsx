@@ -115,7 +115,7 @@ export function OnboardingTourModal({
   onSelectPrompt,
 }: OnboardingTourModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedModelDemo, setSelectedModelDemo] = useState("cretivra-1");
+  const [selectedModelDemo, setSelectedModelDemo] = useState("asura-balanced");
   const [dontShowAgain, setDontShowAgain] = useState(true);
 
   useEffect(() => {
@@ -166,7 +166,7 @@ export function OnboardingTourModal({
     }
   };
 
-  const handleQuickPrompt = (promptText: string, modelId: string = "cretivra-1") => {
+  const handleQuickPrompt = (promptText: string, modelId: string = "asura-balanced") => {
     handleFinish();
     if (onSelectPrompt) {
       onSelectPrompt(promptText, modelId);
@@ -281,8 +281,8 @@ export function OnboardingTourModal({
             <div className="space-y-2.5">
               {[
                 {
-                  id: "cretivra-1",
-                  name: "Cretivra 1",
+                  id: "asura-balanced",
+                  name: "Asura Balanced",
                   badge: "Balanced Everyday",
                   desc: "Ideal for research, long-form writing, conversational flow, and general synthesis.",
                   icon: Cpu,
@@ -291,8 +291,8 @@ export function OnboardingTourModal({
                   bg: "bg-cyan-500/10",
                 },
                 {
-                  id: "cretivra-reason",
-                  name: "Cretivra Reason",
+                  id: "asura-reasoning",
+                  name: "Asura Reasoning",
                   badge: "Chain-of-Thought Logic",
                   desc: "Specialized for algorithmic math, logical proofs, and multi-step deduction.",
                   icon: Brain,
@@ -301,8 +301,8 @@ export function OnboardingTourModal({
                   bg: "bg-purple-500/10",
                 },
                 {
-                  id: "cretivra-coder",
-                  name: "Cretivra Coder Pro",
+                  id: "asura-coding",
+                  name: "Asura Coding",
                   badge: "Full-Stack Software",
                   desc: "Engineered for clean code generation, refactoring, systems architecture, and debugging.",
                   icon: Terminal,
@@ -311,14 +311,14 @@ export function OnboardingTourModal({
                   bg: "bg-emerald-500/10",
                 },
                 {
-                  id: "cretivra-omni",
-                  name: "Cretivra Omni 4",
-                  badge: "Multimodal Agent",
-                  desc: "Handles vision analysis, charts, complex multi-document reasoning, and tools.",
+                  id: "asura-fast",
+                  name: "Asura Fast",
+                  badge: "Ultra Fast Inference",
+                  desc: "High-velocity inference for real-time querying, scripts, and quick tasks.",
                   icon: Eye,
-                  color: "text-pink-400",
-                  border: "border-pink-500/40",
-                  bg: "bg-pink-500/10",
+                  color: "text-amber-400",
+                  border: "border-amber-500/40",
+                  bg: "bg-amber-500/10",
                 },
               ].map((m) => {
                 const Icon = m.icon;
@@ -533,7 +533,7 @@ export function OnboardingTourModal({
                     title: "2026 AI Frontier Report",
                     prompt:
                       "Summarize the most significant breakthroughs in autonomous AI and frontier intelligence for 2026, formatted as a structured report.",
-                    model: "cretivra-1",
+                    model: "asura-balanced",
                     tag: "Research",
                     color: "text-cyan-400",
                   },
@@ -541,7 +541,7 @@ export function OnboardingTourModal({
                     title: "Deep Logic & Math Analysis",
                     prompt:
                       "Explain the P vs NP problem with step-by-step reasoning, real-world complexity implications, and contemporary cryptographic impacts.",
-                    model: "cretivra-reason",
+                    model: "asura-reasoning",
                     tag: "Reasoning",
                     color: "text-purple-400",
                   },
@@ -549,7 +549,7 @@ export function OnboardingTourModal({
                     title: "Async FastAPI Streaming",
                     prompt:
                       "Write a complete, production-ready Python FastAPI server implementing Server-Sent Events (SSE) streaming with cancellation abort support.",
-                    model: "cretivra-coder",
+                    model: "asura-coding",
                     tag: "Coding",
                     color: "text-emerald-400",
                   },
@@ -557,7 +557,7 @@ export function OnboardingTourModal({
                     title: "Executive PDF Generation",
                     prompt:
                       "Create an executive investment analysis of clean energy and generate a publication-ready PDF document with data tables.",
-                    model: "cretivra-1",
+                    model: "asura-balanced",
                     tag: "PDF Export",
                     color: "text-indigo-400",
                   },

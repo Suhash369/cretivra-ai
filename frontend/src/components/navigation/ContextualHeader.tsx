@@ -56,7 +56,7 @@ export function ContextualHeader({
   isGenerating = false,
   onStopGeneration,
   onOpenVoiceMode,
-  selectedModel = 'cretivra-1',
+  selectedModel = 'asura-balanced',
   availableModels = [],
   onSelectModel,
   onOpenModelSelector,

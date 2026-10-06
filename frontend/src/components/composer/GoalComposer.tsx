@@ -121,7 +121,14 @@ export function GoalComposer({
   };
 
   const currentModelObj = availableModels.find((m) => m.id === selectedModel);
-  const modelName = currentModelObj?.display_name || 'Cretivra 1';
+  const modelName = currentModelObj?.display_name || (
+    selectedModel === 'asura-fast' ? 'Asura Fast' :
+    selectedModel === 'asura-reasoning' ? 'Asura Reasoning' :
+    selectedModel === 'asura-coding' ? 'Asura Coding' :
+    selectedModel === 'asura-vision' ? 'Asura Vision' :
+    selectedModel === 'asura-creative' ? 'Asura Creative' :
+    'Asura Balanced'
+  );
 
   return (
     <div

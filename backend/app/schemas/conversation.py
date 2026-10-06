@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 class ConversationCreate(BaseModel):
     title: Optional[str] = "New Conversation"
-    model_id: str = "cretivra-1"
+    model_id: str = "asura-balanced"
 
 class ConversationUpdate(BaseModel):
     title: Optional[str] = None

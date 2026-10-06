@@ -16,12 +16,44 @@ def extract_domain(url: str) -> str:
     except Exception:
         return "web"
 
+def extract_image_fingerprint(url: str) -> str:
+    """
+    Extracts canonical image filename / stem from Wikimedia or remote URLs.
+    Handles unquoting, stripping size prefixes (e.g. 500px-), stripping query parameters,
+    and normalizes character sequences so identical files across summary, media-list,
+    and commons search are strictly deduplicated.
+    """
+    if not url:
+        return ""
+    try:
+        from urllib.parse import unquote, urlparse
+        decoded = unquote(url)
+        path = urlparse(decoded).path
+        parts = [p for p in path.split('/') if p]
+        if not parts:
+            return re.sub(r'[^a-z0-9]', '', decoded.lower())
+
+        # In Wikimedia thumbnail URLs:
+        # /wikipedia/commons/thumb/9/9d/The_Chief_Minister_of_Tamil_Nadu,_Thiru_MK_Stalin.jpg/1000px-The_Chief_Minister_of_Tamil_Nadu,_Thiru_MK_Stalin.jpg
+        # The true filename is the second-to-last part if the last part starts with \d+px-
+        filename = parts[-1]
+        if re.match(r'^\d+px-', filename) and len(parts) >= 2:
+            filename = parts[-2]
+
+        filename = re.sub(r'^\d+px-', '', filename)
+        stem = re.sub(r'\.[a-zA-Z0-9]+$', '', filename)
+        norm = re.sub(r'[^a-z0-9]', '', stem.lower())
+        return norm if len(norm) >= 4 else stem.lower().strip()
+    except Exception:
+        return url.lower().strip()
+
 class ImageSearchProvider(BaseImageSearchProvider):
     """
     Real Image Search Provider for CRETIVRA ASURA.
     Retrieves authentic, verified, real-world images for persons, athletes, actors,
     landmarks, locations, and real-world entities using Wikipedia & Wikimedia open repositories.
     Guarantees:
+    - NO duplicate images or identical photos under different thumbnail resolutions
     - NO invented image URLs
     - NO fake placeholders
     - NO AI-generated images for real people
@@ -47,6 +79,8 @@ class ImageSearchProvider(BaseImageSearchProvider):
 
         logger.debug(f"[ASURA] image_search_query={clean_q}")
         candidates: List[Dict[str, Any]] = []
+        seen_fingerprints: set = set()
+        seen_urls: set = set()
 
         headers = {
             "User-Agent": "CretivraAsura/2.0 (https://asura.cretivra.com; assistant@cretivra.com)"
@@ -74,19 +108,23 @@ class ImageSearchProvider(BaseImageSearchProvider):
                                 if orig and orig.get("source"):
                                     orig_url = orig.get("source")
                                     thumb_url = thumb.get("source") if thumb else orig_url
-                                    candidates.append({
-                                        "url": orig_url,
-                                        "thumbnail": thumb_url,
-                                        "thumbnailUrl": thumb_url,
-                                        "title": f"{top_title}",
-                                        "source_url": f"https://en.wikipedia.org/wiki/{encoded_title}",
-                                        "sourceUrl": f"https://en.wikipedia.org/wiki/{encoded_title}",
-                                        "source_domain": "wikipedia.org",
-                                        "sourceName": "Wikipedia",
-                                        "attribution": "Wikipedia / Wikimedia Commons",
-                                        "width": orig.get("width", 1200),
-                                        "height": orig.get("height", 800)
-                                    })
+                                    fp = extract_image_fingerprint(orig_url)
+                                    if fp and fp not in seen_fingerprints and orig_url not in seen_urls:
+                                        seen_fingerprints.add(fp)
+                                        seen_urls.add(orig_url)
+                                        candidates.append({
+                                            "url": orig_url,
+                                            "thumbnail": thumb_url,
+                                            "thumbnailUrl": thumb_url,
+                                            "title": f"{top_title}",
+                                            "source_url": f"https://en.wikipedia.org/wiki/{encoded_title}",
+                                            "sourceUrl": f"https://en.wikipedia.org/wiki/{encoded_title}",
+                                            "source_domain": "wikipedia.org",
+                                            "sourceName": "Wikipedia",
+                                            "attribution": "Wikipedia / Wikimedia Commons",
+                                            "width": orig.get("width", 1200),
+                                            "height": orig.get("height", 800)
+                                        })
                         except Exception as e:
                             logger.debug(f"Wikipedia summary lookup notice: {e}")
 
@@ -114,10 +152,16 @@ class ImageSearchProvider(BaseImageSearchProvider):
                                         if thumb_src and not thumb_src.startswith("http"):
                                             thumb_src = "https:" + thumb_src
 
+                                        fp = extract_image_fingerprint(best_src)
+                                        if not fp or fp in seen_fingerprints or best_src in seen_urls:
+                                            continue
+
                                         clean_caption = file_title.replace("File:", "").replace("_", " ")
                                         clean_caption = re.sub(r"\.[a-zA-Z0-9]+$", "", clean_caption)
 
                                         if best_src:
+                                            seen_fingerprints.add(fp)
+                                            seen_urls.add(best_src)
                                             candidates.append({
                                                 "url": best_src,
                                                 "thumbnail": thumb_src,
@@ -141,22 +185,34 @@ class ImageSearchProvider(BaseImageSearchProvider):
             # 2. Fallback to Wikimedia Commons Search API if needed
             if len(candidates) < max_results:
                 try:
-                    wiki_commons = await self._search_wikimedia_commons(client, clean_q, limit=max_results)
+                    wiki_commons = await self._search_wikimedia_commons(
+                        client,
+                        clean_q,
+                        limit=max_results * 2,
+                        seen_fingerprints=seen_fingerprints,
+                        seen_urls=seen_urls
+                    )
                     candidates.extend(wiki_commons)
                 except Exception as e:
                     logger.debug(f"Wikimedia commons search notice: {e}")
 
         # Deduplicate and validate
-        seen_urls = set()
+        final_fingerprints = set()
+        final_urls = set()
         verified_images: List[Dict[str, Any]] = []
 
         for item in candidates:
             u = item.get("url", "").strip()
-            if not u or u in seen_urls:
+            if not u or u in final_urls:
+                continue
+            fp = extract_image_fingerprint(u)
+            if fp and fp in final_fingerprints:
                 continue
             if not self.validate_result_sync(item):
                 continue
-            seen_urls.add(u)
+            final_urls.add(u)
+            if fp:
+                final_fingerprints.add(fp)
             verified_images.append({
                 "url": u,
                 "thumbnail": item.get("thumbnail") or u,
@@ -193,20 +249,30 @@ class ImageSearchProvider(BaseImageSearchProvider):
     async def get_image_details(self, image_id: str) -> Optional[Dict[str, Any]]:
         return None
 
-    async def _search_wikimedia_commons(self, client: httpx.AsyncClient, query: str, limit: int = 4) -> List[Dict[str, Any]]:
-        """Searches Wikimedia Commons API for high-resolution open-licensed photography."""
+    async def _search_wikimedia_commons(
+        self,
+        client: httpx.AsyncClient,
+        query: str,
+        limit: int = 4,
+        seen_fingerprints: Optional[set] = None,
+        seen_urls: Optional[set] = None
+    ) -> List[Dict[str, Any]]:
+        """Searches Wikimedia Commons API for high-resolution open-licensed photography with strict deduplication."""
         endpoint = "https://commons.wikimedia.org/w/api.php"
         params = {
             "action": "query",
             "generator": "search",
-            "gsrsearch": f"{query} filetype:bitmap",
+            "gsrsearch": query,
+            "gsrnamespace": 6,
             "gsrlimit": limit,
             "prop": "imageinfo",
-            "iiprop": "url|thumburl|dimensions",
+            "iiprop": "url|thumburl|dimensions|mime",
             "iiurlwidth": 800,
             "format": "json"
         }
         results = []
+        fps = seen_fingerprints if seen_fingerprints is not None else set()
+        urls = seen_urls if seen_urls is not None else set()
         try:
             res = await client.get(endpoint, params=params)
             if res.status_code == 200:
@@ -215,27 +281,44 @@ class ImageSearchProvider(BaseImageSearchProvider):
                 for page in pages.values():
                     infos = page.get("imageinfo", [])
                     if infos:
-                        img_url = infos[0].get("url")
-                        thumb_url = infos[0].get("thumburl") or img_url
-                        title = page.get("title", "").replace("File:", "").replace("_", " ")
-                        if any(k in title.lower() for k in [".svg", "logo", "icon", "flag"]):
+                        info = infos[0]
+                        mime = info.get("mime", "")
+                        # Require valid bitmap image (reject svg, audio, video, pdf)
+                        if not mime.startswith("image/") or mime == "image/svg+xml":
                             continue
-                        if img_url:
-                            results.append({
-                                "url": img_url,
-                                "thumbnail": thumb_url,
-                                "thumbnailUrl": thumb_url,
-                                "title": title[:80],
-                                "source_url": f"https://commons.wikimedia.org/wiki/{quote(page.get('title', ''))}",
-                                "sourceUrl": f"https://commons.wikimedia.org/wiki/{quote(page.get('title', ''))}",
-                                "source_domain": "wikimedia.org",
-                                "sourceName": "Wikimedia Commons",
-                                "attribution": "Wikimedia Commons",
-                                "width": infos[0].get("width", 1200),
-                                "height": infos[0].get("height", 800)
-                            })
+                        img_url = info.get("url")
+                        thumb_url = info.get("thumburl") or img_url
+                        raw_title = page.get("title", "")
+                        title = raw_title.replace("File:", "").replace("_", " ")
+                        if any(k in title.lower() for k in [".svg", "signature", "logo", "icon", "flag", "map", "symbol", "stub"]):
+                            continue
+                        if not img_url:
+                            continue
+                        fp = extract_image_fingerprint(img_url)
+                        if fp and fp in fps:
+                            continue
+                        if img_url in urls:
+                            continue
+                        if fp:
+                            fps.add(fp)
+                        urls.add(img_url)
+                        clean_caption = re.sub(r"\.[a-zA-Z0-9]+$", "", title)
+                        results.append({
+                            "url": img_url,
+                            "thumbnail": thumb_url,
+                            "thumbnailUrl": thumb_url,
+                            "title": clean_caption[:80],
+                            "source_url": f"https://commons.wikimedia.org/wiki/{quote(raw_title)}",
+                            "sourceUrl": f"https://commons.wikimedia.org/wiki/{quote(raw_title)}",
+                            "source_domain": "wikimedia.org",
+                            "sourceName": "Wikimedia Commons",
+                            "attribution": "Wikimedia Commons",
+                            "width": info.get("width", 1200),
+                            "height": info.get("height", 800)
+                        })
         except Exception:
             pass
         return results
 
 image_search_provider = ImageSearchProvider()
+

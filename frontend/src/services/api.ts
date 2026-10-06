@@ -133,7 +133,7 @@ export async function fetchConversations(searchQuery?: string): Promise<{ conver
   return res.json();
 }
 
-export async function createConversation(title = 'New Conversation', model_id = 'cretivra-1'): Promise<Conversation> {
+export async function createConversation(title = 'New Conversation', model_id = 'asura-balanced'): Promise<Conversation> {
   const res = await fetch(`${API_BASE}/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
