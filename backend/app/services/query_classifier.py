@@ -52,13 +52,13 @@ class QueryClassifier:
 
     # Political offices & governance roles that require live verification
     POLITICAL_OFFICES = [
-        r"\b(?:chief\s+minister|cm)\b",
-        r"\b(?:prime\s+minister|pm)\b",
-        r"\b(?:president|vice\s+president)\b",
-        r"\b(?:governor|lieutenant\s+governor|lg)\b",
-        r"\b(?:minister|cabinet\s+minister|deputy\s+cm|deputy\s+pm)\b",
-        r"\b(?:chief\s+justice|cji)\b",
-        r"\b(?:mp|mla|mpp|senator|chancellor|premier|mayor)\b",
+        r"\b(?:chief\s+minister|cm)[s]?\b",
+        r"\b(?:prime\s+minister|pm)[s]?\b",
+        r"\b(?:president|vice\s+president)[s]?\b",
+        r"\b(?:governor|lieutenant\s+governor|lg)[s]?\b",
+        r"\b(?:minister|cabinet\s+minister|deputy\s+cm|deputy\s+pm)[s]?\b",
+        r"\b(?:chief\s+justice|cji)[s]?\b",
+        r"\b(?:mp|mla|mpp|senator|chancellor|premier|mayor)[s]?\b",
         r"\b(?:election|elections|bypoll|bypolls|assembly\s+election)\b",
         r"\b(?:cabinet\s+reshuffle|resignation|appointment|sworn\s+in|oath)\b",
         r"\b(?:government\s+scheme|policy|parliament|lok\s+sabha|rajya\s+sabha)\b"
