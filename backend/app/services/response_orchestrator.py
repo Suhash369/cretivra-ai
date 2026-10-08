@@ -173,10 +173,13 @@ class AsuraResponseOrchestrator:
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.model_dump() for img in images], 'sources': [s.model_dump() for s in sources]})}\n\n"
 
         # 4. Context Formulation
-        today_str = datetime.now().strftime("%B %d, %Y")
+        now_dt = datetime.now()
+        today_str = now_dt.strftime("%B %d, %Y")
+        current_year = now_dt.year
         base_system = (
             f"{settings.SYSTEM_PROMPT}\n\n"
-            f"[TEMPORAL REALITY]: Today is {today_str} (Year 2026).\n"
+            f"[TEMPORAL REALITY]: Today's verified server date is {today_str} (Year {current_year}). "
+            f"You possess live temporal continuity and verified real-time intelligence. Under no circumstances should you ever state that your knowledge cuts off in 2023 or 2024. Synthesize facts directly from live verified sources.\n"
         )
         if decision.requires_vision:
             base_system += "\n[VISION ACTIVE]: Inspect and analyze attached visual images in detail.\n"
@@ -185,9 +188,13 @@ class AsuraResponseOrchestrator:
         if web_context and "Live web grounding could not" not in web_context:
             prompt_content = (
                 f"Question: {query}\n\n"
-                f"[Verified Encyclopedic & Intelligence Grounding]:\n{web_context}\n\n"
-                f"Directive: Deliver an authoritative, beautifully structured, and completely accurate answer. "
-                f"Cite facts faithfully without fabricating any dates, statistics, awards, or URLs."
+                f"[Verified Real-Time Intelligence & Grounding as of {today_str}]:\n{web_context}\n\n"
+                f"[DIRECTIVE FOR CURRENT AFFAIRS & FACTUAL GROUNDING]:\n"
+                f"1. Direct Answer First: State directly and authoritatively in your very first sentence the verified current status as of {today_str}.\n"
+                f"2. Factual Tenure & Continuity: Provide a concise, factual explanation of who is in office/the current state, when they assumed office, and key recent developments in {current_year}.\n"
+                f"3. Historical vs Current Distinction: If search results or historical background mention previous officeholders or past leaders, clearly distinguish between their past tenure and the current incumbent in {current_year}. Never confuse the year someone assumed office with the current status.\n"
+                f"4. Sources & Grounding: Conclude with a structured '### Sources & References' section with clickable markdown links [Title](URL) for cited sources.\n"
+                f"5. Under no circumstances state 'I can't verify that information' or cite training cutoffs when verified live sources are provided above."
             )
         elif decision.requires_current_information and not web_context:
             prompt_content = (

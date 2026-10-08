@@ -95,38 +95,48 @@ class ImageSearchProvider(BaseImageSearchProvider):
                 if search_res.status_code == 200:
                     hits = search_res.json().get("query", {}).get("search", [])
                     if hits:
-                        top_title = hits[0].get("title", "")
-                        encoded_title = top_title.replace(" ", "_")
+                        top_title = ""
+                        encoded_title = ""
+                        for hit in hits[:4]:
+                            cand_title = hit.get("title", "")
+                            cand_enc = cand_title.replace(" ", "_")
+                            try:
+                                sum_res = await client.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(cand_enc)}")
+                                if sum_res.status_code == 200:
+                                    sum_data = sum_res.json()
+                                    if sum_data.get("type") == "disambiguation":
+                                        continue
+                                    orig = sum_data.get("originalimage")
+                                    thumb = sum_data.get("thumbnail")
+                                    if orig and orig.get("source"):
+                                        top_title = cand_title
+                                        encoded_title = cand_enc
+                                        orig_url = orig.get("source")
+                                        thumb_url = thumb.get("source") if thumb else orig_url
+                                        fp = extract_image_fingerprint(orig_url)
+                                        if fp and fp not in seen_fingerprints and orig_url not in seen_urls:
+                                            seen_fingerprints.add(fp)
+                                            seen_urls.add(orig_url)
+                                            candidates.append({
+                                                "url": orig_url,
+                                                "thumbnail": thumb_url,
+                                                "thumbnailUrl": thumb_url,
+                                                "title": f"{top_title}",
+                                                "source_url": f"https://en.wikipedia.org/wiki/{encoded_title}",
+                                                "sourceUrl": f"https://en.wikipedia.org/wiki/{encoded_title}",
+                                                "source_domain": "wikipedia.org",
+                                                "sourceName": "Wikipedia",
+                                                "attribution": "Wikipedia / Wikimedia Commons",
+                                                "width": orig.get("width", 1200),
+                                                "height": orig.get("height", 800)
+                                            })
+                                        break
+                            except Exception as e:
+                                logger.debug(f"Wikipedia summary lookup notice: {e}")
 
-                        # A. Fetch Primary Lead Image from Wikipedia Summary
-                        try:
-                            sum_res = await client.get(f"https://en.wikipedia.org/api/rest_v1/page/summary/{quote(encoded_title)}")
-                            if sum_res.status_code == 200:
-                                sum_data = sum_res.json()
-                                orig = sum_data.get("originalimage")
-                                thumb = sum_data.get("thumbnail")
-                                if orig and orig.get("source"):
-                                    orig_url = orig.get("source")
-                                    thumb_url = thumb.get("source") if thumb else orig_url
-                                    fp = extract_image_fingerprint(orig_url)
-                                    if fp and fp not in seen_fingerprints and orig_url not in seen_urls:
-                                        seen_fingerprints.add(fp)
-                                        seen_urls.add(orig_url)
-                                        candidates.append({
-                                            "url": orig_url,
-                                            "thumbnail": thumb_url,
-                                            "thumbnailUrl": thumb_url,
-                                            "title": f"{top_title}",
-                                            "source_url": f"https://en.wikipedia.org/wiki/{encoded_title}",
-                                            "sourceUrl": f"https://en.wikipedia.org/wiki/{encoded_title}",
-                                            "source_domain": "wikipedia.org",
-                                            "sourceName": "Wikipedia",
-                                            "attribution": "Wikipedia / Wikimedia Commons",
-                                            "width": orig.get("width", 1200),
-                                            "height": orig.get("height", 800)
-                                        })
-                        except Exception as e:
-                            logger.debug(f"Wikipedia summary lookup notice: {e}")
+                        if not top_title and hits:
+                            top_title = hits[0].get("title", "")
+                            encoded_title = top_title.replace(" ", "_")
 
                         # B. Fetch Secondary Photos from Article Media List
                         if len(candidates) < max_results:

@@ -13,6 +13,9 @@ class OllamaProvider(BaseLLMProvider):
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
 
+    def is_available(self) -> bool:
+        return bool(self.base_url or cloud_provider.has_keys())
+
     async def health_check(self) -> Dict[str, Any]:
         """
         Check if Ollama service is accessible with responsive caching.

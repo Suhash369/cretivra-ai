@@ -29,20 +29,25 @@ class WebGroundingResult(BaseModel):
     query_used: str
     error: Optional[str] = None
 
+from app.services.web_search_service import web_search_service
+from app.services.query_classifier import query_classifier
+
 class WebGroundingService:
     """
     Dedicated Web Grounding Service for CRETIVRA ASURA.
-    Retrieves and preserves verified encyclopedic and web sources without Tavily.
+    Retrieves and preserves verified encyclopedic and live multi-source web intelligence
+    across Google News RSS, Tavily AI, DuckDuckGo, and authoritative open knowledge.
     Guarantees:
     - Zero fake citations
     - Zero invented URLs
+    - Up-to-date current affairs and real-time leadership grounding
     - Transparent disclosure if current information cannot be verified
     """
 
     def __init__(self):
         self.enabled = getattr(settings, "WEB_SEARCH_ENABLED", True)
 
-    async def ground_query(self, query: str, max_sources: int = 4) -> WebGroundingResult:
+    async def ground_query(self, query: str, max_sources: int = 6) -> WebGroundingResult:
         if not self.enabled:
             return WebGroundingResult(
                 success=False,
@@ -56,11 +61,38 @@ class WebGroundingService:
         sources: List[AsuraSource] = []
         context_lines: List[str] = []
 
+        # 1. Primary Frontier Live Web Search (Multi-tier: Google News RSS + Tavily + DuckDuckGo)
+        try:
+            live_res = await web_search_service.search_with_sources(query, max_results=max_sources)
+            if live_res and live_res.get("sources") and not live_res.get("search_failed"):
+                for s in live_res.get("sources", []):
+                    title = s.get("title", "")
+                    url = s.get("url", "")
+                    domain = s.get("domain", "") or extract_domain(url)
+                    snippet = s.get("snippet", "")
+                    sources.append(AsuraSource(
+                        title=title,
+                        url=url,
+                        domain=domain,
+                        snippet=snippet
+                    ))
+                context_text = live_res.get("context_text") or "\n".join(
+                    f"[{i+1}] [{s.title}]({s.url}): {s.snippet} (Domain: {s.domain})"
+                    for i, s in enumerate(sources)
+                )
+                return WebGroundingResult(
+                    success=True,
+                    context_text=context_text,
+                    sources=sources,
+                    query_used=clean_q
+                )
+        except Exception as e:
+            logger.warning(f"Live web search grounding notice: {e}")
+
+        # 2. Secondary Encyclopedic Search (Wikipedia API fallback for historical/static concepts)
         headers = {
             "User-Agent": "CretivraAsura/2.0 (https://asura.cretivra.com; assistant@cretivra.com)"
         }
-
-        # 1. Authoritative Wikipedia Search Grounding
         try:
             async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=5.0) as client:
                 search_url = f"https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={quote(clean_q)}&format=json"
@@ -81,7 +113,7 @@ class WebGroundingService:
                         ))
                         context_lines.append(f"[{idx}] [{title}]({article_url}): {snippet_clean} (Domain: wikipedia.org)")
         except Exception as e:
-            logger.debug(f"Web grounding lookup notice: {e}")
+            logger.debug(f"Web grounding encyclopedic lookup notice: {e}")
 
         if sources:
             return WebGroundingResult(

@@ -149,30 +149,50 @@ class EntityDetector:
     async def resolve_office_holder(self, query: str) -> Optional[str]:
         """
         Dynamically resolves the actual person holding the requested office or position.
-        Uses fast Groq inference (with temporal 2026 reality).
+        Uses live search grounding and current server date to ensure temporal accuracy.
         Guarantees NO static hardcoding.
         """
         try:
             from app.providers.groq import GroqProvider
+            from app.services.web_search_service import web_search_service
+            from datetime import datetime
             from app.core.logging import logger
+
             gp = GroqProvider()
             if not gp.is_available():
                 return None
 
+            now_dt = datetime.now()
+            today_str = now_dt.strftime("%B %d, %Y")
+            current_year = now_dt.year
+
+            # Obtain quick live grounding snippets for the office query
+            search_context = ""
+            try:
+                live_data = await web_search_service.search_with_sources(query, max_results=4)
+                if live_data and live_data.get("context_text"):
+                    search_context = live_data["context_text"]
+            except Exception:
+                pass
+
+            context_block = f"\n[Live Verified Intelligence as of {today_str}]:\n{search_context}\n" if search_context else ""
+
             prompt = (
-                f"Identify the real-world person who holds the office or leadership role described in: \"{query}\" "
-                "(the current incumbent). Return ONLY the person's full name (e.g., 'M. K. Stalin' or 'Pinarayi Vijayan' or 'Satya Nadella'). "
-                "Do not include any extra words, explanation, titles, or quotes."
+                f"Today is {today_str} (Year {current_year}).{context_block}\n"
+                f"Based strictly on the verified live intelligence sources above, who is the current incumbent holding the office or leadership role described in: \"{query}\" as of {today_str}? "
+                "Return ONLY the incumbent person's full name as reported in the live news (e.g. 'Vijay'). Do not mention past leaders, titles, dates, or quotes."
             )
             resp = await gp.chat("fast", [{"role": "user", "content": prompt}])
             raw_name = resp.get("message", {}).get("content", "").strip()
             
             # Normalize all unicode whitespace to standard ASCII space
             raw_name = re.sub(r'[\s\u202f\xa0]+', ' ', raw_name).strip()
-            clean_name = re.sub(r'["\'.]', '', raw_name).strip()
-            if not raw_name or "unknown" in clean_name.lower() or len(raw_name) > 60:
+            # Strip parenthetical clarifications, e.g. "Vijay K. (Vijay)" -> "Vijay K."
+            clean_name = re.sub(r'\(.*?\)', '', raw_name).strip()
+            clean_name = re.sub(r'["\'.]', '', clean_name).strip()
+            if not clean_name or "unknown" in clean_name.lower() or "sorry" in clean_name.lower() or len(clean_name) > 60:
                 return None
-            resolved = raw_name.strip(" '\"`.")
+            resolved = clean_name.strip(" '\"`.")
             logger.info(f"[ASURA] Resolved office holder for '{query}': '{resolved}'")
             return resolved
         except Exception:
