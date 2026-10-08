@@ -3,7 +3,6 @@ import {
   Compass,
   CheckSquare,
   FolderGit2,
-  Cpu,
   BookOpen,
   Files,
   Plus,
@@ -29,7 +28,6 @@ export type WorkspaceView =
   | 'home'
   | 'tasks'
   | 'projects'
-  | 'playground'
   | 'knowledge'
   | 'artifacts'
   | 'chat'
@@ -81,7 +79,6 @@ export function WorkspaceSidebar({
     { id: 'home', label: 'Home', icon: Compass },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'projects', label: 'Projects', icon: FolderGit2 },
-    { id: 'playground', label: 'Playground', icon: Cpu },
     { id: 'knowledge', label: 'Knowledge', icon: BookOpen },
     { id: 'artifacts', label: 'Artifacts', icon: Files },
   ] as const;

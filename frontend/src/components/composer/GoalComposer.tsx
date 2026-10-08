@@ -255,15 +255,6 @@ export function GoalComposer({
                 textareaRef.current?.focus();
                 setActionMenuOpen(false);
               }}
-              onOpenPlayground={() => {
-                if (onOpenWebsite) {
-                  onOpenWebsite();
-                } else {
-                  onInputChange('Build a modern responsive web app for ');
-                  textareaRef.current?.focus();
-                }
-                setActionMenuOpen(false);
-              }}
             />
           </div>
 

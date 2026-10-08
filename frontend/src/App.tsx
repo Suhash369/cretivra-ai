@@ -43,7 +43,6 @@ import {
   Gamepad2,
   Palette,
   LineChart,
-  Zap,
   Maximize2,
   Minimize2,
   MessageSquare,
@@ -78,8 +77,6 @@ import { ConfirmModal } from './components/common/ConfirmModal';
 import { ActionMenu } from './components/chat/ActionMenu';
 import { SketchModal } from './components/chat/SketchModal';
 import { LibraryModal } from './components/chat/LibraryModal';
-import { PlaygroundHome } from './playground/PlaygroundHome';
-import { TaskWorkspace } from './playground/TaskWorkspace';
 import { WorkspaceSidebar, type WorkspaceView } from './components/navigation/WorkspaceSidebar';
 import { ContextualHeader } from './components/navigation/ContextualHeader';
 import { HomeWorkspace } from './components/landing/HomeWorkspace';
@@ -130,7 +127,7 @@ const SUGGESTIONS = [
   },
 ];
 
-export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {}) {
+export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
   const [user, setUser] = useState<any>(() => {
     try {
       const saved = localStorage.getItem('cretivra_user');
@@ -301,17 +298,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
     };
   }, [handleFileUpload]);
 
-  // Playground Mode & Autonomous Agent state
-  const [appMode, setAppMode] = useState<'chat' | 'playground'>(() => {
-    if (initialMode) return initialMode;
-    if (typeof window !== 'undefined') {
-      if (window.location.pathname.startsWith('/playground')) return 'playground';
-      const p = new URLSearchParams(window.location.search);
-      if (p.get('mode') === 'playground') return 'playground';
-    }
-    return 'chat';
-  });
-
+  // Autonomous Agent task run ID
   const [activePlaygroundRunId, setActivePlaygroundRunId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
@@ -320,37 +307,10 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
     return null;
   });
 
-  const [playgroundPrompt, setPlaygroundPrompt] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const p = new URLSearchParams(window.location.search);
-      return p.get('prompt') || '';
-    }
-    return '';
-  });
-
-  const handleRunInPlayground = (promptText: string, openInNewTab: boolean = false) => {
-    if (openInNewTab && typeof window !== 'undefined') {
-      window.open(`/playground?prompt=${encodeURIComponent(promptText)}`, '_blank');
-      return;
-    }
-    setPlaygroundPrompt(promptText);
-    setActivePlaygroundRunId(null);
-    setAppMode('playground');
-  };
-
-  const handleNewPlaygroundRun = () => {
-    setPlaygroundPrompt('');
-    setActivePlaygroundRunId(null);
-    setAppMode('playground');
-    setWorkspaceView('playground');
-  };
-
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>(() => {
-    if (initialMode === 'playground') return 'playground';
     if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       if (p.get('run')) return 'agent_workspace' as any;
-      if (window.location.pathname.startsWith('/playground') || p.get('mode') === 'playground') return 'playground';
       if (window.location.pathname.startsWith('/tasks')) return 'tasks';
       if (window.location.pathname.startsWith('/projects')) return 'projects';
       if (window.location.pathname.startsWith('/knowledge')) return 'knowledge';
@@ -483,7 +443,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
     if (workspaceView === 'projects') return 'Projects';
     if (workspaceView === 'knowledge') return 'Knowledge';
     if (workspaceView === 'artifacts') return 'Artifacts';
-    if (workspaceView === 'playground') return 'Playground';
     if (workspaceView === 'agent_workspace') return 'Agent Workspace';
     if (workspaceView === 'chat') return activeChatTitle;
     return undefined;
@@ -1161,7 +1120,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                         setInput('Analyze GitHub repository code and summarize recent commit changes.');
                         textareaRef.current?.focus();
                       }}
-                      onOpenPlayground={() => handleRunInPlayground(input.trim())}
                     />
                   </div>
 
@@ -1207,23 +1165,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
                   >
                     <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
                     <span>DeepThink</span>
-                  </button>
-
-                  {/* Autonomous Playground Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (input.trim()) {
-                        handleRunInPlayground(input.trim());
-                      } else {
-                        setAppMode('playground');
-                      }
-                    }}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-300 border-violet-500/30 hover:border-violet-500/60 shadow-xs"
-                    title="Switch to Autonomous Playground or execute current prompt as an agent task"
-                  >
-                    <Zap size={12} className="text-violet-500 dark:text-violet-400" />
-                    <span>Playground</span>
                   </button>
                 </div>
 
@@ -1286,8 +1227,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         currentView={workspaceView}
         onSelectView={(v) => {
           setWorkspaceView(v);
-          if (v === 'playground') setAppMode('playground');
-          else if (v === 'chat') setAppMode('chat');
         }}
         isCollapsed={!sidebarOpen}
         onToggleCollapse={() => setSidebarOpen(!sidebarOpen)}
@@ -1330,8 +1269,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           onOpenMobileMenu={() => setSidebarOpen(true)}
           onReplayAnimation={() => setReplayOpening(true)}
           taskStatus={activePlaygroundRunId ? 'RUNNING' : undefined}
-          onPlaygroundRun={() => {}}
-          onPlaygroundSave={() => {}}
         />
 
         {/* Global Error Banner */}
@@ -1405,7 +1342,7 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
         {workspaceView === 'projects' && (
           <ProjectsWorkspace
             onSelectProject={(_projId) => {
-              setWorkspaceView('playground');
+              setWorkspaceView('home');
             }}
             onNewTaskWithProject={(_projId) => {
               setWorkspaceView('home');
@@ -1427,25 +1364,6 @@ export function App({ initialMode }: { initialMode?: 'chat' | 'playground' } = {
           <ArtifactsWorkspace
             onPreviewArtifact={(art) => setPreviewArtifact(art)}
           />
-        )}
-
-        {workspaceView === 'playground' && (
-          activePlaygroundRunId ? (
-            <TaskWorkspace
-              runId={activePlaygroundRunId}
-              onBackToHome={() => {
-                setActivePlaygroundRunId(null);
-                setWorkspaceView('home');
-              }}
-            />
-          ) : (
-            <PlaygroundHome
-              onStartRun={(runId) => {
-                setActivePlaygroundRunId(runId);
-              }}
-              initialPrompt={playgroundPrompt}
-            />
-          )
         )}
 
         {workspaceView === 'chat' && (

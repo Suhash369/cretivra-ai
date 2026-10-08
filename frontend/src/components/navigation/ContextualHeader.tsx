@@ -8,8 +8,6 @@ import {
   Activity,
   Menu,
   StopCircle,
-  Play,
-  Save,
   CheckCircle2,
   Clock,
   ChevronDown,
@@ -45,9 +43,6 @@ interface ContextualHeaderProps {
   onReplayAnimation?: () => void;
   // Task specific
   taskStatus?: string;
-  // Playground specific
-  onPlaygroundRun?: () => void;
-  onPlaygroundSave?: () => void;
 }
 
 export function ContextualHeader({
@@ -72,8 +67,6 @@ export function ContextualHeader({
   onOpenMobileMenu,
   onReplayAnimation,
   taskStatus,
-  onPlaygroundRun,
-  onPlaygroundSave,
 }: ContextualHeaderProps) {
   const currentModelObj = availableModels.find((m) => m.id === selectedModel);
   const modelDisplayName = currentModelObj?.display_name || 'Cretivra 1';
@@ -129,7 +122,7 @@ export function ContextualHeader({
         )}
       </div>
 
-      {/* 2. Center Section: Active Stop button or Playground Actions */}
+      {/* 2. Center Section: Active Stop button */}
       <div className="flex items-center gap-2">
         {isGenerating && (
           <button
@@ -139,29 +132,6 @@ export function ContextualHeader({
             <StopCircle size={13} className="animate-spin text-[#F43F5E]" />
             <span>Stop Execution</span>
           </button>
-        )}
-
-        {currentView === 'playground' && (
-          <div className="flex items-center gap-1.5">
-            {onPlaygroundRun && (
-              <button
-                onClick={onPlaygroundRun}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#06B6D4] text-black text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
-              >
-                <Play size={12} fill="currentColor" />
-                <span>Run</span>
-              </button>
-            )}
-            {onPlaygroundSave && (
-              <button
-                onClick={onPlaygroundSave}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] text-xs font-medium hover:border-[#06B6D4]/40 transition-colors asura-btn-interactive"
-              >
-                <Save size={12} />
-                <span>Save</span>
-              </button>
-            )}
-          </div>
         )}
       </div>
 

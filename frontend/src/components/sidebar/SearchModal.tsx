@@ -7,7 +7,6 @@ import {
   CheckSquare,
   FolderGit2,
   Files,
-  Cpu,
   Settings2,
   Sparkles,
   Plus,
@@ -67,16 +66,6 @@ export const SearchModal: React.FC<CommandPaletteProps> = ({
       action: () => {
         onClose();
         if (onNewTask) onNewTask();
-      },
-    },
-    {
-      id: 'playground',
-      label: 'Open Playground',
-      icon: Cpu,
-      color: 'text-[#8B5CF6]',
-      action: () => {
-        onClose();
-        if (onNavigateView) onNavigateView('playground');
       },
     },
     {
