@@ -211,6 +211,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
   // In-place edit user prompt state
   const [editingUserMsgId, setEditingUserMsgId] = useState<string | null>(null);
   const [editUserText, setEditUserText] = useState('');
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, 'good' | 'bad'>>({});
 
   // Feature toggles for Tough Composer
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
@@ -1384,7 +1385,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                 messages.map((m, i) => (
                   <div key={m.id || i} className="w-full max-w-4xl mx-auto">
                     {m.role === 'user' ? (
-                      <div className="flex justify-end group">
+                      <div className="flex justify-end group my-2">
                         {editingUserMsgId === m.id ? (
                           <div className="flex flex-col gap-2 w-full max-w-2xl bg-[var(--surface-secondary)] border border-[#06B6D4]/50 rounded-2xl p-4 shadow-sm">
                             <textarea
@@ -1410,39 +1411,35 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-start gap-2 max-w-2xl">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1.5">
+                          <div className="flex items-center gap-2 max-w-2xl">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                               <button
                                 onClick={() => handleStartEditUser(m.id, m.content)}
-                                className="p-1 text-[var(--muted-foreground)] hover:text-[#06B6D4] transition-colors"
+                                className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[#06B6D4] hover:bg-[var(--surface-secondary)] transition-colors"
                                 title="Edit prompt"
                               >
                                 <Edit3 size={13} />
                               </button>
                               <button
                                 onClick={() => handleDeleteMessage(m.id)}
-                                className="p-1 text-[var(--muted-foreground)] hover:text-[#F43F5E] transition-colors"
+                                className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[#F43F5E] hover:bg-[var(--surface-secondary)] transition-colors"
                                 title="Delete message"
                               >
                                 <Trash2 size={13} />
                               </button>
                             </div>
-                            <div className="bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm">
+                            <div className="bg-[#2f2f2f] text-white dark:bg-[#303030] dark:text-gray-100 rounded-[24px] px-5 py-3 text-[15px] leading-relaxed shadow-xs border border-transparent dark:border-neutral-700/30 selection:bg-cyan-500/30">
                               {m.content}
                             </div>
                           </div>
                         )}
                       </div>
                     ) : (
-                      <div className="flex items-start gap-3.5 group">
-                        <div className="w-7 h-7 rounded-lg bg-[#06B6D4]/10 border border-[#06B6D4]/30 flex items-center justify-center text-[#06B6D4] shrink-0 mt-1">
+                      <div className="flex items-start gap-3.5 group py-3 sm:py-4">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-500/10 via-cyan-500/20 to-indigo-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5 shadow-xs">
                           <CretivraMark size={15} />
                         </div>
                         <div className="flex-1 min-w-0 space-y-2">
-                          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                            <span className="font-semibold text-[var(--foreground)]">Asura</span>
-                          </div>
-
                           <IntelligenceCacheCard
                             reasoningStatus={m.reasoning_status}
                             isGenerating={isGenerating && i === messages.length - 1}
@@ -1454,9 +1451,23 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                             <ImageGallery images={m.images} />
                           )}
 
-                          <div className="text-[15px] leading-relaxed text-[var(--foreground)]">
-                            <MarkdownRenderer content={m.content} />
-                          </div>
+                          {/* ChatGPT-style pulsing thinking dots when waiting for first token */}
+                          {!m.content && isGenerating && i === messages.length - 1 && (
+                            <div className="flex items-center gap-1.5 py-2 text-cyan-400">
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:-0.3s]" />
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce [animation-delay:-0.15s]" />
+                              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" />
+                            </div>
+                          )}
+
+                          {m.content && (
+                            <div className="text-[15.5px] sm:text-[16px] leading-[1.78] text-[var(--foreground)] font-sans">
+                              <MarkdownRenderer
+                                content={m.content}
+                                isStreaming={isGenerating && i === messages.length - 1}
+                              />
+                            </div>
+                          )}
 
                           {m.related_questions && m.related_questions.length > 0 && (
                             <RelatedQuestions
@@ -1472,42 +1483,73 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                             <DeveloperDiagnosticsCard metadata={m.metadata} />
                           )}
 
-                          {/* Assistant Hover Action Toolbar */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pt-1 text-[var(--muted-foreground)]">
+                          {/* Assistant Action Toolbar (ChatGPT-style) */}
+                          <div className="opacity-75 sm:opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity flex items-center gap-1 pt-1.5 text-[var(--muted-foreground)]">
                             <button
                               onClick={() => {
                                 navigator.clipboard.writeText(m.content);
                                 setCopiedMsgId(m.id || String(i));
                                 setTimeout(() => setCopiedMsgId(null), 2000);
                               }}
-                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
                               title="Copy response"
                             >
                               {copiedMsgId === (m.id || String(i)) ? (
-                                <Check size={13} className="text-[#10B981]" />
+                                <Check size={14} className="text-[#10B981]" />
                               ) : (
-                                <Copy size={13} />
+                                <Copy size={14} />
                               )}
                             </button>
                             <button
+                              onClick={() => {
+                                const key = m.id || String(i);
+                                setFeedbackMap((prev) => ({
+                                  ...prev,
+                                  [key]: prev[key] === 'good' ? undefined : 'good',
+                                } as any));
+                              }}
+                              className={`p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer ${
+                                feedbackMap[m.id || String(i)] === 'good' ? 'text-[#10B981]' : 'hover:text-[var(--foreground)]'
+                              }`}
+                              title="Good response"
+                            >
+                              <ThumbsUp size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const key = m.id || String(i);
+                                setFeedbackMap((prev) => ({
+                                  ...prev,
+                                  [key]: prev[key] === 'bad' ? undefined : 'bad',
+                                } as any));
+                              }}
+                              className={`p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer ${
+                                feedbackMap[m.id || String(i)] === 'bad' ? 'text-[#F43F5E]' : 'hover:text-[var(--foreground)]'
+                              }`}
+                              title="Bad response"
+                            >
+                              <ThumbsDown size={14} />
+                            </button>
+                            <button
                               onClick={() => handleSpeakMessage(m.id || String(i), m.content)}
-                              className={`p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] transition-colors ${
+                              className={`p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer ${
                                 speakingMsgId === (m.id || String(i)) ? 'text-[#06B6D4]' : 'hover:text-[var(--foreground)]'
                               }`}
                               title={speakingMsgId === (m.id || String(i)) ? 'Stop reading' : 'Read aloud'}
                             >
                               {speakingMsgId === (m.id || String(i)) ? (
-                                <VolumeX size={13} />
+                                <VolumeX size={14} />
                               ) : (
-                                <Volume2 size={13} />
+                                <Volume2 size={14} />
                               )}
                             </button>
                             <button
+                              disabled={isGenerating}
                               onClick={() => regenerateMessage(m.id)}
-                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors cursor-pointer disabled:opacity-40"
                               title="Regenerate response"
                             >
-                              <RotateCw size={13} />
+                              <RotateCw size={14} />
                             </button>
                             <button
                               onClick={async () => {
@@ -1526,10 +1568,10 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                                   console.error('Failed to export PDF:', err);
                                 }
                               }}
-                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
                               title="Export to PDF"
                             >
-                              <FileText size={13} />
+                              <FileText size={14} />
                             </button>
                           </div>
                         </div>

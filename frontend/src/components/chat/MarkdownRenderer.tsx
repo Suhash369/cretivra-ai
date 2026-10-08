@@ -20,9 +20,10 @@ import { GeneratedImageCard } from './GeneratedImageCard';
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  isStreaming?: boolean;
 }
 
-// Interactive Code Block with Language Tag, Word Wrap Toggle, and Copy Button
+// Interactive Code Block with Language Tag, Word Wrap Toggle, and Copy Button (ChatGPT Style)
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const [wrap, setWrap] = useState(false);
@@ -33,18 +34,19 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const cleanLang = (language || '').toLowerCase().trim();
+
   return (
-    <div className="my-3.5 rounded-xl overflow-hidden bg-[#0a0e17] border border-slate-300/60 dark:border-slate-800/90 shadow-lg font-mono text-xs">
-      <div className="flex items-center justify-between px-3.5 py-2 bg-[#121824] border-b border-slate-800/80 text-slate-300 select-none">
-        <div className="flex items-center gap-1.5 font-medium text-[11px] text-slate-200">
-          <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{language || 'code'}</span>
+    <div className="my-4 rounded-2xl overflow-hidden bg-[#0d0d0d] border border-neutral-700/50 dark:border-neutral-800 shadow-md font-mono text-xs">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#202123] dark:bg-[#1e1e1e] border-b border-neutral-700/40 text-neutral-300 select-none">
+        <div className="flex items-center gap-1.5 font-sans font-medium text-[12px] text-neutral-300 lowercase tracking-wide">
+          <span>{cleanLang || 'code'}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setWrap(!wrap)}
-            className="px-2 py-0.5 rounded text-[10px] text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+            className="px-2 py-0.5 rounded text-[11px] text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer font-sans"
             title="Toggle word wrap"
           >
             {wrap ? 'Unwrap' : 'Wrap'}
@@ -52,20 +54,29 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] text-slate-200 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-sans font-medium text-neutral-300 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
             title="Copy code to clipboard"
           >
-            {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-            <span>{copied ? 'Copied!' : 'Copy'}</span>
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-400">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Copy code</span>
+              </>
+            )}
           </button>
         </div>
       </div>
       <pre
-        className={`p-4 text-[13px] leading-relaxed text-slate-200 ${
+        className={`p-4 text-[13.5px] leading-relaxed text-neutral-100 selection:bg-neutral-800 ${
           wrap ? 'whitespace-pre-wrap break-words' : 'overflow-x-auto'
         }`}
       >
-        <code>{code}</code>
+        <code className="font-mono">{code}</code>
       </pre>
     </div>
   );
@@ -436,6 +447,7 @@ export const AsuraTable: React.FC<AsuraTableProps> = ({ columns, rows, title }) 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
   content,
   className = '',
+  isStreaming = false,
 }) => {
   const processedContent = useMemo(() => preprocessMarkdown(content), [content]);
 
@@ -720,6 +732,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
       >
         {processedContent}
       </ReactMarkdown>
+      {isStreaming && (
+        <span
+          className="inline-block w-[3px] h-[1.15em] ml-1 bg-cyan-500 dark:bg-white rounded-[1px] animate-[pulse_1s_cubic-bezier(0.4,0,0.6,1)_infinite] align-[-0.15em]"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 });

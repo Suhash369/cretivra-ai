@@ -299,7 +299,7 @@ class AsuraResponseOrchestrator:
                 f"✓ Current-source research performed\n\n"
                 f"USER QUERY:\n{clean_query}\n\n"
                 f"WEB SOURCES:\n{normalized_results_block or 'In-prompt context and verified sources provided by user'}\n\n"
-                f"Now answer the user directly and authoritatively based on the verified evidence."
+                f"Now answer the user directly and authoritatively in rich, structured Markdown based on the verified evidence."
             )
             user_prompt = clean_query
         else:
