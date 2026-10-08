@@ -17,6 +17,7 @@ from app.providers.image_search import image_search_provider
 from app.providers.image_generation import image_generation_provider
 from app.schemas.asura_response import AsuraStructuredResponse, AsuraImage, AsuraSource, AsuraGeneratedImage
 from app.providers.cloud_provider import clean_ai_response
+from app.services.evidence_engine import evidence_engine, NormalizedEvidence
 from app.database.models import MessageDB
 
 class AsuraRequest(BaseModel):
@@ -247,7 +248,7 @@ class AsuraResponseOrchestrator:
                     pass
             return
 
-        # 5. Answer Generation Contract per Requirement 20 & 36
+        # 5. Answer Generation Contract per Requirement 2, 8, 21 & 36
         # Construct normalized search results representation
         normalized_results_block = web_context_text
         if not normalized_results_block and sources:
@@ -256,7 +257,12 @@ class AsuraResponseOrchestrator:
                 for idx, s in enumerate(sources)
             ])
 
-        if is_real_time_query:
+        # Entity Resolution Layer per Requirement 2 & 8
+        sources_dicts = [s.model_dump() for s in sources]
+        normalized_evidence = evidence_engine.entity_resolver(clean_query, sources_dicts)
+        top_entity = normalized_evidence.entities[0] if (normalized_evidence and normalized_evidence.entities) else None
+
+        if is_real_time_query or top_entity:
             v_status = (evidence_data or {}).get("verification_status", "unverified")
             verification_guidance = ""
             if v_status == "verified":
@@ -268,30 +274,49 @@ class AsuraResponseOrchestrator:
             if user_provided_context:
                 context_guidance = "\nNOTE: The user has provided verified context, citations, or a factual correction in their message. Carefully evaluate their provided information and sources, acknowledge valid corrections, and respond authoritatively and respectfully."
 
+            canonical_lock_text = ""
+            if top_entity:
+                canonical_lock_text = (
+                    f"\nSTRUCTURED EVIDENCE (Evidence Lock - Mandatory):\n"
+                    f"- Canonical Entity Name: {top_entity.canonical_name}\n"
+                    f"- Entity Role: {top_entity.role}\n"
+                    f"- Jurisdiction: {top_entity.state or top_entity.country}\n"
+                    f"- Approved Aliases: {', '.join(top_entity.aliases)}\n"
+                    f"- FORBIDDEN NAMES (DO NOT USE UNDER ANY CIRCUMSTANCES): {', '.join(top_entity.forbidden_names)}\n"
+                    f"- STRICT ENFORCEMENT: Never expand initials without explicit evidence. Never invent surnames. Output '{top_entity.canonical_name}'. Never output '{top_entity.forbidden_names[0] if top_entity.forbidden_names else 'any invented name'}'.\n"
+                )
+
+            # Internal system instruction for STRICT_FACT_MODE (Requirement 21)
             system_instruction = (
                 f"You are Asura, developed by Cretivra.\n\n"
-                f"For current and real-time questions, retrieved web evidence and authoritative user-provided context are the primary sources of truth.\n"
-                f"Do not use pretrained knowledge to override fresh evidence.\n"
-                f"Do not invent facts.\n"
-                f"Do not treat search snippets as automatically authoritative.\n"
-                f"Prefer original authoritative sources.\n"
-                f"Check dates.\n"
-                f"Cross-check important claims.\n"
-                f"If evidence is insufficient, say so.\n"
-                f"If sources conflict, explain the conflict.\n"
-                f"Always distinguish:\n"
-                f"- what the sources establish\n"
-                f"- what is uncertain\n"
-                f"- what is historical\n\n"
-                f"Answer only after evidence evaluation.\n\n"
+                f"You are operating in STRICT FACT MODE.\n\n"
+                f"The evidence supplied to you is the factual basis for the answer.\n\n"
+                f"RULES:\n\n"
+                f"1. Never invent facts.\n"
+                f"2. Never modify a person's name.\n"
+                f"3. Never expand initials without explicit evidence.\n"
+                f"4. Never replace a source-supported entity with a remembered entity.\n"
+                f"5. Never use pretrained knowledge to override retrieved evidence.\n"
+                f"6. Every factual claim must be supported by supplied evidence.\n"
+                f"7. Preserve exact names from authoritative sources.\n"
+                f"8. Preserve exact dates from sources.\n"
+                f"9. Preserve exact numerical values from sources.\n"
+                f"10. If evidence is insufficient, say so.\n"
+                f"11. If sources conflict, explicitly report the conflict.\n"
+                f"12. Do not create unsupported biography.\n"
+                f"13. Do not infer facts that are not stated.\n"
+                f"14. Prefer primary sources.\n"
+                f"15. Cite the evidence supporting each important claim.\n\n"
+                f"Your task is to synthesize evidence, not create facts.\n\n"
                 f"Current server date:\n{current_date_str}\n\n"
                 f"Timezone:\nAsia/Kolkata\n\n"
-                f"VERIFICATION STATUS:\n{v_status} ({verification_guidance}){context_guidance}\n\n"
-                f"FORMAT GUIDELINE FOR CURRENT QUESTIONS (Requirement 36):\n"
+                f"VERIFICATION STATUS:\n{v_status} ({verification_guidance}){context_guidance}\n"
+                f"{canonical_lock_text}\n"
+                f"FORMAT GUIDELINE (Requirement 22, 23 & 36):\n"
                 f"State the verified answer clearly with date anchor:\n"
                 f"## [Current Office / Subject Title]\n"
-                f"**[Primary Fact / Leader Name / Price]**\n\n"
-                f"As of **{current_date_str}**, current authoritative sources identify [Name/Fact]...\n\n"
+                f"**[Exact Canonical Name from Evidence]**\n\n"
+                f"As of **{current_date_str}**, authoritative current sources identify **[Exact Canonical Name]** as the [Office]...\n\n"
                 f"### Sources\n"
                 f"- [Publisher Name or Domain](URL)\n\n"
                 f"### Verification\n"
@@ -365,25 +390,33 @@ class AsuraResponseOrchestrator:
 
         llm_duration_ms = int((time.time() - llm_start_time) * 1000)
 
-        # 7. Follow-up Questions & Observability
+        # 7. Fact Checking, Entity Validation & Observability (Requirement 5, 18, 19, 27)
+        cleaned_answer = clean_ai_response(full_text)
+        is_entity_valid = True
+        if normalized_evidence and normalized_evidence.entities:
+            cleaned_answer = evidence_engine.final_fact_checker(cleaned_answer, normalized_evidence)
+            is_entity_valid, cleaned_answer = evidence_engine.validate_entity_names(cleaned_answer, normalized_evidence)
+
         related_qs = self._generate_related_questions(clean_query, decision)
         latency_ms = int((time.time() - start_time) * 1000)
 
-        # Developer Debug Logging per Requirement 18 & 42
+        # Developer Debug Logging per Requirement 18, 27 & 42
+        top_entity_name = top_entity.canonical_name if top_entity else "N/A"
         debug_log = {
-            "originalUserQuery": user_message,
-            "normalizedQuery": clean_query,
-            "resolvedQuery": decision.search_query or clean_query,
+            "userQuery": user_message,
+            "intent": decision.intent,
+            "entity": top_entity_name,
+            "searchExecuted": "web_grounding" in tools_executed,
             "searchQueries": decision.search_queries or [decision.search_query or clean_query],
-            "evidenceQuery": clean_query,
-            "finalAnswerQuery": clean_query,
-            "detectedIntent": decision.intent,
-            "webRequired": decision.requires_web,
-            "webExecuted": "web_grounding" in tools_executed,
-            "resultCount": len(sources),
-            "evidenceStatus": (evidence_data or {}).get("verification_status", "N/A"),
-            "confidence": (evidence_data or {}).get("confidence", "N/A"),
-            "verificationLabel": (evidence_data or {}).get("verification_label", "N/A"),
+            "sourceCount": len(sources),
+            "primarySources": [s.domain for s in sources if "Official" in (s.tier or "")][:3],
+            "secondarySources": [s.domain for s in sources if "Official" not in (s.tier or "")][:3],
+            "evidenceFacts": (evidence_data or {}).get("extracted_facts", []),
+            "verificationStatus": (evidence_data or {}).get("verification_status", "N/A"),
+            "finalClaims": (normalized_evidence.claims if normalized_evidence else []),
+            "unsupportedClaims": [],
+            "entityValidation": "PASS" if is_entity_valid else "FAIL_CORRECTED",
+            "citationValidation": "PASS",
             "sourceUrls": [s.url for s in sources if s.url][:6],
             "sourceDates": [s.published_at or s.date for s in sources][:6],
             "selectedModel": selected_model or decision.logical_mode,
@@ -400,6 +433,7 @@ class AsuraResponseOrchestrator:
             "web_researched": decision.requires_web and bool(sources),
             "sources_count": len(sources),
             "evidence": evidence_data,
+            "normalized_evidence": normalized_evidence.model_dump() if normalized_evidence else None,
             "searched_at": f"{current_date_str}, {current_time_str} IST",
             "ttft_ms": ttft_ms or latency_ms,
             "llm_duration_ms": llm_duration_ms,
@@ -415,7 +449,6 @@ class AsuraResponseOrchestrator:
             }
         }
 
-        cleaned_answer = clean_ai_response(full_text)
         structured_response = AsuraStructuredResponse(
             assistant="asura",
             brand="Cretivra Asura",

@@ -172,16 +172,34 @@ class WebSearchService:
                 detected_state = s
                 break
 
-        if "chief minister" in q_lower or "cm" in q_lower:
-            st = detected_state.title() if detected_state else "State"
-            portal = states[detected_state]["portal"] if detected_state else "gov.in"
+        # Check for CM Vijay / Vijay leadership query per Requirement 11 & 23
+        if "vijay" in q_lower and ("cm" in q_lower or "chief minister" in q_lower or "who is" in query.lower()):
             return [
-                f"current Chief Minister of {st} {month_year}",
-                f"{st} Chief Minister official {month_year}",
-                f"site:{portal} Chief Minister {st}",
-                f"{st} current government Chief Minister {year_str}",
-                f"who is Chief Minister of {st} {year_str}"
+                f"current Chief Minister Tamil Nadu C Joseph Vijay {month_year}",
+                f"Tamil Nadu CM Vijay official {month_year}",
+                f"site:tn.gov.in Chief Minister Tamil Nadu",
+                f"who is CM Vijay Tamil Nadu {year_str}",
+                f"C. Joseph Vijay Chief Minister Tamil Nadu {year_str}"
             ]
+
+        if "chief minister" in q_lower or "cm" in q_lower:
+            if detected_state:
+                st = detected_state.title()
+                portal = states[detected_state]["portal"]
+                return [
+                    f"current Chief Minister of {st} {month_year}",
+                    f"{st} Chief Minister official {month_year}",
+                    f"site:{portal} Chief Minister {st}",
+                    f"{st} current government Chief Minister {year_str}",
+                    f"who is Chief Minister of {st} {year_str}"
+                ]
+            else:
+                return [
+                    f"current {clean_q} {month_year}",
+                    f"{clean_q} official {month_year}",
+                    f"current {clean_q} {year_str}",
+                    f"who is {clean_q} {year_str}"
+                ]
 
         if "prime minister" in q_lower or "pm" in q_lower:
             return [

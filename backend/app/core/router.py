@@ -173,6 +173,7 @@ def is_anaphoric_follow_up(query: str) -> bool:
 
     pronoun_patterns = [
         r"^(?:how\s+old\s+is\s+(?:he|she|they))\b",
+        r"^(?:who\s+is\s+(?:he|she|they|that))\b",
         r"\b(?:what\s+about\s+(?:him|her|them|it|his|hers))\b",
         r"\b(?:tell\s+me\s+more\s+about\s+(?:him|her|them|that|this))\b",
         r"\b(?:what\s+is\s+(?:his|her|their)\s+(?:party|age|net\s+worth|career|salary|background))\b",
