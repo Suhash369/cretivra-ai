@@ -33,5 +33,6 @@
 
 ### Changed
 - **`frontend/src/components/landing/HomeWorkspace.tsx`**:
+  - Restructured Home screen with top bento grid and floating frosted-glass composer with fade gradient and prefill toast; strictly aligned 12-column grid and unified Chat view composer.
   - Container width standardized to `max-w-[1100px]` matching the composer.
   - Integrated `BentoGrid` and `TemplatesCarousel` cleanly with existing flows (`onOpenWebsite`, `onOpenSlides`, `onOpenGame`, `onOpenImageStudio`, attachment handling, voice, payments, and view switching).

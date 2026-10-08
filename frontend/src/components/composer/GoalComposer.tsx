@@ -245,10 +245,8 @@ export function GoalComposer({
 
   return (
     <div
-      className={`relative w-full max-w-[900px] mx-auto rounded-[24px] bg-[var(--surface)] border transition-all duration-200 shadow-lg ${
-        isFocused
-          ? 'border-cyan-500/60 shadow-[0_4px_24px_rgba(6,182,212,0.1)]'
-          : 'border-[var(--border)] hover:border-cyan-500/30'
+      className={`floating-glass-composer relative w-full max-w-[1100px] mx-auto select-text ${
+        isFocused ? 'is-focused' : ''
       }`}
     >
       {/* Hidden File Input */}

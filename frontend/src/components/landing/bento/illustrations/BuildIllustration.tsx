@@ -2,7 +2,7 @@ import React from 'react';
 
 export function BuildIllustration() {
   return (
-    <div className="relative w-36 h-28 sm:w-44 sm:h-32 shrink-0 overflow-hidden select-none pointer-events-none">
+    <div className="relative w-28 h-20 sm:w-34 sm:h-24 md:w-40 md:h-26 shrink-0 overflow-hidden select-none pointer-events-none">
       {/* Background blueprint grid snippet */}
       <div className="absolute inset-0 cv-blueprint-grid opacity-30 rounded-xl" />
 

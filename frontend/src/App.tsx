@@ -1154,7 +1154,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             {/* Scrollable Message Feed */}
             <div
-              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
+              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 pb-[200px] space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
               ref={scrollRef}
               onScroll={handleChatScroll}
               onWheel={handleUserWheel}
@@ -1368,7 +1368,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
 
             {/* Jump to latest button */}
             {showScrollBottom && (
-              <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-enter">
+              <div className="absolute bottom-[160px] left-1/2 -translate-x-1/2 z-30 animate-enter">
                 <button
                   type="button"
                   onClick={() => scrollToBottom(true)}
@@ -1380,43 +1380,48 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
               </div>
             )}
 
-            {/* Bottom Anchored Composer */}
-            <div className="p-4 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)] shrink-0">
-              <GoalComposer
-                input={input}
-                onInputChange={setInput}
-                onSubmit={() => {
-                  if (input.trim() || attachments.length > 0) {
-                    sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled, visualMode);
-                    setInput('');
-                  }
-                }}
-                isGenerating={isGenerating}
-                onStop={stopGeneration}
-                placeholder="Assign a task or type / for more"
-                visualMode={visualMode}
-                onToggleVisualMode={setVisualMode}
-                attachments={attachments}
-                onUploadFile={handleFileUpload}
-                onRemoveAttachment={removeAttachment}
-                webSearchEnabled={webSearchEnabled}
-                onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-                deepThinkEnabled={deepThinkEnabled}
-                onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                imageModeEnabled={imageModeEnabled}
-                onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
-                onOpenImageStudio={() => setImageStudioOpen(true)}
-                selectedModel={selectedModel}
-                availableModels={availableModels}
-                onSelectModel={handleSelectModel}
-                onOpenModelSelector={() => setModelOpen(true)}
-                onOpenSketch={() => setSketchModalOpen(true)}
-                onOpenLibrary={() => setLibraryModalOpen(true)}
-                onOpenSlides={() => setSlideModalOpen(true)}
-                onOpenWebsite={() => setWebsiteModalOpen(true)}
-                onOpenGame={() => setGameModalOpen(true)}
-                onOpenVoiceMode={() => setVoiceModalOpen(true)}
-              />
+            {/* Soft fade gradient behind composer */}
+            <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none z-10 bg-gradient-to-t from-[var(--background)] to-transparent" />
+
+            {/* Floating Glass Composer */}
+            <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-3 sm:px-6 pointer-events-none">
+              <div className="w-full max-w-[1100px] pointer-events-auto relative">
+                <GoalComposer
+                  input={input}
+                  onInputChange={setInput}
+                  onSubmit={() => {
+                    if (input.trim() || attachments.length > 0) {
+                      sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled, visualMode);
+                      setInput('');
+                    }
+                  }}
+                  isGenerating={isGenerating}
+                  onStop={stopGeneration}
+                  placeholder="Assign a task or type / for more"
+                  visualMode={visualMode}
+                  onToggleVisualMode={setVisualMode}
+                  attachments={attachments}
+                  onUploadFile={handleFileUpload}
+                  onRemoveAttachment={removeAttachment}
+                  webSearchEnabled={webSearchEnabled}
+                  onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                  deepThinkEnabled={deepThinkEnabled}
+                  onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                  imageModeEnabled={imageModeEnabled}
+                  onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
+                  onOpenImageStudio={() => setImageStudioOpen(true)}
+                  selectedModel={selectedModel}
+                  availableModels={availableModels}
+                  onSelectModel={handleSelectModel}
+                  onOpenModelSelector={() => setModelOpen(true)}
+                  onOpenSketch={() => setSketchModalOpen(true)}
+                  onOpenLibrary={() => setLibraryModalOpen(true)}
+                  onOpenSlides={() => setSlideModalOpen(true)}
+                  onOpenWebsite={() => setWebsiteModalOpen(true)}
+                  onOpenGame={() => setGameModalOpen(true)}
+                  onOpenVoiceMode={() => setVoiceModalOpen(true)}
+                />
+              </div>
             </div>
           </div>
         )}

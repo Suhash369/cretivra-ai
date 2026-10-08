@@ -1743,6 +1743,64 @@ html.light .animate-shimmer {
   -webkit-mask-image: linear-gradient(to right, transparent 0px, black 28px, black calc(100% - 28px), transparent 100%);
 }
 
+/* Floating Glass Composer Tokens & Classes */
+.floating-glass-composer {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 1.5rem; /* rounded-3xl */
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .floating-glass-composer {
+  background: rgba(18, 24, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.floating-glass-composer:focus-within,
+.floating-glass-composer.is-focused {
+  border-color: rgba(6, 182, 212, 0.6) !important;
+  box-shadow: 0 20px 50px -20px rgba(6, 182, 212, 0.28), 0 0 0 1px rgba(6, 182, 212, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .floating-glass-composer {
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .dark .floating-glass-composer {
+    background: rgba(18, 24, 38, 0.92);
+  }
+}
+
+/* Prefill Toast Animation */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.animate-toast-slide {
+  animation: toastSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes toastFadeOnly {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-toast-slide {
+    animation: toastFadeOnly 200ms ease-out forwards;
+    transform: translateX(-50%) !important;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor,
@@ -1751,7 +1809,11 @@ html.light .animate-shimmer {
   .animate-enter, .animate-fade, .animate-slide-up, .animate-scale, .animate-panel,
   .animate-pulse-soft, .animate-shimmer, .animate-stream, .animate-success, .animate-error,
   .asura-btn-interactive, .asura-card-interactive, .asura-ambient-orb,
-  .asura-animate-pulse-core, .asura-animate-sweep, .asura-animate-ripple, .asura-animate-signal {
+  .asura-animate-pulse-core, .asura-animate-sweep, .asura-animate-ripple, .asura-animate-signal,
+  .bento-border-animated, .animate-bento-entrance-1, .animate-bento-entrance-2, .animate-bento-entrance-3,
+  .animate-bento-entrance-4, .animate-bento-entrance-carousel, .animate-bento-wireframe,
+  .animate-bento-bob, .animate-bento-coin, .animate-bento-twinkle,
+  .bento-breathe-1, .bento-breathe-2, .bento-breathe-3, .bento-breathe-4 {
     animation: none !important;
     transition: none !important;
   }
