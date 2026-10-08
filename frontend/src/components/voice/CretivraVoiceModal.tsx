@@ -14,7 +14,7 @@ import {
   Cpu,
   Eye,
 } from 'lucide-react';
-import { sendVoiceChatApi } from '../../services/api';
+import { sendVoiceChatApi, streamVoiceChatApi } from '../../services/api';
 
 interface CretivraVoiceModalProps {
   isOpen: boolean;
@@ -101,8 +101,12 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const synthAnimRef = useRef<number | null>(null);
 
-  // Audio Playback
+  // Audio Playback & Streaming Queue
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const sentenceQueueRef = useRef<string[]>([]);
+  const isSpeakingSentenceRef = useRef(false);
+  const isStreamDoneRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Speech Recognition Ref
   const recognitionRef = useRef<any>(null);
@@ -112,8 +116,16 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
   const lastProcessedTextRef = useRef('');
   const lastProcessedTimeRef = useRef(0);
 
-  // Stop currently playing audio or speech
+  // Stop currently playing audio or speech and abort in-flight requests
   const stopAudio = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    sentenceQueueRef.current = [];
+    isSpeakingSentenceRef.current = false;
+    isStreamDoneRef.current = false;
+
     if (synthAnimRef.current) {
       cancelAnimationFrame(synthAnimRef.current);
       synthAnimRef.current = null;
@@ -146,6 +158,15 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
     }
   }, []);
 
+  // Instant barge-in / interruption: stop speech immediately and listen to user
+  const handleBargeIn = useCallback(() => {
+    stopAudio();
+    isProcessingRef.current = false;
+    setVoiceState('listening');
+    setLiveAssistantTranscript('');
+    startListening();
+  }, [stopAudio]);
+
   // Cleanup media & recognition
   const cleanupMedia = useCallback(() => {
     stopAudio();
@@ -174,7 +195,6 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
     let step = 0;
     const animate = () => {
       step += 0.12;
-      // Organic speech wave cadence
       const pulse = Math.abs(Math.sin(step) * 0.45 + Math.cos(step * 1.7) * 0.25);
       setAudioLevel(Math.min(1, Math.max(0.1, pulse)));
       synthAnimRef.current = requestAnimationFrame(animate);
@@ -214,7 +234,7 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
       };
 
       recognition.onresult = (event: any) => {
-        if (!isComponentActiveRef.current || isProcessingRef.current) return;
+        if (!isComponentActiveRef.current) return;
 
         let interim = '';
         let final = '';
@@ -228,9 +248,18 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
         }
 
         const currentText = (final || interim).trim();
+
+        // Natural Barge-In: if user speaks while voice is speaking or processing, interrupt immediately!
+        if (isSpeakingSentenceRef.current && currentText.length > 2) {
+          handleBargeIn();
+          return;
+        }
+
+        if (isProcessingRef.current) return;
+
         setLiveUserTranscript(currentText);
 
-        // Reset silence timer whenever user speaks
+        // Snappy silence timer: 350ms after final speech for instant ChatGPT-style turnaround
         if (silenceTimerRef.current) {
           clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = null;
@@ -239,18 +268,17 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
         if (final) {
           silenceTimerRef.current = setTimeout(() => {
             submitVoiceMessage(final);
-          }, 1100);
-        } else if (interim && interim.length > 5) {
+          }, 350);
+        } else if (interim && interim.length > 8) {
           silenceTimerRef.current = setTimeout(() => {
             submitVoiceMessage(interim);
-          }, 2400);
+          }, 850);
         }
       };
 
       recognition.onerror = (event: any) => {
         if (event.error === 'no-speech') {
-          // Restart listening loop seamlessly
-          if (isComponentActiveRef.current && !isProcessingRef.current && !isMuted) {
+          if (isComponentActiveRef.current && !isProcessingRef.current && !isMuted && !isSpeakingSentenceRef.current) {
             try {
               recognition.start();
             } catch {}
@@ -259,7 +287,7 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
       };
 
       recognition.onend = () => {
-        if (isComponentActiveRef.current && !isProcessingRef.current && !isMuted) {
+        if (isComponentActiveRef.current && !isProcessingRef.current && !isMuted && !isSpeakingSentenceRef.current) {
           try {
             recognition.start();
           } catch {}
@@ -270,26 +298,45 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
       try {
         recognition.start();
       } catch (err) {
-        console.warn('SpeechRecognition start failed:', err);
+        console.warn('SpeechRecognition start notice:', err);
       }
     }
-  }, [isMuted, stopAudio]);
+  }, [isMuted, stopAudio, handleBargeIn]);
 
-  // Web Speech API fallback player with persona-tailored pitch and rate
-  const playBrowserSpeech = useCallback((text: string) => {
+  // Audio Queue Runner: Plays each sentence sequentially with zero artificial gap
+  const playNextInQueue = useCallback(() => {
+    if (!isComponentActiveRef.current) return;
+
+    if (sentenceQueueRef.current.length === 0) {
+      isSpeakingSentenceRef.current = false;
+      if (synthAnimRef.current) {
+        cancelAnimationFrame(synthAnimRef.current);
+        synthAnimRef.current = null;
+      }
+      setAudioLevel(0);
+
+      // If the LLM stream finished delivering all sentences, return to listening
+      if (isStreamDoneRef.current) {
+        isProcessingRef.current = false;
+        setVoiceState('listening');
+        startListening();
+      }
+      return;
+    }
+
+    isSpeakingSentenceRef.current = true;
+    const nextSentence = sentenceQueueRef.current.shift()!;
+    setVoiceState('speaking');
+    startSyntheticSpeechAnimation();
+
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      setVoiceState('speaking');
-      startSyntheticSpeechAnimation();
-
-      const clean = text.replace(/[*_#`~]/g, '');
+      const clean = nextSentence.replace(/[*_#`~]/g, '');
       const utterance = new SpeechSynthesisUtterance(clean);
 
-      // Find current persona settings
       const persona = VOICE_PERSONAS.find((p) => p.id === currentVoice) || VOICE_PERSONAS[0];
       utterance.rate = persona.rate;
       utterance.pitch = persona.pitch;
 
-      // Pick preferred natural voice
       const voices = window.speechSynthesis.getVoices();
       const preferred = voices.find(
         (v) =>
@@ -302,43 +349,33 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
       if (preferred) utterance.voice = preferred;
 
       utterance.onend = () => {
-        stopAudio();
-        isProcessingRef.current = false;
-        if (!isComponentActiveRef.current) return;
-        setVoiceState('listening');
-        startListening();
+        playNextInQueue();
       };
       utterance.onerror = () => {
-        stopAudio();
-        isProcessingRef.current = false;
-        if (!isComponentActiveRef.current) return;
-        setVoiceState('listening');
-        startListening();
+        playNextInQueue();
       };
 
       window.speechSynthesis.speak(utterance);
     } else {
-      isProcessingRef.current = false;
-      setVoiceState('listening');
-      startListening();
+      playNextInQueue();
     }
-  }, [currentVoice, startSyntheticSpeechAnimation, stopAudio, startListening]);
+  }, [currentVoice, startSyntheticSpeechAnimation, startListening]);
 
-  // Submit voice prompt to Multi-Provider Voice Service
+  // Submit voice prompt using ultra-low latency SSE Sentence Streaming
   const submitVoiceMessage = useCallback(
     async (spokenText: string) => {
       const clean = spokenText.trim();
       if (!clean || !isComponentActiveRef.current || isProcessingRef.current) return;
 
       const now = Date.now();
-      if (clean.toLowerCase() === lastProcessedTextRef.current.toLowerCase() && now - lastProcessedTimeRef.current < 2500) {
-        return; // Prevent duplicate rapid submission
+      if (clean.toLowerCase() === lastProcessedTextRef.current.toLowerCase() && now - lastProcessedTimeRef.current < 2000) {
+        return;
       }
       lastProcessedTextRef.current = clean;
       lastProcessedTimeRef.current = now;
       isProcessingRef.current = true;
 
-      // Stop audio and immediately stop recognition so mic does not capture speaker or echo
+      // Stop audio and pause recognition during thinking
       stopAudio();
       stopListening();
 
@@ -348,64 +385,91 @@ export const CretivraVoiceModal: React.FC<CretivraVoiceModalProps> = ({
 
       setTranscriptHistory((prev) => [...prev, { role: 'user', text: clean }]);
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      isStreamDoneRef.current = false;
+      sentenceQueueRef.current = [];
+      let accumulatedReply = '';
+
       try {
         const historyPayload = transcriptHistory.slice(-4).map((item) => ({
           role: item.role,
           content: item.text,
         }));
 
-        const data = await sendVoiceChatApi({
-          message: clean,
-          conversation_id: conversationId || undefined,
-          voice: currentVoice,
-          voice_model: activeEngine.id,
-          history: historyPayload,
-        });
-
-        if (!isComponentActiveRef.current) return;
-
-        const reply = data.text || 'I am listening clearly.';
-        setLiveAssistantTranscript(reply);
-        setTranscriptHistory((prev) => [...prev, { role: 'assistant', text: reply }]);
-
-        if (onNewMessageSynced) {
-          onNewMessageSynced(clean, reply);
-        }
-
-        // Play native high-fidelity audio if returned
-        if (data.audio_url) {
-          setVoiceState('speaking');
-          startSyntheticSpeechAnimation();
-          const audio = new Audio(data.audio_url);
-          currentAudioRef.current = audio;
-
-          audio.onended = () => {
-            stopAudio();
-            isProcessingRef.current = false;
+        await streamVoiceChatApi(
+          {
+            message: clean,
+            conversation_id: conversationId || undefined,
+            voice: currentVoice,
+            voice_model: activeEngine.id,
+            history: historyPayload,
+          },
+          (sentence) => {
             if (!isComponentActiveRef.current) return;
-            setVoiceState('listening');
-            startListening();
-          };
+            accumulatedReply += (accumulatedReply ? ' ' : '') + sentence.text;
+            setLiveAssistantTranscript(accumulatedReply);
 
-          audio.onerror = () => {
-            stopAudio();
-            playBrowserSpeech(reply);
-          };
+            // Queue sentence for immediate continuous playback
+            sentenceQueueRef.current.push(sentence.text);
+            if (!isSpeakingSentenceRef.current) {
+              playNextInQueue();
+            }
+          },
+          (data) => {
+            if (!isComponentActiveRef.current) return;
+            isStreamDoneRef.current = true;
+            const finalReply = data.full_text || accumulatedReply || 'I am listening clearly.';
+            setLiveAssistantTranscript(finalReply);
+            setTranscriptHistory((prev) => [...prev, { role: 'assistant', text: finalReply }]);
 
-          await audio.play();
-        } else {
-          // Play via Web Speech API with tailored persona voices
-          playBrowserSpeech(reply);
-        }
+            if (onNewMessageSynced) {
+              onNewMessageSynced(clean, finalReply);
+            }
+
+            // If queue already finished playing, return to listening state
+            if (!isSpeakingSentenceRef.current && sentenceQueueRef.current.length === 0) {
+              isProcessingRef.current = false;
+              setVoiceState('listening');
+              startListening();
+            }
+          },
+          controller.signal
+        );
       } catch (err: any) {
-        console.error('Voice chat error:', err);
-        isProcessingRef.current = false;
-        if (!isComponentActiveRef.current) return;
-        setVoiceState('idle');
-        startListening();
+        if (err.name === 'AbortError') return;
+        console.warn('Voice stream notice, trying fallback:', err);
+
+        // Fallback: single-shot voice chat API
+        try {
+          const fallbackData = await sendVoiceChatApi({
+            message: clean,
+            conversation_id: conversationId || undefined,
+            voice: currentVoice,
+            voice_model: activeEngine.id,
+          });
+
+          if (!isComponentActiveRef.current) return;
+          const reply = fallbackData.text || 'I am listening clearly.';
+          setLiveAssistantTranscript(reply);
+          setTranscriptHistory((prev) => [...prev, { role: 'assistant', text: reply }]);
+          if (onNewMessageSynced) onNewMessageSynced(clean, reply);
+
+          sentenceQueueRef.current.push(reply);
+          isStreamDoneRef.current = true;
+          if (!isSpeakingSentenceRef.current) {
+            playNextInQueue();
+          }
+        } catch (fbErr) {
+          isProcessingRef.current = false;
+          if (isComponentActiveRef.current) {
+            setVoiceState('idle');
+            startListening();
+          }
+        }
       }
     },
-    [conversationId, currentVoice, activeEngine, transcriptHistory, onNewMessageSynced, stopAudio, stopListening, playBrowserSpeech, startListening, startSyntheticSpeechAnimation]
+    [conversationId, currentVoice, activeEngine, transcriptHistory, onNewMessageSynced, stopAudio, stopListening, playNextInQueue, startListening]
   );
 
   // Setup AudioContext for microphone level visualizer

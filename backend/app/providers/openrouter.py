@@ -3,6 +3,7 @@ import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.http_client import get_shared_client
 from app.providers.base import AIProvider
 
 class OpenRouterProvider(AIProvider):
@@ -134,60 +135,59 @@ class OpenRouterProvider(AIProvider):
         max_tokens = (options or {}).get("max_tokens", 4096)
 
         is_search = bool((options or {}).get("is_search") or (options or {}).get("web_search"))
+        client = get_shared_client()
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            for target_model in candidate_models:
-                payload: Dict[str, Any] = {
-                    "model": target_model,
-                    "messages": formatted_messages,
-                    "stream": True,
-                    "temperature": temp,
-                    "max_tokens": max_tokens
-                }
-                if is_search:
-                    # Enable OpenRouter web search plugin and tool
-                    payload["plugins"] = [{"id": "web"}]
-                    payload["tools"] = [{"type": "openrouter:web_search"}]
+        for target_model in candidate_models:
+            payload: Dict[str, Any] = {
+                "model": target_model,
+                "messages": formatted_messages,
+                "stream": True,
+                "temperature": temp,
+                "max_tokens": max_tokens
+            }
+            if is_search:
+                payload["plugins"] = [{"id": "web"}]
+                payload["tools"] = [{"type": "openrouter:web_search"}]
 
-                try:
-                    async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as response:
-                        # Fallback if model doesn't support the web plugin
-                        if response.status_code == 400 and is_search:
-                            logger.info(f"OpenRouter {target_model} tool error, falling back to pre-grounded prompt")
-                            fallback_payload = dict(payload)
-                            fallback_payload.pop("plugins", None)
-                            fallback_payload.pop("tools", None)
-                            async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=fallback_payload) as fb_response:
-                                if fb_response.status_code == 200:
-                                    response = fb_response
-                        if response.status_code == 200:
-                            yielded_any = False
-                            async for line in response.aiter_lines():
-                                if not line or not line.startswith("data: "):
-                                    continue
-                                data_str = line[6:].strip()
-                                if data_str == "[DONE]":
-                                    yield {"content": "", "done": True}
-                                    return
-                                try:
-                                    data = json.loads(data_str)
-                                    delta = data.get("choices", [{}])[0].get("delta", {})
-                                    content = delta.get("content", "")
-                                    reasoning = delta.get("reasoning_content") or delta.get("reasoning")
-                                    if reasoning:
-                                        yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
-                                    if content:
-                                        yielded_any = True
-                                        yield {"content": content, "done": False}
-                                except Exception:
-                                    continue
-                            if yielded_any:
+            try:
+                async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=30.0) as response:
+                    if response.status_code == 400 and is_search:
+                        logger.info(f"OpenRouter {target_model} tool error, falling back to pre-grounded prompt")
+                        fallback_payload = dict(payload)
+                        fallback_payload.pop("plugins", None)
+                        fallback_payload.pop("tools", None)
+                        async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=fallback_payload, timeout=30.0) as fb_response:
+                            if fb_response.status_code == 200:
+                                response = fb_response
+                    if response.status_code == 200:
+                        yielded_any = False
+                        async for line in response.aiter_lines():
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
                                 yield {"content": "", "done": True}
                                 return
-                        else:
-                            logger.warning(f"OpenRouter {target_model} stream error ({response.status_code})")
-                except Exception as e:
-                    logger.warning(f"OpenRouter {target_model} attempt failed: {e}")
-                    continue
+                            try:
+                                data = json.loads(data_str)
+                                delta = data.get("choices", [{}])[0].get("delta", {})
+                                content = delta.get("content", "")
+                                reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                                if reasoning:
+                                    yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
+                                if content:
+                                    yielded_any = True
+                                    yield {"content": content, "done": False}
+                            except Exception:
+                                continue
+                        if yielded_any:
+                            yield {"content": "", "done": True}
+                            return
+                    else:
+                        logger.warning(f"OpenRouter {target_model} stream error ({response.status_code})")
+            except Exception as e:
+                logger.warning(f"OpenRouter {target_model} attempt failed: {e}")
+                continue
 
 openrouter_provider = OpenRouterProvider()
+

@@ -447,7 +447,6 @@ class CloudLLMProvider:
         words = resp.split(" ")
         for i, w in enumerate(words):
             yield {"content": w + (" " if i < len(words) - 1 else ""), "done": False}
-            await asyncio.sleep(0.01)
         yield {"content": "", "done": True}
 
     def _resolve_groq_model(self, model: str) -> str:

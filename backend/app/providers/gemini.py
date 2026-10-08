@@ -4,6 +4,7 @@ import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.http_client import get_shared_client
 from app.providers.base import AIProvider
 
 class GeminiProvider(AIProvider):
@@ -149,69 +150,68 @@ class GeminiProvider(AIProvider):
         if is_search:
             payload["tools"] = [{"googleSearch": {}}]
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            for gem_model in model_candidates:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:streamGenerateContent?alt=sse&key={clean_key}"
-                try:
-                    async with client.stream("POST", url, json=payload) as response:
-                        # Fallback without search tool if model doesn't support tools
-                        if response.status_code == 400 and is_search:
-                            logger.info(f"Gemini {gem_model} tool not supported, falling back to prompt-grounded retrieval")
-                            fallback_payload = dict(payload)
-                            fallback_payload.pop("tools", None)
-                            async with client.stream("POST", url, json=fallback_payload) as fb_response:
-                                if fb_response.status_code == 200:
-                                    response = fb_response
-                        
-                        if response.status_code == 200:
-                            yielded_any = False
-                            async for line in response.aiter_lines():
-                                if not line or not line.startswith("data: "):
-                                    continue
-                                data_str = line[6:].strip()
-                                try:
-                                    data = json.loads(data_str)
-                                    candidates = data.get("candidates", [])
-                                    if candidates:
-                                        first_cand = candidates[0]
-                                        # Capture native Google Search grounding metadata
-                                        grounding_meta = first_cand.get("groundingMetadata")
-                                        if grounding_meta:
-                                            raw_queries = grounding_meta.get("webSearchQueries", [])
-                                            raw_chunks = grounding_meta.get("groundingChunks", [])
-                                            extracted_sources = []
-                                            for chk in raw_chunks:
-                                                web_info = chk.get("web", {})
-                                                if web_info.get("uri"):
-                                                    extracted_sources.append({
-                                                        "title": web_info.get("title", "Google Search Source"),
-                                                        "url": web_info.get("uri"),
-                                                        "domain": web_info.get("uri").split("/")[2] if "/" in web_info.get("uri") else "google.com"
-                                                    })
-                                            if extracted_sources or raw_queries:
-                                                yield {
-                                                    "content": "",
-                                                    "grounding_sources": extracted_sources,
-                                                    "search_queries": raw_queries,
-                                                    "done": False
-                                                }
+        client = get_shared_client()
+        for gem_model in model_candidates:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:streamGenerateContent?alt=sse&key={clean_key}"
+            try:
+                async with client.stream("POST", url, json=payload, timeout=30.0) as response:
+                    # Fallback without search tool if model doesn't support tools
+                    if response.status_code == 400 and is_search:
+                        logger.info(f"Gemini {gem_model} tool not supported, falling back to prompt-grounded retrieval")
+                        fallback_payload = dict(payload)
+                        fallback_payload.pop("tools", None)
+                        async with client.stream("POST", url, json=fallback_payload, timeout=30.0) as fb_response:
+                            if fb_response.status_code == 200:
+                                response = fb_response
+                    
+                    if response.status_code == 200:
+                        yielded_any = False
+                        async for line in response.aiter_lines():
+                            if not line or not line.startswith("data: "):
+                                continue
+                            data_str = line[6:].strip()
+                            try:
+                                data = json.loads(data_str)
+                                candidates = data.get("candidates", [])
+                                if candidates:
+                                    first_cand = candidates[0]
+                                    grounding_meta = first_cand.get("groundingMetadata")
+                                    if grounding_meta:
+                                        raw_queries = grounding_meta.get("webSearchQueries", [])
+                                        raw_chunks = grounding_meta.get("groundingChunks", [])
+                                        extracted_sources = []
+                                        for chk in raw_chunks:
+                                            web_info = chk.get("web", {})
+                                            if web_info.get("uri"):
+                                                extracted_sources.append({
+                                                    "title": web_info.get("title", "Google Search Source"),
+                                                    "url": web_info.get("uri"),
+                                                    "domain": web_info.get("uri").split("/")[2] if "/" in web_info.get("uri") else "google.com"
+                                                })
+                                        if extracted_sources or raw_queries:
+                                            yield {
+                                                "content": "",
+                                                "grounding_sources": extracted_sources,
+                                                "search_queries": raw_queries,
+                                                "done": False
+                                            }
 
-                                        parts = first_cand.get("content", {}).get("parts", [])
-                                        for p in parts:
-                                            text = p.get("text", "")
-                                            if text:
-                                                yielded_any = True
-                                                yield {"content": text, "done": False}
-                                except Exception:
-                                    continue
-                            if yielded_any:
-                                yield {"content": "", "done": True}
-                                return
-                        else:
-                            err_b = await response.aread()
-                            logger.warning(f"Gemini {gem_model} error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')[:120]}")
-                except Exception as e:
-                    logger.warning(f"Gemini {gem_model} stream attempt failed: {e}")
-                    continue
+                                    parts = first_cand.get("content", {}).get("parts", [])
+                                    for p in parts:
+                                        text = p.get("text", "")
+                                        if text:
+                                            yielded_any = True
+                                            yield {"content": text, "done": False}
+                            except Exception:
+                                continue
+                        if yielded_any:
+                            yield {"content": "", "done": True}
+                            return
+                    else:
+                        err_b = await response.aread()
+                        logger.warning(f"Gemini {gem_model} error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')[:120]}")
+            except Exception as e:
+                logger.warning(f"Gemini {gem_model} stream attempt failed: {e}")
+                continue
 
 gemini_provider = GeminiProvider()

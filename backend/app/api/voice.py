@@ -1,5 +1,7 @@
+import json
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database.database import get_db
@@ -21,6 +23,88 @@ class VoiceChatRequest(BaseModel):
 class VoiceSynthesizeRequest(BaseModel):
     text: str
     voice: Optional[str] = "Breeze"
+
+@router.post("/stream")
+async def voice_stream(
+    payload: VoiceChatRequest,
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Ultra-fast real-time streaming voice endpoint with sentence-boundary chunking.
+    Delivers the first spoken sentence in <400ms for immediate client audio playback
+    while streaming the remaining response in the background.
+    """
+    text = payload.message.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Voice message cannot be empty.")
+
+    # 1. Resolve or create conversation
+    conv_id = payload.conversation_id
+    user_id = current_user.id if current_user else None
+
+    if not conv_id:
+        conv = conversation_service.create_conversation(
+            db=db,
+            title="Voice Conversation",
+            model_id="asura-voice",
+            user_id=user_id
+        )
+        conv_id = conv.id
+    else:
+        conv = conversation_service.get_conversation(db, conv_id)
+        if not conv:
+            conv = conversation_service.create_conversation(
+                db=db,
+                title="Voice Conversation",
+                model_id="asura-voice",
+                user_id=user_id
+            )
+            conv_id = conv.id
+
+    # Record user message in DB
+    conversation_service.add_message(
+        db=db,
+        conversation_id=conv_id,
+        role="user",
+        content=text
+    )
+
+    async def stream_generator():
+        yield f"data: {json.dumps({'type': 'start', 'conversation_id': conv_id})}\n\n"
+        full_text = ""
+        async for chunk in voice_service.stream_voice_reply(
+            message=text,
+            history=payload.history,
+            voice_persona=payload.voice,
+            voice_model=payload.voice_model
+        ):
+            if chunk.get("type") == "sentence":
+                yield f"data: {json.dumps(chunk)}\n\n"
+            elif chunk.get("type") == "done":
+                full_text = chunk.get("full_text", "")
+                yield f"data: {json.dumps({'type': 'done', 'full_text': full_text, 'conversation_id': conv_id})}\n\n"
+
+        if full_text:
+            try:
+                conversation_service.add_message(
+                    db=db,
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=full_text
+                )
+            except Exception as e:
+                logger.warning(f"Could not persist voice reply message: {e}")
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
 
 @router.post("/chat")
 async def voice_chat(

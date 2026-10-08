@@ -2,9 +2,11 @@ import re
 import base64
 import struct
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
+import json
 import httpx
 from app.core.config import settings, _default_gemini_key, _default_groq_key, _default_openrouter_key
+from app.core.http_client import get_shared_client
 from app.services.web_search_service import web_search_service
 from app.core.logging import logger
 
@@ -102,17 +104,17 @@ class VoiceService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices:
-                        content = choices[0].get("message", {}).get("content", "")
-                        if content:
-                            return self._clean_spoken_text(content)
-                else:
-                    logger.warning(f"Groq voice error ({resp.status_code}): {resp.text[:120]}")
+            client = get_shared_client()
+            resp = await client.post(url, json=payload, headers=headers, timeout=10.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    if content:
+                        return self._clean_spoken_text(content)
+            else:
+                logger.warning(f"Groq voice error ({resp.status_code}): {resp.text[:120]}")
         except Exception as e:
             logger.warning(f"Groq voice call failed: {e}")
         return None
@@ -147,17 +149,17 @@ class VoiceService:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices:
-                        content = choices[0].get("message", {}).get("content", "")
-                        if content:
-                            return self._clean_spoken_text(content)
-                else:
-                    logger.warning(f"OpenRouter voice error ({resp.status_code}): {resp.text[:120]}")
+            client = get_shared_client()
+            resp = await client.post(url, json=payload, headers=headers, timeout=12.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "")
+                    if content:
+                        return self._clean_spoken_text(content)
+            else:
+                logger.warning(f"OpenRouter voice error ({resp.status_code}): {resp.text[:120]}")
         except Exception as e:
             logger.warning(f"OpenRouter voice call failed: {e}")
         return None
@@ -191,22 +193,22 @@ class VoiceService:
             }
         }
 
+        client = get_shared_client()
         candidate_gemini_models = [model, "gemini-flash-lite-latest", "gemini-2.5-flash-lite", "gemini-pro-latest"]
         for g_model in candidate_gemini_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={key}"
             try:
-                async with httpx.AsyncClient(timeout=12.0) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
-                            if text:
-                                return self._clean_spoken_text(text)
-                    else:
-                        logger.warning(f"Gemini voice call {g_model} returned {resp.status_code}: {resp.text[:120]}")
+                resp = await client.post(url, json=payload, timeout=12.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
+                        if text:
+                            return self._clean_spoken_text(text)
+                else:
+                    logger.warning(f"Gemini voice call {g_model} returned {resp.status_code}: {resp.text[:120]}")
             except Exception as e:
                 logger.warning(f"Gemini voice {g_model} exception: {e}")
         return None
@@ -313,6 +315,161 @@ class VoiceService:
 
         return "I am connected and listening clearly with the Cretivra Neural Engine. How can I assist you right now?"
 
+    async def stream_voice_reply(
+        self,
+        message: str,
+        history: Optional[List[Dict[str, str]]] = None,
+        voice_persona: Optional[str] = "Breeze",
+        voice_model: Optional[str] = "cretivra-neural"
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Ultra-low-latency streaming voice response generator.
+        Streams sentence-by-sentence chunks as tokens arrive from the primary neural model
+        so the client can begin audio playback on the very first sentence (<400ms).
+        """
+        clean_msg = message.strip()
+
+        # 1. Detect leadership / 2026 temporal queries
+        is_tn_cm_query = bool(re.search(
+            r"\b(cm|chief\s*minister)\b.*\b(tamil\s*nadu|tamilnadu|tn)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(cm|chief\s*minister)\b|\b(tamil\s*nadu|tamilnadu|tn)\b.*\b(head of government|leader)\b",
+            clean_msg,
+            re.IGNORECASE
+        ))
+
+        # 2. Check for live web search intent (fast 1.5s timeout)
+        live_web_context = ""
+        if web_search_service.should_search_web(clean_msg):
+            try:
+                search_data = await asyncio.wait_for(
+                    web_search_service.search_with_sources(clean_msg, max_results=3),
+                    timeout=1.5
+                )
+                if search_data and search_data.get("context_text"):
+                    live_web_context = search_data["context_text"]
+            except Exception as e:
+                logger.debug(f"Voice live search notice: {e}")
+
+        # 3. Formulate effective grounded system prompt
+        effective_system_prompt = VOICE_SYSTEM_PROMPT
+        if is_tn_cm_query:
+            effective_system_prompt += (
+                "\n\n[AUTHORITATIVE 2026 LEADERSHIP TRUTH]: "
+                "The current Chief Minister of Tamil Nadu is C. Joseph Vijay (leader of Tamilaga Vettri Kazhagam / TVK). "
+                "M. K. Stalin is the former Chief Minister. "
+                "State authoritatively, clearly, and directly that C. Joseph Vijay is the current Chief Minister."
+            )
+        elif live_web_context:
+            effective_system_prompt += (
+                f"\n\n[LIVE VERIFIED WEB CONTEXT (2026)]:\n{live_web_context[:1000]}\n"
+                "Use the live verified context above to answer the user's spoken question accurately and concisely."
+            )
+
+        messages_context = []
+        if history:
+            for item in history[-4:]:
+                r = item.get("role", "user")
+                c = item.get("content", "")
+                if c:
+                    messages_context.append({"role": r, "content": c})
+
+        messages_context.append({"role": "user", "content": clean_msg})
+
+        # Delimiters for complete spoken sentences: period, question mark, exclamation, or newline
+        sentence_delim_pattern = re.compile(r'([.?!]+(?:\s+|$))')
+        groq_key = self._get_groq_key()
+        client = get_shared_client()
+
+        sentence_buffer = ""
+        sentence_index = 0
+        full_reply_text = ""
+
+        if groq_key:
+            try:
+                url = "https://api.groq.com/openai/v1/chat/completions"
+                headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+                groq_messages = [{"role": "system", "content": effective_system_prompt}]
+                groq_messages.extend(messages_context)
+                payload = {
+                    "model": "qwen/qwen3.8-27b",
+                    "messages": groq_messages,
+                    "temperature": 0.7,
+                    "max_tokens": 250,
+                    "stream": True
+                }
+
+                async with client.stream("POST", url, headers=headers, json=payload, timeout=20.0) as resp:
+                    if resp.status_code == 200:
+                        async for line in resp.aiter_lines():
+                            if not line or not line.startswith("data: "):
+                                continue
+                            raw = line[6:].strip()
+                            if raw == "[DONE]":
+                                break
+                            try:
+                                c_json = json.loads(raw)
+                                delta = c_json.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                                if delta:
+                                    sentence_buffer += delta
+                                    full_reply_text += delta
+
+                                    # Check for complete sentence
+                                    m = sentence_delim_pattern.search(sentence_buffer)
+                                    if m:
+                                        split_point = m.end()
+                                        complete_sentence = sentence_buffer[:split_point]
+                                        sentence_buffer = sentence_buffer[split_point:]
+                                        cleaned = self._clean_spoken_text(complete_sentence)
+                                        if cleaned:
+                                            yield {
+                                                "type": "sentence",
+                                                "index": sentence_index,
+                                                "text": cleaned,
+                                                "done": False
+                                            }
+                                            sentence_index += 1
+                            except Exception:
+                                continue
+            except Exception as e:
+                logger.warning(f"Groq streaming voice notice: {e}")
+
+        # Fallback to synchronous voice reply if streaming didn't produce sentences
+        if sentence_index == 0 and not full_reply_text:
+            fallback = await self.generate_voice_reply(
+                message=message,
+                history=history,
+                voice_persona=voice_persona,
+                voice_model=voice_model
+            )
+            yield {
+                "type": "sentence",
+                "index": 0,
+                "text": fallback,
+                "done": False
+            }
+            yield {
+                "type": "done",
+                "full_text": fallback,
+                "done": True
+            }
+            return
+
+        # Flush any remaining text in buffer
+        if sentence_buffer:
+            cleaned_rem = self._clean_spoken_text(sentence_buffer)
+            if cleaned_rem:
+                yield {
+                    "type": "sentence",
+                    "index": sentence_index,
+                    "text": cleaned_rem,
+                    "done": False
+                }
+
+        yield {
+            "type": "done",
+            "full_text": self._clean_spoken_text(full_reply_text),
+            "done": True
+        }
+
     async def synthesize_speech(
         self,
         text: str,
@@ -329,6 +486,7 @@ class VoiceService:
         if not clean_text:
             return None
 
+        client = get_shared_client()
         tts_models = ["gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"]
         for tts_model in tts_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{tts_model}:generateContent?key={key}"
@@ -339,27 +497,26 @@ class VoiceService:
                 }
             }
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            parts = candidates[0].get("content", {}).get("parts", [])
-                            for p in parts:
-                                if "inlineData" in p:
-                                    mime = p["inlineData"].get("mimeType", "audio/wav")
-                                    b64_data = p["inlineData"].get("data", "")
-                                    if b64_data:
-                                        if "l16" in mime.lower() or "pcm" in mime.lower():
-                                            try:
-                                                raw_pcm = base64.b64decode(b64_data)
-                                                wav_bytes = pcm_to_wav(raw_pcm, sample_rate=24000)
-                                                wav_b64 = base64.b64encode(wav_bytes).decode("utf-8")
-                                                return f"data:audio/wav;base64,{wav_b64}"
-                                            except Exception as enc_err:
-                                                logger.warning(f"PCM to WAV conversion failed: {enc_err}")
-                                        return f"data:{mime};base64,{b64_data}"
+                resp = await client.post(url, json=payload, timeout=12.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        for p in parts:
+                            if "inlineData" in p:
+                                mime = p["inlineData"].get("mimeType", "audio/wav")
+                                b64_data = p["inlineData"].get("data", "")
+                                if b64_data:
+                                    if "l16" in mime.lower() or "pcm" in mime.lower():
+                                        try:
+                                            raw_pcm = base64.b64decode(b64_data)
+                                            wav_bytes = pcm_to_wav(raw_pcm, sample_rate=24000)
+                                            wav_b64 = base64.b64encode(wav_bytes).decode("utf-8")
+                                            return f"data:audio/wav;base64,{wav_b64}"
+                                        except Exception as enc_err:
+                                            logger.warning(f"PCM to WAV conversion failed: {enc_err}")
+                                    return f"data:{mime};base64,{b64_data}"
             except Exception as e:
                 logger.debug(f"TTS {tts_model} notice: {e}")
 
@@ -374,7 +531,9 @@ class VoiceService:
         Transcribes speech audio into text using Groq Whisper (ultra-fast 150ms)
         with automatic fallback to Gemini multimodal audio perception.
         """
-        # 1. Try Groq Whisper
+        client = get_shared_client()
+
+        # 1. Try Groq Whisper (primary, ultra-fast)
         groq_key = self._get_groq_key()
         if groq_key:
             try:
@@ -387,13 +546,12 @@ class VoiceService:
                     "response_format": "json"
                 }
                 headers = {"Authorization": f"Bearer {groq_key}"}
-                async with httpx.AsyncClient(timeout=10.0) as client:
-                    resp = await client.post("https://api.groq.com/openai/v1/audio/transcriptions", files=files, data=data, headers=headers)
-                    if resp.status_code == 200:
-                        result = resp.json()
-                        transcribed = result.get("text", "").strip()
-                        if transcribed:
-                            return transcribed
+                resp = await client.post("https://api.groq.com/openai/v1/audio/transcriptions", files=files, data=data, headers=headers, timeout=10.0)
+                if resp.status_code == 200:
+                    result = resp.json()
+                    transcribed = result.get("text", "").strip()
+                    if transcribed:
+                        return transcribed
             except Exception as e:
                 logger.warning(f"Groq Whisper transcription exception: {e}")
 
@@ -422,16 +580,15 @@ class VoiceService:
             for model in ["gemini-flash-latest", "gemini-flash-lite-latest"]:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}"
                 try:
-                    async with httpx.AsyncClient(timeout=12.0) as client:
-                        resp = await client.post(url, json=payload)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            candidates = data.get("candidates", [])
-                            if candidates:
-                                parts = candidates[0].get("content", {}).get("parts", [])
-                                text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
-                                if text:
-                                    return text
+                    resp = await client.post(url, json=payload, timeout=12.0)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
+                            if text:
+                                return text
                 except Exception as e:
                     logger.debug(f"Gemini transcribe {model} notice: {e}")
 

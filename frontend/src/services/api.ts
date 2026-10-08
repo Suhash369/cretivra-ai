@@ -524,6 +524,62 @@ export async function sendVoiceChatApi(payload: {
   return res.json();
 }
 
+export async function streamVoiceChatApi(
+  payload: {
+    message: string;
+    conversation_id?: string;
+    voice?: string;
+    voice_model?: string;
+    history?: Array<{ role: string; content: string }>;
+  },
+  onSentence: (sentence: { text: string; index: number }) => void,
+  onDone: (data: { full_text: string; conversation_id: string }) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/voice/stream`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Voice stream request failed');
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('Response stream unavailable');
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      const dataStr = trimmed.slice(6);
+      try {
+        const parsed = JSON.parse(dataStr);
+        if (parsed.type === 'sentence') {
+          onSentence({ text: parsed.text, index: parsed.index });
+        } else if (parsed.type === 'done') {
+          onDone({ full_text: parsed.full_text, conversation_id: parsed.conversation_id });
+        }
+      } catch {}
+    }
+  }
+}
+
 export async function synthesizeSpeechApi(text: string, voice?: string): Promise<{ audio_url: string; text: string }> {
   const res = await fetch(`${API_BASE}/voice/synthesize`, {
     method: 'POST',

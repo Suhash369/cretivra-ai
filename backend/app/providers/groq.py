@@ -4,6 +4,7 @@ import httpx
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.http_client import get_shared_client
 from app.providers.base import AIProvider
 
 class GroqProvider(AIProvider):
@@ -116,34 +117,34 @@ class GroqProvider(AIProvider):
             "max_tokens": max_tokens
         }
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            try:
-                async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    if response.status_code != 200:
-                        err_b = await response.aread()
-                        logger.warning(f"Groq stream error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')}")
-                        return
+        client = get_shared_client()
+        try:
+            async with client.stream("POST", url, headers=headers, json=payload, timeout=30.0) as response:
+                if response.status_code != 200:
+                    err_b = await response.aread()
+                    logger.warning(f"Groq stream error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')}")
+                    return
 
-                    async for line in response.aiter_lines():
-                        if not line or not line.startswith("data: "):
-                            continue
-                        data_str = line[6:].strip()
-                        if data_str == "[DONE]":
-                            yield {"content": "", "done": True}
-                            return
-                        try:
-                            data = json.loads(data_str)
-                            delta = data.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content", "")
-                            reasoning = delta.get("reasoning_content") or delta.get("reasoning")
-                            if reasoning:
-                                yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
-                            if content:
-                                yield {"content": content, "done": False}
-                        except Exception:
-                            continue
-                    yield {"content": "", "done": True}
-            except Exception as e:
-                logger.warning(f"Groq streaming exception: {e}")
+                async for line in response.aiter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        yield {"content": "", "done": True}
+                        return
+                    try:
+                        data = json.loads(data_str)
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content", "")
+                        reasoning = delta.get("reasoning_content") or delta.get("reasoning")
+                        if reasoning:
+                            yield {"content": "", "reasoning_status": "Asura is reasoning...", "done": False}
+                        if content:
+                            yield {"content": content, "done": False}
+                    except Exception:
+                        continue
+                yield {"content": "", "done": True}
+        except Exception as e:
+            logger.warning(f"Groq streaming exception: {e}")
 
 groq_provider = GroqProvider()

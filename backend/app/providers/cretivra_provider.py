@@ -268,9 +268,6 @@ class OllamaProvider(BaseLLMProvider):
         is_reasoning_model = "deepseek" in model.lower() or "reason" in model.lower()
         if is_reasoning_model:
             yield {"content": "", "done": False, "role": "assistant", "reasoning_status": "Analyzing prompt requirements..."}
-            await asyncio.sleep(0.15)
-            yield {"content": "", "done": False, "role": "assistant", "reasoning_status": "Synthesizing answer structure..."}
-            await asyncio.sleep(0.15)
 
         full_reply = self._generate_intelligent_response(messages, images=images)
 
@@ -284,7 +281,6 @@ class OllamaProvider(BaseLLMProvider):
                 "role": "assistant",
                 "reasoning_status": "Generating response..." if is_reasoning_model and not done else "Completed"
             }
-            await asyncio.sleep(0.015)
 
     def _generate_intelligent_response(
         self,
