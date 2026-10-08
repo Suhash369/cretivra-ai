@@ -84,30 +84,30 @@ export function ProjectsWorkspace({
         <div className="flex items-center gap-2">
           <button
             onClick={fetchProjects}
-            className="p-2 rounded-lg bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors asura-btn-interactive"
+            className="p-2 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
             title="Refresh projects"
           >
             <RotateCw size={15} />
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#06B6D4] text-black text-xs font-semibold hover:bg-[#06B6D4]/90 transition-colors shadow-sm asura-btn-interactive"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-all shadow-xs cursor-pointer"
           >
-            <Plus size={14} />
+            <Plus size={14} strokeWidth={2.5} />
             <span>Create Project</span>
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="relative w-full max-w-sm mb-4">
-        <Search size={13} className="absolute left-3 top-2.5 text-[var(--muted-foreground)]" />
+      <div className="relative w-full max-w-sm mb-5">
+        <Search size={14} className="absolute left-3 top-2.5 text-[var(--muted-foreground)]" />
         <input
           type="text"
           placeholder="Search projects..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-8 pr-3 py-1.5 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-[#06B6D4]/40"
+          className="w-full pl-8 pr-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted-foreground)] focus:outline-none focus:border-cyan-500/50"
         />
       </div>
 
@@ -118,7 +118,7 @@ export function ProjectsWorkspace({
             Loading projects...
           </div>
         ) : filtered.length === 0 ? (
-          <div className="col-span-full p-12 text-center text-xs text-[var(--muted-foreground)] rounded-xl border border-dashed border-[var(--border)]">
+          <div className="col-span-full p-12 text-center text-xs text-[var(--muted-foreground)] rounded-2xl border border-dashed border-[var(--border)]">
             No projects created yet. Create a project to give Asura sandboxed file memory.
           </div>
         ) : (
@@ -126,13 +126,13 @@ export function ProjectsWorkspace({
             <div
               key={p.id}
               onClick={() => onSelectProject && onSelectProject(p.id)}
-              className="p-5 rounded-2xl bg-[var(--surface-secondary)] border border-[var(--border)] hover:border-[#06B6D4]/40 transition-all cursor-pointer flex flex-col justify-between group asura-card-interactive shadow-xs"
+              className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-cyan-500/40 hover:bg-[var(--surface-hover)] transition-all cursor-pointer flex flex-col justify-between group shadow-2xs hover:-translate-y-0.5"
             >
               <div>
-                <div className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[#06B6D4] mb-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--surface-secondary)] border border-[var(--border)] flex items-center justify-center text-cyan-600 dark:text-cyan-400 mb-3">
                   <FolderGit2 size={18} />
                 </div>
-                <h3 className="text-sm font-semibold text-[var(--foreground)] group-hover:text-[#06B6D4] transition-colors truncate">
+                <h3 className="text-sm font-semibold text-[var(--foreground)] group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors truncate">
                   {p.name}
                 </h3>
                 {p.description && (

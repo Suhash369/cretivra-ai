@@ -18,6 +18,8 @@ import {
   Loader2,
   Cpu,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import {
   synthesizeUiApi,
@@ -47,13 +49,13 @@ const BUILDING_PHASES = [
 ];
 
 const CODE_STREAM_SNIPPETS = [
-  '<header className="sticky top-0 z-40 backdrop-blur-md border-b border-slate-800">',
+  '<header className="sticky top-0 z-40 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">',
   'const [filter, setFilter] = useState<Category>("all");',
   '@layer utilities { .glass { backdrop-filter: blur(16px); } }',
   '<div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in">',
   'document.documentElement.classList.toggle("dark", isDarkTheme);',
   'export function KanbanCard({ title, value, stage }: DealProps) {',
-  '<button className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400">',
+  '<button className="px-4 py-2 rounded-xl bg-neutral-900 text-white font-medium">',
   'window.dispatchEvent(new CustomEvent("ui:component:mount", { detail }));',
 ];
 
@@ -83,7 +85,7 @@ export function UIBuildingCanvas({
   const [refinePrompt, setRefinePrompt] = useState('');
   const [isRefining, setIsRefining] = useState(false);
 
-  // Variants
+  // Variants (Modern Cyan, Cyber Violet, Minimalist Emerald)
   const [variants, setVariants] = useState<Array<{ id: string; name: string; theme: string; description: string; html: string }>>([]);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [isLoadingVariants, setIsLoadingVariants] = useState(false);
@@ -196,6 +198,33 @@ export function UIBuildingCanvas({
       if (res.variants && res.variants.length > 0) {
         setVariants(res.variants);
         setSelectedVariantId(res.variants[0].id);
+      } else {
+        // Fallback default 3 theme variants: Modern Cyan, Cyber Violet, Minimalist Emerald
+        const defaultVariants = [
+          {
+            id: 'modern-cyan',
+            name: 'Modern Cyan',
+            theme: 'cyan',
+            description: 'Sleek dark mode with electric cyan accents',
+            html: currentHtml || '',
+          },
+          {
+            id: 'cyber-violet',
+            name: 'Cyber Violet',
+            theme: 'violet',
+            description: 'Neon synthwave styling with ultraviolet highlights',
+            html: (currentHtml || '').replace(/#06b6d4|cyan/g, '#8b5cf6'),
+          },
+          {
+            id: 'minimalist-emerald',
+            name: 'Minimalist Emerald',
+            theme: 'emerald',
+            description: 'Clean monochrome canvas with emerald green accents',
+            html: (currentHtml || '').replace(/#06b6d4|cyan/g, '#10b981'),
+          },
+        ];
+        setVariants(defaultVariants);
+        setSelectedVariantId(defaultVariants[0].id);
       }
     } catch (err) {
       console.error('Failed to load variants:', err);
@@ -217,22 +246,22 @@ export function UIBuildingCanvas({
 
   return (
     <div
-      className={`flex flex-col h-full w-full bg-slate-950 text-slate-100 rounded-xl overflow-hidden border border-slate-800 shadow-xl transition-all relative ${
-        isFullscreen ? 'fixed inset-3 z-50 rounded-2xl shadow-2xl bg-slate-950' : ''
+      className={`flex flex-col h-full w-full bg-[var(--surface)] text-[var(--foreground)] rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm transition-all relative ${
+        isFullscreen ? 'fixed inset-3 z-50 rounded-2xl shadow-2xl bg-[var(--background)]' : ''
       }`}
     >
       {/* Canvas Top Command Bar */}
-      <div className="h-12 px-4 border-b border-slate-800/90 bg-slate-900/90 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-20">
-        {/* Left: Device Frame Switcher */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+      <div className="h-13 px-4 border-b border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-20">
+        {/* Left: Device Frame Switcher (Desktop / Tablet 768 / Mobile 375) */}
+        <div className="flex items-center gap-2">
+          <div className="flex bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl p-0.5">
             <button
               onClick={() => setDevice('desktop')}
               title="Desktop View (Fluid / 1280px)"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 device === 'desktop'
-                  ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
@@ -240,57 +269,57 @@ export function UIBuildingCanvas({
             </button>
             <button
               onClick={() => setDevice('tablet')}
-              title="Tablet View (768px iPad)"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+              title="Tablet View (768px)"
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 device === 'tablet'
-                  ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               <Tablet className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Tablet</span>
+              <span className="hidden sm:inline">Tablet 768</span>
             </button>
             <button
               onClick={() => setDevice('mobile')}
-              title="Mobile View (390px iPhone Frame)"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-all cursor-pointer ${
+              title="Mobile View (375px)"
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 device === 'mobile'
-                  ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               <Smartphone className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Mobile</span>
+              <span className="hidden sm:inline">Mobile 375</span>
             </button>
           </div>
 
-          {/* Zoom Controls */}
-          <div className="hidden lg:flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-[11px] font-mono text-slate-400 gap-1">
-            <button
-              onClick={() => setZoomLevel(75)}
-              className={`px-1.5 py-0.5 rounded cursor-pointer ${zoomLevel === 75 ? 'text-cyan-400 font-bold bg-cyan-950/60' : 'hover:text-white'}`}
-            >
-              75%
-            </button>
-            <span>/</span>
-            <button
-              onClick={() => setZoomLevel(100)}
-              className={`px-1.5 py-0.5 rounded cursor-pointer ${zoomLevel === 100 ? 'text-cyan-400 font-bold bg-cyan-950/60' : 'hover:text-white'}`}
-            >
-              100%
-            </button>
+          {/* Zoom Controls (50% - 150%) */}
+          <div className="hidden lg:flex items-center bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl px-1.5 py-0.5 text-[11px] font-mono text-[var(--muted-foreground)] gap-1">
+            {[50, 75, 100, 125, 150].map((zoom) => (
+              <button
+                key={zoom}
+                onClick={() => setZoomLevel(zoom)}
+                className={`px-1.5 py-0.5 rounded cursor-pointer transition-colors ${
+                  zoomLevel === zoom
+                    ? 'text-[#06b6d4] font-bold bg-[var(--surface)] shadow-xs'
+                    : 'hover:text-[var(--foreground)]'
+                }`}
+              >
+                {zoom}%
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Center: Live Preview vs Code Switcher */}
         <div className="flex items-center gap-2">
-          <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl p-0.5">
             <button
               onClick={() => setActiveTab('preview')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === 'preview'
-                  ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
@@ -298,10 +327,10 @@ export function UIBuildingCanvas({
             </button>
             <button
               onClick={() => setActiveTab('code')}
-              className={`px-3 py-1 text-xs font-semibold rounded-md flex items-center gap-1.5 transition-colors cursor-pointer ${
+              className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer ${
                 activeTab === 'code'
-                  ? 'bg-cyan-600 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs'
+                  : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
               }`}
             >
               <Code className="w-3.5 h-3.5" />
@@ -309,18 +338,20 @@ export function UIBuildingCanvas({
             </button>
           </div>
 
-          {/* Variants Selector */}
+          {/* Theme Variants (Modern Cyan, Cyber Violet, Minimalist Emerald) */}
           {variants.length > 0 ? (
-            <div className="hidden md:flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-0.5 text-xs">
+            <div className="hidden md:flex items-center gap-1 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl p-0.5 text-xs">
               {variants.map((v) => (
                 <button
                   key={v.id}
                   onClick={() => handleSelectVariant(v)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-medium transition-all cursor-pointer ${
-                    selectedVariantId === v.id ? 'bg-violet-600 text-white font-semibold shadow-xs' : 'text-slate-400 hover:text-white'
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
+                    selectedVariantId === v.id
+                      ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 font-semibold shadow-xs'
+                      : 'text-[var(--muted-foreground)] hover:text-[var(--foreground)]'
                   }`}
                 >
-                  {v.name.split(' ')[0]}
+                  {v.name}
                 </button>
               ))}
             </div>
@@ -328,11 +359,11 @@ export function UIBuildingCanvas({
             <button
               onClick={handleLoadVariants}
               disabled={isLoadingVariants || isGenerating}
-              className="hidden md:flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition-all cursor-pointer disabled:opacity-40"
-              title="Generate 3 visual theme variants"
+              className="hidden md:flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-xl border border-[var(--border)] bg-[var(--surface-secondary)] text-[var(--foreground)] hover:bg-[var(--border)]/30 transition-all cursor-pointer disabled:opacity-40"
+              title="Generate Modern Cyan, Cyber Violet, and Minimalist Emerald variants"
             >
-              {isLoadingVariants ? <Loader2 className="w-3 h-3 animate-spin" /> : <Layers className="w-3 h-3 text-violet-400" />}
-              <span>Variants</span>
+              {isLoadingVariants ? <Loader2 className="w-3 h-3 animate-spin" /> : <Layers className="w-3 h-3 text-[#06b6d4]" />}
+              <span>Theme Variants</span>
             </button>
           )}
         </div>
@@ -342,7 +373,7 @@ export function UIBuildingCanvas({
           {activeTab === 'code' && (
             <button
               onClick={handleCopyCode}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold transition-colors cursor-pointer"
               title="Copy code to clipboard"
             >
               {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -354,7 +385,7 @@ export function UIBuildingCanvas({
             <button
               onClick={() => setIframeKey((k) => k + 1)}
               title="Reload preview"
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
@@ -364,7 +395,7 @@ export function UIBuildingCanvas({
             <button
               onClick={handleDownload}
               title="Download HTML package"
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -374,7 +405,7 @@ export function UIBuildingCanvas({
             <button
               onClick={handleOpenNewTab}
               title="Open prototype in full browser tab"
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
@@ -383,56 +414,56 @@ export function UIBuildingCanvas({
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
             title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Expand to Fullscreen Canvas'}
-            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-[var(--surface-secondary)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
           >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-rose-400" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-rose-500" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
       {/* Main Canvas Stage */}
-      <div className="flex-1 overflow-auto relative flex items-center justify-center p-3 md:p-6 bg-[#070b14] cv-blueprint-grid select-none">
+      <div className="flex-1 overflow-auto relative flex items-center justify-center p-3 md:p-6 bg-[var(--background)] cv-blueprint-grid select-none">
         {/* Device Frame Viewport Container */}
         <div
           style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'center center' }}
           className={`transition-all duration-300 relative flex flex-col shadow-2xl ${
             device === 'desktop'
-              ? 'w-full h-full max-w-6xl rounded-xl border border-slate-800/90 bg-slate-950 overflow-hidden'
+              ? 'w-full h-full max-w-6xl rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden'
               : device === 'tablet'
-              ? 'w-[768px] h-[85vh] rounded-3xl border-8 border-slate-800 bg-slate-950 overflow-hidden shadow-cyan-950/20'
-              : 'w-[390px] h-[82vh] rounded-[48px] border-[10px] border-slate-800 bg-slate-950 overflow-hidden shadow-cyan-950/30 ring-1 ring-slate-700/50'
+              ? 'w-[768px] h-[85vh] rounded-3xl border-8 border-neutral-800 bg-neutral-950 overflow-hidden shadow-2xl'
+              : 'w-[375px] h-[82vh] rounded-[48px] border-[10px] border-neutral-800 bg-neutral-950 overflow-hidden shadow-2xl ring-1 ring-neutral-700/50'
           }`}
         >
           {/* Desktop Browser Bar Header */}
           {device === 'desktop' && (
-            <div className="h-8 bg-slate-900 border-b border-slate-800 px-3 flex items-center gap-2 shrink-0 select-none">
+            <div className="h-8 bg-[var(--surface-secondary)] border-b border-[var(--border)] px-3 flex items-center gap-2 shrink-0 select-none">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block" />
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
               </div>
-              <div className="flex-1 max-w-sm mx-auto h-5 rounded-md bg-slate-950 border border-slate-800/80 px-2 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+              <div className="flex-1 max-w-sm mx-auto h-5 rounded-md bg-[var(--surface)] border border-[var(--border)] px-2 flex items-center justify-between text-[10px] text-[var(--muted-foreground)] font-mono">
                 <span className="truncate flex items-center gap-1">
-                  <span className="text-emerald-400 font-bold">https://</span>
-                  <span>app.prototype.creativra.internal</span>
+                  <span className="text-emerald-500 font-bold">https://</span>
+                  <span>app.prototype.cretivra.internal</span>
                 </span>
-                <span className="text-[9px] text-cyan-400 font-bold">100% SECURE</span>
+                <span className="text-[9px] text-[#06b6d4] font-bold">100% SECURE</span>
               </div>
             </div>
           )}
 
           {/* Mobile Dynamic Island Notch */}
           {device === 'mobile' && (
-            <div className="h-7 bg-slate-950 flex items-center justify-center shrink-0 relative z-30">
-              <div className="w-24 h-4 rounded-full bg-black border border-slate-800 flex items-center justify-between px-2">
-                <span className="w-2 h-2 rounded-full bg-slate-900 border border-slate-800" />
+            <div className="h-7 bg-neutral-950 flex items-center justify-center shrink-0 relative z-30">
+              <div className="w-24 h-4 rounded-full bg-black border border-neutral-800 flex items-center justify-between px-2">
+                <span className="w-2 h-2 rounded-full bg-neutral-900 border border-neutral-800" />
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-900/60" />
               </div>
             </div>
           )}
 
           {/* Active Canvas Content */}
-          <div className="flex-1 w-full h-full relative overflow-hidden bg-slate-950 flex flex-col">
+          <div className="flex-1 w-full h-full relative overflow-hidden bg-white flex flex-col">
             {/* 1. Exact Stitch AI Building Animation Screen */}
             {isGenerating ? (
               <div className="absolute inset-0 z-30 flex flex-col bg-[#080d1a] overflow-hidden">
@@ -562,15 +593,15 @@ export function UIBuildingCanvas({
                 />
               </div>
             ) : activeTab === 'code' && currentHtml ? (
-              <div className="w-full h-full overflow-auto p-4 font-mono text-xs text-cyan-300 bg-[#060911] selection:bg-cyan-900/60">
+              <div className="w-full h-full overflow-auto p-4 font-mono text-xs text-neutral-800 dark:text-neutral-200 bg-white dark:bg-neutral-950 selection:bg-cyan-500/30">
                 <pre>{currentHtml}</pre>
               </div>
             ) : !isGenerating && !currentHtml ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 gap-3">
-                <Cpu className="w-12 h-12 stroke-[1] text-cyan-500/40 animate-pulse" />
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[var(--muted-foreground)] gap-3 bg-[var(--surface)]">
+                <Cpu className="w-12 h-12 stroke-[1] text-[#06b6d4]/60 animate-pulse" />
                 <div>
-                  <h4 className="font-semibold text-sm text-slate-300">No Application Synthesized Yet</h4>
-                  <p className="text-xs text-slate-500 max-w-xs mt-1">
+                  <h4 className="font-semibold text-sm text-[var(--foreground)]">No Application Synthesized Yet</h4>
+                  <p className="text-xs text-[var(--muted-foreground)] max-w-xs mt-1">
                     Enter a prompt below to launch autonomous UI synthesis with live responsive preview.
                   </p>
                 </div>
@@ -581,24 +612,24 @@ export function UIBuildingCanvas({
       </div>
 
       {/* Interactive Prompt Refinement Bar at Bottom of Canvas */}
-      <div className="p-3 border-t border-slate-800/90 bg-slate-900/90 backdrop-blur-md shrink-0 z-20">
+      <div className="p-3.5 border-t border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md shrink-0 z-20">
         <form onSubmit={handleRefineSubmit} className="flex items-center gap-2 max-w-4xl mx-auto">
           <div className="flex-1 relative flex items-center">
-            <Sparkles className="w-4 h-4 text-cyan-400 absolute left-3 pointer-events-none" />
+            <Sparkles className="w-4 h-4 text-[#06b6d4] absolute left-3 pointer-events-none" />
             <input
               type="text"
               value={refinePrompt}
               onChange={(e) => setRefinePrompt(e.target.value)}
-              placeholder="Describe UI refinements (e.g. 'Add dark sidebar with analytics', 'Change theme to neon violet')..."
+              placeholder="Describe UI refinements (e.g. 'Add dark sidebar with analytics', 'Change theme to Modern Cyan')..."
               disabled={isRefining || isBuilding}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-400/80 focus:ring-1 focus:ring-cyan-500/30 transition-all disabled:opacity-40"
+              className="w-full pl-9 pr-4 py-2 rounded-xl bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--foreground)] placeholder-[var(--muted-foreground)] text-xs focus:outline-none focus:border-[#06b6d4] focus:ring-1 focus:ring-[#06b6d4]/30 transition-all disabled:opacity-40"
             />
           </div>
 
           <button
             type="submit"
             disabled={!refinePrompt.trim() || isRefining || isBuilding}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs transition-all shadow-md shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 font-semibold text-xs transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
           >
             {isRefining ? (
               <>

@@ -236,23 +236,23 @@ export function AgentWorkspace({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#060911] overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[var(--background)] text-[var(--foreground)] overflow-hidden transition-colors duration-200">
       {/* 1. Sub-Header: Task Title & Status */}
-      <div className="h-12 border-b border-[#232D45] bg-[#0D121F]/90 px-4 flex items-center justify-between z-10 shrink-0">
+      <div className="h-12 border-b border-[var(--border)] bg-[var(--surface)] px-4 flex items-center justify-between z-10 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={onBackToHome}
-            className="p-1.5 rounded-lg text-[#8891A8] hover:text-[#E7EAF4] hover:bg-[#151C2E] transition-colors"
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
             title="Return to Home Command Center"
           >
             <ArrowLeft size={16} />
           </button>
           <div className="flex items-center gap-2 truncate">
-            <span className="text-xs font-semibold text-[#8891A8] uppercase tracking-wider">
+            <span className="text-xs font-semibold text-[var(--muted-foreground)] uppercase tracking-wider">
               Goal
             </span>
-            <span className="text-xs text-[#232D45]">•</span>
-            <span className="text-xs font-medium text-[#E7EAF4] truncate max-w-[340px] sm:max-w-[500px]">
+            <span className="text-xs text-[var(--border)]">•</span>
+            <span className="text-xs font-medium text-[var(--foreground)] truncate max-w-[340px] sm:max-w-[500px]">
               {runDetail?.prompt || 'Autonomous Task'}
             </span>
           </div>
@@ -262,7 +262,7 @@ export function AgentWorkspace({
           {runDetail?.status === 'RUNNING' && (
             <button
               onClick={handleStopRun}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F43F5E]/10 border border-[#F43F5E]/30 text-[#F43F5E] text-xs font-medium hover:bg-[#F43F5E]/20 transition-all asura-btn-interactive"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-500 text-xs font-medium hover:bg-rose-500/20 transition-all cursor-pointer"
             >
               <Square size={12} fill="currentColor" />
               <span>Cancel Task</span>
@@ -270,12 +270,12 @@ export function AgentWorkspace({
           )}
 
           <span
-            className={`text-[10px] px-2.5 py-0.5 rounded-full font-medium tracking-wide ${
+            className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
               runDetail?.status === 'COMPLETED'
-                ? 'bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/40'
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40'
                 : runDetail?.status === 'FAILED' || runDetail?.status === 'CANCELLED'
-                ? 'bg-[#F43F5E]/15 text-[#F43F5E] border border-[#F43F5E]/40'
-                : 'bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/40 animate-pulse'
+                ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/40'
+                : 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/40 animate-pulse'
             }`}
           >
             {runDetail?.status || 'INITIALIZING'}
@@ -283,7 +283,7 @@ export function AgentWorkspace({
         </div>
       </div>
 
-      {/* 2. Main 3-Panel Dynamic Workspace Layout */}
+      {/* 2. Main Split Dynamic Workspace Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Rail: Agent Execution Plan */}
         <AgentPlanRail
@@ -293,30 +293,30 @@ export function AgentWorkspace({
         />
 
         {/* Center: Live Workspace / Preview / Activity */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#060911] overflow-y-auto">
-          {/* Human Approval Alert Banner (Part 43) */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--background)] overflow-y-auto">
+          {/* Human Approval Alert Banner (Section G) */}
           {pendingApproval && (
-            <div className="m-4 p-4 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/40 text-[#E7EAF4] animate-enter">
+            <div className="m-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-[var(--foreground)] animate-fade shadow-sm">
               <div className="flex items-start gap-3">
-                <AlertTriangle size={20} className="text-[#F59E0B] shrink-0 mt-0.5" />
+                <AlertTriangle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-[#F59E0B] uppercase tracking-wider">
-                    Human Approval Required
+                  <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    Human Approval Required (HITL)
                   </div>
-                  <div className="text-sm font-medium text-[#E7EAF4] mt-1">
-                    {pendingApproval.description || 'Asura requests permission to execute a high-risk operation.'}
+                  <div className="text-sm font-medium text-[var(--foreground)] mt-1">
+                    {pendingApproval.description || 'Asura requests permission to execute an elevated operation.'}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <button
                       onClick={() => handleApproveAction('approve')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F59E0B] text-[#060911] text-xs font-bold hover:bg-[#F59E0B]/90 transition-colors asura-btn-interactive shadow-sm"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity shadow-xs cursor-pointer"
                     >
                       <Check size={14} strokeWidth={2.5} />
                       <span>Approve</span>
                     </button>
                     <button
                       onClick={() => handleApproveAction('deny')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#151C2E] border border-[#232D45] text-[#E7EAF4] text-xs font-medium hover:text-[#F43F5E] hover:border-[#F43F5E]/40 transition-colors asura-btn-interactive"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted-foreground)] text-xs font-medium hover:text-rose-500 hover:border-rose-500/40 transition-colors cursor-pointer"
                     >
                       <X size={14} />
                       <span>Reject</span>
@@ -327,28 +327,28 @@ export function AgentWorkspace({
             </div>
           )}
 
-          {/* If an HTML / Website preview is active, render the browser-like frame (Part 41) */}
+          {/* If an HTML / Website preview is active, render the browser-like frame */}
           {previewHtml ? (
-            <div className="flex-1 flex flex-col m-4 rounded-xl border border-[#232D45] bg-[#0D121F] overflow-hidden shadow-xl animate-enter">
+            <div className="flex-1 flex flex-col m-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden shadow-lg animate-fade">
               {/* Browser Chrome Header */}
-              <div className="h-10 px-3 bg-[#151C2E] border-b border-[#232D45] flex items-center justify-between">
+              <div className="h-10 px-3 bg-[var(--surface-secondary)] border-b border-[var(--border)] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#F43F5E]/70" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]/70" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#10B981]/70" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500/70" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
                   </div>
-                  <span className="text-xs text-[#8891A8] font-mono ml-2 truncate max-w-[200px]">
+                  <span className="text-xs text-[var(--muted-foreground)] font-mono ml-2 truncate max-w-[200px]">
                     {selectedArtifact?.name || 'live-preview.html'}
                   </span>
                 </div>
 
                 {/* Viewport controls: Desktop, Tablet, Mobile */}
-                <div className="flex items-center gap-1 bg-[#060911] p-0.5 rounded-lg border border-[#232D45]">
+                <div className="flex items-center gap-1 bg-[var(--surface)] p-0.5 rounded-lg border border-[var(--border)]">
                   <button
                     onClick={() => setPreviewViewport('desktop')}
-                    className={`p-1 rounded ${
-                      previewViewport === 'desktop' ? 'bg-[#151C2E] text-[#06B6D4]' : 'text-[#8891A8]'
+                    className={`p-1 rounded cursor-pointer ${
+                      previewViewport === 'desktop' ? 'bg-[var(--surface-secondary)] text-cyan-500' : 'text-[var(--muted-foreground)]'
                     }`}
                     title="Desktop (100%)"
                   >
@@ -356,8 +356,8 @@ export function AgentWorkspace({
                   </button>
                   <button
                     onClick={() => setPreviewViewport('tablet')}
-                    className={`p-1 rounded ${
-                      previewViewport === 'tablet' ? 'bg-[#151C2E] text-[#06B6D4]' : 'text-[#8891A8]'
+                    className={`p-1 rounded cursor-pointer ${
+                      previewViewport === 'tablet' ? 'bg-[var(--surface-secondary)] text-cyan-500' : 'text-[var(--muted-foreground)]'
                     }`}
                     title="Tablet (768px)"
                   >
@@ -365,8 +365,8 @@ export function AgentWorkspace({
                   </button>
                   <button
                     onClick={() => setPreviewViewport('mobile')}
-                    className={`p-1 rounded ${
-                      previewViewport === 'mobile' ? 'bg-[#151C2E] text-[#06B6D4]' : 'text-[#8891A8]'
+                    className={`p-1 rounded cursor-pointer ${
+                      previewViewport === 'mobile' ? 'bg-[var(--surface-secondary)] text-cyan-500' : 'text-[var(--muted-foreground)]'
                     }`}
                     title="Mobile (375px)"
                   >
@@ -376,9 +376,9 @@ export function AgentWorkspace({
               </div>
 
               {/* Iframe Viewport Container */}
-              <div className="flex-1 flex justify-center bg-[#060911] p-4 overflow-auto">
+              <div className="flex-1 flex justify-center bg-[var(--background)] p-4 overflow-auto">
                 <div
-                  className="h-full bg-white rounded-lg shadow-2xl overflow-hidden transition-all duration-300"
+                  className="h-full bg-white rounded-xl shadow-xl overflow-hidden transition-all duration-300"
                   style={{
                     width:
                       previewViewport === 'desktop'
@@ -409,7 +409,7 @@ export function AgentWorkspace({
           )}
         </div>
 
-        {/* Right Rail: Artifacts & Deliverables (Expands contextually) */}
+        {/* Right Rail: Artifacts & Deliverables */}
         {artifacts.length > 0 && (
           <ArtifactGallery
             artifacts={artifacts}

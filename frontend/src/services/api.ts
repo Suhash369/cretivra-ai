@@ -611,5 +611,99 @@ export async function transcribeAudioApi(blob: Blob): Promise<{ text: string }> 
   return res.json();
 }
 
+export interface SubscriptionStatus {
+  is_subscribed: boolean;
+  subscription_expires_at: string | null;
+  days_left: number;
+  plan_name: string;
+  is_expired: boolean;
+}
+
+export async function getSubscriptionStatusApi(): Promise<SubscriptionStatus> {
+  const res = await fetch(`${API_BASE}/payments/status`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    return {
+      is_subscribed: false,
+      subscription_expires_at: null,
+      days_left: 0,
+      plan_name: 'Free / Unpaid',
+      is_expired: true,
+    };
+  }
+  return res.json();
+}
+
+export async function createUpiOrderApi(planName: string = '15-Day Pass'): Promise<{
+  order_id: string;
+  amount_inr: number;
+  currency: string;
+  upi_id: string;
+  merchant_name: string;
+  upi_intent_url: string;
+  qr_code_url: string;
+  duration_days: number;
+  user_email: string;
+}> {
+  const res = await fetch(`${API_BASE}/payments/create-upi-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({ plan_name: planName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to initialize payment');
+  }
+  return res.json();
+}
+
+export async function checkOrderStatusApi(orderId: string): Promise<{
+  order_id: string;
+  status: string;
+  is_subscribed: boolean;
+  days_left: number;
+  subscription_expires_at: string | null;
+}> {
+  const res = await fetch(`${API_BASE}/payments/check-order/${orderId}`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (!res.ok) {
+    throw new Error('Failed to check order status');
+  }
+  return res.json();
+}
+
+export async function verifyUpiPaymentApi(payload: {
+  order_id: string;
+  utr_number: string;
+  amount?: number;
+}): Promise<{
+  success: boolean;
+  message: string;
+  order_id: string;
+  is_subscribed: boolean;
+  days_left: number;
+  subscription_expires_at: string | null;
+}> {
+  const res = await fetch(`${API_BASE}/payments/verify-upi`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Payment verification failed');
+  }
+  return res.json();
+}
+
+
 
 
