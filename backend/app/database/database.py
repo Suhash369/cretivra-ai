@@ -6,20 +6,22 @@ from app.core.config import settings
 logger = logging.getLogger("uvicorn.error")
 
 db_url = (settings.DATABASE_URL or "").strip().strip("'").strip('"')
-# Normalize postgres:// to postgresql:// for SQLAlchemy compatibility
-if db_url.startswith("postgres://"):
+if not db_url:
+    db_url = "sqlite:///./cretivra.db"
+elif db_url.startswith("postgres://"):
+    # Normalize postgres:// to postgresql:// for SQLAlchemy compatibility
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 def _build_engine(target_url: str):
-    if target_url.startswith("sqlite"):
+    if not target_url or target_url.startswith("sqlite"):
         return create_engine(
-            target_url,
+            target_url or "sqlite:///./cretivra.db",
             connect_args={"check_same_thread": False},
             pool_pre_ping=True
         )
-    # PostgreSQL / Supabase configuration with robust keepalives
+    # PostgreSQL / Supabase configuration with robust keepalives and fast connect timeout
     connect_args = {
-        "connect_timeout": 10,
+        "connect_timeout": 5,
         "sslmode": "require",
         "keepalives": 1,
         "keepalives_idle": 10,
@@ -31,7 +33,7 @@ def _build_engine(target_url: str):
         connect_args=connect_args,
         pool_pre_ping=True,
         pool_recycle=300,
-        pool_timeout=10,
+        pool_timeout=5,
         pool_size=5,
         max_overflow=5
     )
@@ -135,7 +137,7 @@ def init_db():
 
     # For PostgreSQL / Supabase: verify connection with retry
     connected = False
-    for attempt in range(1, 4):
+    for attempt in range(1, 3):
         try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
@@ -144,7 +146,7 @@ def init_db():
             break
         except Exception as ping_err:
             logger.warning(f"Database ping attempt {attempt} failed: {ping_err}")
-            time.sleep(1)
+            time.sleep(0.5)
 
     if connected:
         try:
@@ -153,6 +155,7 @@ def init_db():
         except Exception as schema_err:
             logger.warning(f"Schema check notice (non-fatal): {schema_err}")
     else:
-        logger.error("Could not connect to PostgreSQL after 3 attempts.")
+        logger.error("Could not connect to PostgreSQL after 2 attempts. Falling back to local SQLite.")
+        fallback_to_sqlite()
 
 

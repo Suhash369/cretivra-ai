@@ -264,7 +264,7 @@ class WebSearchService:
             f"{clean_q} {year_str}"
         ]
 
-    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str], target_query: str) -> float:
+    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str], target_query: str = "") -> float:
         """
         Multi-factor source scoring formula per Requirement 10:
         finalScore = (
@@ -289,11 +289,11 @@ class WebSearchService:
 
         if is_gov:
             authority_score = 100.0
-            item["source_tier"] = "Official Government Source"
+            item["source_tier"] = "Official Government Portal"
             item["source_type"] = "official"
         elif is_reputable:
             authority_score = 90.0
-            item["source_tier"] = "High-Quality News (Tier 2)"
+            item["source_tier"] = "Reputable News Organization"
             item["source_type"] = "news"
         elif is_secondary:
             authority_score = 70.0
@@ -359,6 +359,10 @@ class WebSearchService:
             final_score -= 60.0
         elif "tamil nadu" in q_clean and "kerala" in t_clean and "tamil nadu" not in t_clean:
             final_score -= 60.0
+
+        # Obsolete data penalty: if published >= 3 years ago, penalize composite score heavily
+        if found_years and max(int(y) for y in found_years) <= current_year - 3:
+            final_score -= 50.0
 
         item["score"] = round(final_score, 1)
         return final_score

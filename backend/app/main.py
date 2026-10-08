@@ -148,10 +148,17 @@ if __name__ == "__main__":
         port = 10000
     print(f"Starting Asura AI server on 0.0.0.0:{port}...", flush=True)
     logger.info(f"Starting Asura AI server on 0.0.0.0:{port}...")
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        proxy_headers=True,
-        forwarded_allow_ips="*"
-    )
+    try:
+        workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
+    except (ValueError, TypeError):
+        workers = 1
+    app_target = "app.main:app" if workers > 1 else app
+    run_kwargs = {
+        "host": "0.0.0.0",
+        "port": port,
+        "proxy_headers": True,
+        "forwarded_allow_ips": "*"
+    }
+    if workers > 1:
+        run_kwargs["workers"] = workers
+    uvicorn.run(app_target, **run_kwargs)
