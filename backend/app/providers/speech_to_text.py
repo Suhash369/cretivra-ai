@@ -65,7 +65,7 @@ class SpeechToTextProvider(BaseSTTProvider):
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             res = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={clean_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={clean_key}",
                 json=payload
             )
             if res.status_code == 200:

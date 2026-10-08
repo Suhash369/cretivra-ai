@@ -44,7 +44,7 @@ async def analyze_vision_endpoint(
 
     full_reply = ""
     try:
-        async for chunk in gemini_provider.stream_chat("gemini-2.5-flash", messages, images=images):
+        async for chunk in gemini_provider.stream_chat("gemini-2.5-flash-image", messages, images=images):
             full_reply += chunk.get("content", "")
     except Exception as e:
         full_reply = "Asura is analyzing your image and detected visual circuit/diagram components."

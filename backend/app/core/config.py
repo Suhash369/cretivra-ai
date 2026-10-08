@@ -49,6 +49,7 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "model": "openai/gpt-oss-20b",
         "fallbacks": [
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
             {"provider": "gemini", "model": "gemini-flash-lite-latest"},
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
         ]
@@ -57,8 +58,9 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "provider": "groq",
         "model": "openai/gpt-oss-120b",
         "fallbacks": [
-            {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "groq", "model": "openai/gpt-oss-20b"},
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
+            {"provider": "gemini", "model": "gemini-flash-lite-latest"},
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
         ]
     },
@@ -66,8 +68,9 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "provider": "openrouter",
         "model": "liquid/lfm-2.5-2.6b:free",
         "fallbacks": [
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
+            {"provider": "groq", "model": "openai/gpt-oss-20b"},
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
-            {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"}
         ]
     },
@@ -76,23 +79,25 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
         "model": "qwen/qwen3.8-27b",
         "fallbacks": [
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"},
-            {"provider": "groq", "model": "openai/gpt-oss-120b"},
-            {"provider": "gemini", "model": "gemini-2.5-flash"}
+            {"provider": "groq", "model": "openai/gpt-oss-20b"},
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"}
         ]
     },
     "vision": {
         "provider": "gemini",
         "model": "gemini-2.5-flash-image",
         "fallbacks": [
-            {"provider": "gemini", "model": "gemini-2.5-flash"},
-            {"provider": "groq", "model": "openai/gpt-oss-120b"}
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
+            {"provider": "gemini", "model": "gemini-flash-lite-latest"},
+            {"provider": "groq", "model": "openai/gpt-oss-20b"}
         ]
     },
     "creative": {
         "provider": "gemini",
         "model": "gemini-2.5-flash-image",
         "fallbacks": [
-            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
+            {"provider": "groq", "model": "openai/gpt-oss-20b"},
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
         ]
     }
@@ -114,6 +119,8 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = Field(default_factory=_default_openrouter_key)
     
     UPLOAD_DIR: str = Field(default="./uploads")
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
+    ENABLE_MOCK_OLLAMA: bool = Field(default=False)
     
     # Asura Feature Flags & Capabilities
     WEB_SEARCH_ENABLED: bool = Field(default=True)

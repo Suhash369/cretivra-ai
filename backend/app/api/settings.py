@@ -1,9 +1,10 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.database import get_db
-from app.database.models import SystemSettingDB, ConversationDB, MessageDB, AttachmentDB
+from app.database.models import SystemSettingDB, ConversationDB, MessageDB, AttachmentDB, UserDB
 from app.schemas.settings import SystemSettingsSchema
+from app.api.auth import get_optional_user
 from app.core.config import settings
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
@@ -14,7 +15,7 @@ def get_settings(db: Session = Depends(get_db)):
     setting_dict: dict[str, Any] = {str(s.key): str(s.value) for s in db_settings}
 
     return {
-        "ollama_base_url": setting_dict.get("ollama_base_url", settings.OLLAMA_BASE_URL),
+        "ollama_base_url": setting_dict.get("ollama_base_url", getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434")),
         "default_model": setting_dict.get("default_model", settings.DEFAULT_MODEL),
         "temperature": float(setting_dict.get("temperature", settings.TEMPERATURE)),
         "max_context_messages": int(setting_dict.get("max_context_messages", settings.MAX_CONTEXT_MESSAGES)),
@@ -39,9 +40,20 @@ def update_settings(payload: SystemSettingsSchema, db: Session = Depends(get_db)
     return get_settings(db)
 
 @router.post("/clear-conversations")
-def clear_all_conversations(db: Session = Depends(get_db)):
-    db.query(AttachmentDB).delete()
-    db.query(MessageDB).delete()
-    db.query(ConversationDB).delete()
+def clear_all_conversations(
+    current_user: Optional[UserDB] = Depends(get_optional_user),
+    db: Session = Depends(get_db)
+):
+    if current_user:
+        user_convs = db.query(ConversationDB).filter(ConversationDB.user_id == current_user.id).all()
+        conv_ids = [c.id for c in user_convs]
+        if conv_ids:
+            db.query(AttachmentDB).filter(AttachmentDB.conversation_id.in_(conv_ids)).delete(synchronize_session=False)
+            db.query(MessageDB).filter(MessageDB.conversation_id.in_(conv_ids)).delete(synchronize_session=False)
+            db.query(ConversationDB).filter(ConversationDB.id.in_(conv_ids)).delete(synchronize_session=False)
+    else:
+        db.query(AttachmentDB).delete(synchronize_session=False)
+        db.query(MessageDB).delete(synchronize_session=False)
+        db.query(ConversationDB).delete(synchronize_session=False)
     db.commit()
     return {"message": "All conversations cleared successfully."}

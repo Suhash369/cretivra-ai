@@ -32,24 +32,12 @@ class ModelService:
             pass
 
         # Return sanitized models where provider is pure Cretivra Asura Neural Core
-        # Filter strictly to the 6 official Asura modes so UI never sees legacy or third-party IDs
-        official_modes = [
-            "asura-balanced",
-            "asura-fast",
-            "asura-reasoning",
-            "asura-coding",
-            "asura-vision",
-            "asura-creative"
-        ]
         sanitized_models: List[CretivraModel] = []
-        for mid in official_modes:
-            m = registry.get_model(mid)
-            if m:
-                m_copy = m.model_copy()
-                m_copy.underlying_model = m.id
-                m_copy.provider = "cretivra_neural_core"
-                m_copy.is_available = True
-                sanitized_models.append(m_copy)
+        for m in registry.list_models():
+            m_copy = m.model_copy()
+            m_copy.provider = "cretivra_neural_core"
+            m_copy.is_available = True
+            sanitized_models.append(m_copy)
 
         return sanitized_models
 

@@ -91,7 +91,7 @@ class AsuraResponseOrchestrator:
                 img_markdown = f"![{decision.image_generation_prompt or 'Generated visual'}]({gen_res['url']})\n\n"
                 answer_text = f"Here is your visual creation for **{decision.image_generation_prompt or query}**:\n\n{img_markdown}"
             else:
-                answer_text = "Asura can't generate that image right now."
+                answer_text = "Asura couldn't generate the image right now."
 
             related_qs = [
                 f"Create a variation of this {decision.image_generation_prompt or 'image'}",
@@ -109,7 +109,7 @@ class AsuraResponseOrchestrator:
                 meta["developer_diagnostics"] = {
                     "provider": "image_generation",
                     "tools": tools_executed,
-                    "routing": decision.dict()
+                    "routing": decision.model_dump()
                 }
 
             structured_resp = AsuraStructuredResponse(
@@ -126,7 +126,7 @@ class AsuraResponseOrchestrator:
                 metadata=meta
             )
 
-            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': answer_text, 'full_content': answer_text, 'done': True, 'structured_response': structured_resp.dict(), 'sources': [], 'images': [], 'generated_image': generated_image_obj.dict() if generated_image_obj else None})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': answer_text, 'full_content': answer_text, 'done': True, 'structured_response': structured_resp.model_dump(), 'sources': [], 'images': [], 'generated_image': generated_image_obj.model_dump() if generated_image_obj else None})}\n\n"
             if db and conversation_id and answer_text:
                 try:
                     from app.services.conversation_service import conversation_service
@@ -170,7 +170,7 @@ class AsuraResponseOrchestrator:
 
         # Yield images immediately so UI renders them without waiting for LLM completion
         if images:
-            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.dict() for img in images], 'sources': [s.dict() for s in sources]})}\n\n"
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.model_dump() for img in images], 'sources': [s.model_dump() for s in sources]})}\n\n"
 
         # 4. Context Formulation
         today_str = datetime.now().strftime("%B %d, %Y")
@@ -219,7 +219,7 @@ class AsuraResponseOrchestrator:
                     full_text += delta
 
                 status_event = "Asura is preparing your response..." if not delta and not reasoning else None
-                yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images]})}\n\n"
+                yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.model_dump() for s in sources], 'images': [img.model_dump() for img in images]})}\n\n"
         except Exception as e:
             logger.error(f"Error in Asura model orchestration: {e}")
             err_notice = "\n\nAsura is temporarily unable to process this request. Please try again."
@@ -240,7 +240,7 @@ class AsuraResponseOrchestrator:
         if is_dev_mode:
             metadata["developer_diagnostics"] = {
                 "tools": tools_executed,
-                "routing": decision.dict(),
+                "routing": decision.model_dump(),
                 "sources_count": len(sources),
                 "images_count": len(images)
             }
@@ -262,7 +262,7 @@ class AsuraResponseOrchestrator:
         )
 
         # 7. Final structured response event
-        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': cleaned_answer, 'done': True, 'structured_response': structured_response.dict(), 'sources': [s.dict() for s in sources], 'images': [img.dict() for img in images], 'related_questions': related_qs})}\n\n"
+        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': cleaned_answer, 'done': True, 'structured_response': structured_response.model_dump(), 'sources': [s.model_dump() for s in sources], 'images': [img.model_dump() for img in images], 'related_questions': related_qs})}\n\n"
 
         # Persist assistant response to DB
         from app.services.conversation_service import conversation_service

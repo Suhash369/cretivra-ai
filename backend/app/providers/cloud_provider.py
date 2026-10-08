@@ -671,9 +671,9 @@ class CloudLLMProvider:
         
         # Multi-model fallback chain for Gemini (fastest verified models first)
         gemini_model_candidates = [
-            "gemini-flash-lite-latest",
             "gemini-3.1-flash-lite",
-            "gemini-3.5-flash",
+            "gemini-flash-lite-latest",
+            "gemini-3-flash-preview",
             "gemini-flash-latest"
         ]
 
@@ -735,7 +735,7 @@ class CloudLLMProvider:
                 "parts": [{"text": "\n\n".join(system_instructions)}]
             }
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             for gem_model in gemini_model_candidates:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:streamGenerateContent?alt=sse&key={clean_key}"
                 try:

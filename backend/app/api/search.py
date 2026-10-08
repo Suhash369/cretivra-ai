@@ -29,7 +29,7 @@ async def web_search_endpoint(
     return {
         "success": res.success,
         "query": res.query_used,
-        "sources": [s.dict() for s in res.sources],
+        "sources": [s.model_dump() for s in res.sources],
         "context": res.context_text,
         "error": res.error
     }
