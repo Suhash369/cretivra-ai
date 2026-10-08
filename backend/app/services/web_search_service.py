@@ -51,8 +51,9 @@ def normalize_source_url(url: str) -> str:
 # Authority Tier Definitions
 OFFICIAL_GOV_DOMAINS = [
     ".gov.in", ".gov", ".nic.in", "eci.gov.in", "sansad.in", "india.gov.in",
-    "tn.gov.in", "karnataka.gov.in", "maharashtra.gov.in", "delhi.gov.in",
-    "pmindia.gov.in", "presidentofindia.gov.in", "parliamentofindia.nic.in"
+    "tn.gov.in", "kerala.gov.in", "karnataka.gov.in", "maharashtra.gov.in", "delhi.gov.in",
+    "pmindia.gov.in", "presidentofindia.gov.in", "parliamentofindia.nic.in",
+    "rbi.org.in", "sci.gov.in", "supremecourtofindia.nic.in", "election.gov.in"
 ]
 
 REPUTABLE_NEWS_DOMAINS = [
@@ -390,11 +391,58 @@ class WebSearchService:
             "checked_date": current_date_str
         }
 
-        # Cache with category-specific TTL
+        # Cache with category-specific TTL (capped at 5 minutes / 300s for real-time / current affairs)
         ttl = classification.cache_ttl_seconds
+        if classification.is_real_time or classification.category in ["breaking_news", "political_leadership", "market_price"]:
+            ttl = min(ttl, 300)
         self._CACHE[cache_key] = (now_ts, ttl, res_data)
 
         return res_data
+
+    async def search_web(self, query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Provider-independent web search service returning normalized results per Requirement 6:
+        {
+          "query": "...",
+          "results": [
+            {
+              "title": "...",
+              "url": "...",
+              "snippet": "...",
+              "publishedAt": "...",
+              "source": "...",
+              "relevanceScore": 0.95
+            }
+          ]
+        }
+        """
+        max_results = (options or {}).get("max_results", 6)
+        raw_res = await self.search_with_sources(query, max_results=max_results)
+        sources = raw_res.get("sources", [])
+        
+        normalized_results = []
+        for s in sources:
+            score_val = float(s.get("score", 0))
+            norm_score = round(min(max(score_val / 100.0, 0.5), 1.0), 2)
+            normalized_results.append({
+                "title": s.get("title", ""),
+                "url": s.get("url", ""),
+                "snippet": s.get("snippet", ""),
+                "publishedAt": s.get("date", ""),
+                "source": s.get("domain", "") or s.get("tier", "web"),
+                "relevanceScore": norm_score
+            })
+            
+        return {
+            "query": query,
+            "results": normalized_results,
+            "context_text": raw_res.get("context_text", ""),
+            "search_failed": raw_res.get("search_failed", False),
+            "checked_date": raw_res.get("checked_date", "")
+        }
+
+    async def searchWeb(self, query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return await self.search_web(query, options)
 
     async def search(self, query: str, max_results: int = 6) -> str:
         """Backward-compatible search returning text string."""
@@ -628,3 +676,9 @@ class WebSearchService:
         return search_res.get("sources", [])
 
 web_search_service = WebSearchService()
+
+async def search_web(query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return await web_search_service.search_web(query, options)
+
+async def searchWeb(query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    return await web_search_service.search_web(query, options)

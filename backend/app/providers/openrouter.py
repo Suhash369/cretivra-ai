@@ -133,17 +133,33 @@ class OpenRouterProvider(AIProvider):
         temp = (options or {}).get("temperature", settings.TEMPERATURE)
         max_tokens = (options or {}).get("max_tokens", 4096)
 
+        is_search = bool((options or {}).get("is_search") or (options or {}).get("web_search"))
+
         async with httpx.AsyncClient(timeout=45.0) as client:
             for target_model in candidate_models:
-                payload = {
+                payload: Dict[str, Any] = {
                     "model": target_model,
                     "messages": formatted_messages,
                     "stream": True,
                     "temperature": temp,
                     "max_tokens": max_tokens
                 }
+                if is_search:
+                    # Enable OpenRouter web search plugin and tool
+                    payload["plugins"] = [{"id": "web"}]
+                    payload["tools"] = [{"type": "openrouter:web_search"}]
+
                 try:
                     async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as response:
+                        # Fallback if model doesn't support the web plugin
+                        if response.status_code == 400 and is_search:
+                            logger.info(f"OpenRouter {target_model} tool error, falling back to pre-grounded prompt")
+                            fallback_payload = dict(payload)
+                            fallback_payload.pop("plugins", None)
+                            fallback_payload.pop("tools", None)
+                            async with client.stream("POST", "https://openrouter.ai/api/v1/chat/completions", headers=headers, json=fallback_payload) as fb_response:
+                                if fb_response.status_code == 200:
+                                    response = fb_response
                         if response.status_code == 200:
                             yielded_any = False
                             async for line in response.aiter_lines():

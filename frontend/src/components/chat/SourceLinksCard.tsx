@@ -82,13 +82,13 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
             <Globe className="w-3.5 h-3.5 stroke-[2.2]" />
           </div>
           <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 tracking-tight">
-            Sources &amp; Citations
+            Web researched
           </span>
           <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-100/90 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 border border-cyan-300/60 dark:border-cyan-700/60">
-            {activeSources.length} {activeSources.length === 1 ? 'source' : 'sources'}
+            Sources: {activeSources.length}
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
-            ✓ Verified from recent sources
+            Updated: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         </div>
 
