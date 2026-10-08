@@ -181,6 +181,19 @@ def is_anaphoric_follow_up(query: str) -> bool:
     ]
     return any(re.search(pat, q_lower) for pat in pronoun_patterns)
 
+def extract_concise_search_keywords(prompt: str) -> str:
+    """Extracts clean, concise keywords for search engines from potentially long prompts."""
+    cleaned = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', prompt)
+    cleaned = re.sub(r'https?://[^\s]+', '', cleaned)
+    cleaned = re.sub(r'^\s*(?:no|nope|incorrect|actually|please\s+note|correction|wait)[,.:;\s]+', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', cleaned, flags=re.IGNORECASE)
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip() and not line.strip().startswith(("#", "-", "*", ">", "|"))]
+    first_line = lines[0] if lines else cleaned
+    words = first_line.split()
+    if len(words) > 10:
+        return " ".join(words[:10])
+    return first_line[:80].strip() or prompt[:80].strip()
+
 def query_router(
     query: str,
     attachments: Optional[List[Dict[str, Any]]] = None,
@@ -220,6 +233,34 @@ def query_router(
             "requires_images": False,
             "logical_mode": "Asura Balanced",
             "reasoning": "Document analysis requested",
+            "current_date": current_date_str,
+            "timezone": time_info["timezone"]
+        }
+
+    # 1B. USER CORRECTION / FACTUAL CONTEXT IN-PROMPT
+    USER_CORRECTION_PATTERNS = [
+        r"^\s*(?:no|nope|incorrect|wrong|that\s+is\s+(?:incorrect|wrong|false)|actually|wait|correction|not\s+true|sorry\s+but)\b",
+        r"\b(?:is\s+incorrect|date\s+is\s+incorrect|this\s+is\s+incorrect|you\s+are\s+wrong|this\s+is\s+wrong)\b",
+        r"\b(?:authoritative\s+date\s+is|correct\s+information|verified\s+information)\b",
+        r"\b(?:for\s+your\s+database|in\s+your\s+database|this\s+is\s+the\s+correct|correct\s+statement)\b"
+    ]
+    has_in_prompt_evidence = (
+        ("http://" in q_lower or "https://" in q_lower or ("[" in q and "](" in q)) and len(q) > 120
+    ) or (
+        "\n" in q and any(k in q_lower for k in ["correct information", "official end date", "closing ceremony", "verified information", "authoritative date"])
+    )
+    is_user_correction = any(re.search(p, q_lower) for p in USER_CORRECTION_PATTERNS)
+
+    if is_user_correction or has_in_prompt_evidence:
+        return {
+            "intent": QueryIntent.REASONING.value,
+            "detected_intent": QueryIntent.REASONING,
+            "requires_web": False,
+            "force_web_search": False,
+            "requires_current_information": False,
+            "requires_images": False,
+            "logical_mode": "Asura Reasoning",
+            "reasoning": "User provided factual correction / verified source context in prompt; evaluating with reasoned synthesis",
             "current_date": current_date_str,
             "timezone": time_info["timezone"]
         }
@@ -311,11 +352,12 @@ def query_router(
 
     if detected:
         # Generate 3-5 targeted search queries
+        clean_search_base = extract_concise_search_keywords(q)
         search_queries = [
-            f"{q} {current_month} {current_year}".strip(),
-            f"{q} official {current_year}".strip(),
-            f"{q} latest news {current_year}".strip(),
-            q
+            f"{clean_search_base} {current_month} {current_year}".strip(),
+            f"{clean_search_base} official {current_year}".strip(),
+            f"{clean_search_base} latest news {current_year}".strip(),
+            clean_search_base
         ]
         return {
             "intent": detected.value,

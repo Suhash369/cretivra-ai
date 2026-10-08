@@ -134,14 +134,22 @@ class WebSearchService:
         clean_q = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', q, flags=re.IGNORECASE)
         return clean_q.strip() or q
 
-    def generate_targeted_queries(self, query: str, server_dt: datetime) -> List[str]:
+    def generate_targeted_queries(self, query: str, server_dt: Any = None) -> List[str]:
         """
         Generates 3-5 targeted queries for important real-time / current questions per Requirement 6 & 7:
         - Incorporates current month & year (e.g., October 2026)
         - Targets official government domains and office keywords
         - Avoids single-keyword noisy queries
         """
-        clean_q = self.normalize_query(query)
+        if not isinstance(server_dt, datetime):
+            server_dt = datetime.now()
+
+        from app.core.router import extract_concise_search_keywords
+        if len(query) > 80 or "\n" in query or "http" in query or "[" in query:
+            clean_q = extract_concise_search_keywords(query)
+        else:
+            clean_q = self.normalize_query(query)
+
         month_year = server_dt.strftime("%B %Y")
         year_str = str(server_dt.year)
         q_lower = clean_q.lower()

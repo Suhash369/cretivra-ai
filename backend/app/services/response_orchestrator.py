@@ -1,3 +1,4 @@
+import re
 import json
 import time
 import asyncio
@@ -225,7 +226,17 @@ class AsuraResponseOrchestrator:
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.model_dump() for img in images], 'sources': [s.model_dump() for s in sources]})}\n\n"
 
         # 4. Failure Handling per Requirement 26
-        if is_real_time_query and web_search_failed:
+        user_provided_context = (
+            len(clean_query) > 120 or
+            "http://" in clean_query or "https://" in clean_query or
+            ("[" in clean_query and "](" in clean_query) or
+            any(re.search(p, clean_query.lower()) for p in [
+                r"^\s*(?:no|nope|incorrect|wrong|actually|wait)\b",
+                r"\b(?:is\s+incorrect|verified\s+information|correct\s+information|authoritative|closing\s+ceremony)\b"
+            ])
+        )
+
+        if is_real_time_query and web_search_failed and not user_provided_context:
             failure_msg = "I couldn't retrieve fresh web information right now, so I can't reliably verify the current answer. Please try again in a moment."
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': failure_msg, 'full_content': failure_msg, 'done': True, 'sources': [], 'images': []})}\n\n"
             if db and conversation_id:
@@ -253,9 +264,13 @@ class AsuraResponseOrchestrator:
             elif v_status == "conflicting":
                 verification_guidance = "Notice: Sources present conflicting information. Explicitly mention the conflict rather than choosing one silently."
 
+            context_guidance = ""
+            if user_provided_context:
+                context_guidance = "\nNOTE: The user has provided verified context, citations, or a factual correction in their message. Carefully evaluate their provided information and sources, acknowledge valid corrections, and respond authoritatively and respectfully."
+
             system_instruction = (
                 f"You are Asura, developed by Cretivra.\n\n"
-                f"For current and real-time questions, retrieved web evidence is the primary source of truth.\n"
+                f"For current and real-time questions, retrieved web evidence and authoritative user-provided context are the primary sources of truth.\n"
                 f"Do not use pretrained knowledge to override fresh evidence.\n"
                 f"Do not invent facts.\n"
                 f"Do not treat search snippets as automatically authoritative.\n"
@@ -271,7 +286,7 @@ class AsuraResponseOrchestrator:
                 f"Answer only after evidence evaluation.\n\n"
                 f"Current server date:\n{current_date_str}\n\n"
                 f"Timezone:\nAsia/Kolkata\n\n"
-                f"VERIFICATION STATUS:\n{v_status} ({verification_guidance})\n\n"
+                f"VERIFICATION STATUS:\n{v_status} ({verification_guidance}){context_guidance}\n\n"
                 f"FORMAT GUIDELINE FOR CURRENT QUESTIONS (Requirement 36):\n"
                 f"State the verified answer clearly with date anchor:\n"
                 f"## [Current Office / Subject Title]\n"
@@ -283,8 +298,8 @@ class AsuraResponseOrchestrator:
                 f"✓ Cross-checked\n"
                 f"✓ Current-source research performed\n\n"
                 f"USER QUERY:\n{clean_query}\n\n"
-                f"WEB SOURCES:\n{normalized_results_block}\n\n"
-                f"Now answer the user directly and authoritatively based ONLY on the evidence above."
+                f"WEB SOURCES:\n{normalized_results_block or 'In-prompt context and verified sources provided by user'}\n\n"
+                f"Now answer the user directly and authoritatively based on the verified evidence."
             )
             user_prompt = clean_query
         else:
