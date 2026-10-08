@@ -15,6 +15,7 @@ from app.services.presentation_service import presentation_service
 from app.services.pdf_service import pdf_service
 from app.services.web_search_service import web_search_service
 from app.services.visual_intelligence_service import visual_intelligence_service, VisualIntentType
+from app.services.query_classifier import query_classifier, QueryClassification
 from app.providers.cloud_provider import clean_ai_response
 from app.core.logging import logger
 
@@ -421,10 +422,15 @@ class ChatService:
 
         # 5. Check if query requires real-time intelligence cache retrieval or deep research
         live_web_context = ""
+        now_dt = datetime.now()
+        current_year = now_dt.year
+        today_str = now_dt.strftime("%B %d, %Y")
+        query_classification = query_classifier.classify(user_message_content, server_time=now_dt)
+
         is_search_active = bool(
             web_search is True
+            or query_classification.search_required
             or (system_prompt and "[REAL-TIME SEARCH]" in system_prompt)
-            or web_search_service.should_search_web(user_message_content)
         )
         is_deep_research_active = bool(
             deep_research is True
@@ -435,22 +441,30 @@ class ChatService:
         last_reasoning_status = "Thinking with deep reasoning..." if is_deep_research_active else None
         cache_items = []
         sources = []
+        search_failed_flag = False
 
         if is_search_active:
             clean_q = web_search_service.normalize_query(user_message_content)
-            cache_items = [
-                f"Neural cache lookup for \"{clean_q[:28]}\"",
-                "Verified multi-source intelligence index",
-                "Temporal grounding synchronized (2026)",
-                "Synthesizing cached intelligence insights"
-            ]
-            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': 'Asura is checking current information...', 'cache_items': cache_items, 'sources': []})}\n\n"
+            yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': '🔎 Searching the web...', 'cache_items': [f'Neural search query: \"{clean_q[:28]}\"', 'Scanning verified multi-tier intelligence sources...', f'Temporal verification active ({today_str})'], 'sources': []})}\n\n"
+            
             search_data = await web_search_service.search_with_sources(user_message_content)
-            if search_data and search_data.get("context_text"):
+            if search_data and search_data.get("context_text") and not search_data.get("search_failed"):
                 live_web_context = search_data["context_text"]
                 sources = search_data.get("sources", [])
-                last_reasoning_status = "Asura verified current information"
+                verified_count = len(sources)
+                consensus_conf = search_data.get("consensus", {}).get("confidence", "HIGH")
+                last_reasoning_status = f"✓ Verified from {verified_count} recent sources"
+                cache_items = [
+                    f"✓ Verified {verified_count} authoritative sources",
+                    f"Temporal grounding: as of {today_str}",
+                    f"Source consensus: {consensus_conf}",
+                    "Synthesizing verified factual response"
+                ]
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': cache_items, 'sources': sources})}\n\n"
+            else:
+                search_failed_flag = True
+                last_reasoning_status = "Live web search unavailable"
+                yield f"data: {json.dumps({'conversation_id': conversation_id, 'model_id': model_id, 'content': '', 'full_content': '', 'done': False, 'reasoning_status': last_reasoning_status, 'cache_items': ['Live search unavailable - providing labeled background'], 'sources': []})}\n\n"
         elif is_deep_research_active:
             cache_items = [
                 "Deep chain-of-thought activation",
@@ -478,7 +492,6 @@ class ChatService:
                 )
 
         # Formulate system prompt with current live date and directives
-        today_str = datetime.now().strftime("%B %d, %Y")
         if system_prompt and system_prompt.strip() != settings.SYSTEM_PROMPT.strip():
             base_sys = f"{settings.SYSTEM_PROMPT}\n\n[Contextual Directive]: {system_prompt}"
         else:
@@ -552,8 +565,8 @@ class ChatService:
 
         sys_content = (
             f"{base_sys}\n\n"
-            f"[TEMPORAL CONTEXT]: Today is {today_str} (Year 2026). "
-            f"You possess real-time intelligence and verified facts. Never state that your knowledge cuts off in 2023 or 2024. Refer to your real-time verified intelligence.\n"
+            f"[TEMPORAL CONTEXT]: Today's verified server date is {today_str} (Year {current_year}). "
+            f"You possess live temporal continuity and verified real-time intelligence. Under no circumstances should you ever state that your knowledge cuts off in 2023 or 2024. Synthesize facts directly from live verified sources."
             f"{deep_directive}"
             f"{vis_directive}"
             f"{diagram_directive}"
@@ -572,32 +585,61 @@ class ChatService:
                 "content": m.content
             })
 
-        # Inject real-time cache context into the latest user prompt cleanly
+        # Ensure the active user message is always present
+        if not recent_history or recent_history[-1].role != "user" or recent_history[-1].content != user_message_content:
+            formatted_messages.append({
+                "role": "user",
+                "content": user_message_content
+            })
+
+        # Inject real-time cache context or search failure handling into user prompt
         if live_web_context:
             user_orig_q = formatted_messages[-1]["content"]
-            is_news = bool(re.search(r"\b(news|affairs|headlines|world|today|breaking|happening|global|latest)\b", str(user_orig_q), re.IGNORECASE))
-            is_whereabouts = bool(re.search(r"\b(where is|where are|currently|today|now|location|schedule|travel|visit|whereabouts)\b", str(user_orig_q), re.IGNORECASE))
+            category = query_classification.category
 
-            if is_whereabouts:
+            if category == "political_leadership":
                 directive = (
-                    "Directive: Answer the question factually and accurately using the verified real-time cache above. "
-                    "CRITICAL: Always prioritize the most recent chronological updates, latest dates (such as September 10-11, 2026), "
-                    "official travel departures, and overseas visits over previous days' activities or older routines. "
-                    "Clearly state the exact current location and the reason for the visit."
+                    f"[CURRENT AFFAIRS & POLITICAL STATUS DIRECTIVE]:\n"
+                    f"1. Direct Answer First: State directly and authoritatively in your very first sentence: "
+                    f"'As of {today_str}, [Name/Leader] is the [Position].'\n"
+                    f"2. Current Administration & Tenure: Provide a concise, factual explanation of their political party, "
+                    f"when they assumed office, and key recent developments in {current_year}.\n"
+                    f"3. Temporal Distinction (Historical Fact vs Current Status): If search results or historical background "
+                    f"mention previous officeholders (such as former CMs/PMs), clearly distinguish between their past tenure and "
+                    f"the current status in {current_year}. Never confuse the year someone assumed office with the current year.\n"
+                    f"4. Source Consensus: If sources agree, deliver a confident, direct answer. If sources currently report differing "
+                    f"details, explicitly state: 'Sources currently report differing details on this point:' and explain the conflict with dates.\n"
+                    f"5. Mandatory Sources Section: Conclude with a structured '### Sources & References' section listing each cited "
+                    f"source with a clickable markdown link [Article Title](URL), publication date, and source organization.\n"
+                    f"6. Never state 'I can't verify that information' or cite training cutoffs when verified sources are provided above."
                 )
-            elif is_news:
+            elif category == "market_price":
                 directive = (
-                    "Directive: Provide a comprehensive, highly organized World News & Current Affairs briefing based on the verified intelligence cache above. "
-                    "Structure your answer with clear section headings (such as Top Global Headlines, Geopolitics & Diplomacy, Global Economy & Markets, Regional Developments). "
-                    "Detail the verified events, key figures, dates, and significance clearly. Never state that your knowledge is outdated."
+                    f"[REAL-TIME MARKET PRICE DIRECTIVE]:\n"
+                    f"1. Direct Answer First: State the latest verified price or rate as of {today_str}.\n"
+                    f"2. Provide relevant market context (currency, unit, exchange, recent trends in {current_year}).\n"
+                    f"3. Include a structured '### Sources & References' section with clickable markdown links."
+                )
+            elif category == "breaking_news":
+                directive = (
+                    f"[WORLD NEWS & RECENT DEVELOPMENTS DIRECTIVE]:\n"
+                    f"1. Provide a well-organized briefing based on the latest verified sources as of {today_str}.\n"
+                    f"2. Structure your answer with clear section headings, dates, and significance.\n"
+                    f"3. Include a structured '### Sources & References' section with clickable markdown links."
                 )
             else:
-                directive = "Directive: Answer the question directly, comprehensively, and factually using the latest verified cache facts above."
+                directive = (
+                    f"[FACTUAL GROUNDING DIRECTIVE]:\n"
+                    f"1. Direct Answer First: State the current verified status as of {today_str}.\n"
+                    f"2. Explain context with concise, factual details.\n"
+                    f"3. Distinguish historical facts from current status.\n"
+                    f"4. Include a structured '### Sources & References' section with clickable markdown links [Title](URL)."
+                )
 
             citation_guidance = (
                 "\n\n[Grounding & Citations Directive]: "
-                "The intelligence cache above provides numbered sources with URLs. "
-                "When referencing facts or figures, cite them clearly using markdown citations (e.g. [1](URL) or [Domain](URL)). "
+                "The intelligence cache above provides numbered sources with URLs and dates. "
+                "Cite them using markdown citations (e.g. [1](URL) or [Domain](URL)). "
                 "At the end of your answer, include a '### Sources & References' section with clickable markdown links [Title](URL) for each cited source."
             )
 
@@ -606,6 +648,16 @@ class ChatService:
                 f"[Verified Real-Time Intelligence Cache as of {today_str}]:\n{live_web_context}\n\n"
                 f"{directive}"
                 f"{citation_guidance}"
+            )
+        elif search_failed_flag:
+            user_orig_q = formatted_messages[-1]["content"]
+            formatted_messages[-1]["content"] = (
+                f"Question: {user_orig_q}\n\n"
+                f"[SYSTEM NOTICE]: Live web search was attempted but is temporarily unreachable.\n\n"
+                f"Directive: State clearly in your response: "
+                f"'I couldn't verify the current status because the live web search is temporarily unavailable.' "
+                f"You may then provide general background information, clearly labeled: "
+                f"'Background information — not verified as current.'"
             )
 
         # Append document attachments to prompt context if present

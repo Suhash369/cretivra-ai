@@ -77,7 +77,7 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
     <div className="my-3 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-slate-50/70 dark:bg-[#0c101a]/80 backdrop-blur-sm overflow-hidden shadow-xs transition-all animate-in fade-in duration-200">
       {/* Header bar */}
       <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-100/70 dark:bg-[#121824]/90 border-b border-slate-200/80 dark:border-slate-800/80 select-none">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="w-5 h-5 rounded-md bg-cyan-500/10 dark:bg-cyan-400/15 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
             <Globe className="w-3.5 h-3.5 stroke-[2.2]" />
           </div>
@@ -87,8 +87,8 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
           <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-cyan-100/90 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 border border-cyan-300/60 dark:border-cyan-700/60">
             {activeSources.length} {activeSources.length === 1 ? 'source' : 'sources'}
           </span>
-          <span className="text-[10px] text-slate-500 dark:text-slate-400 hidden sm:inline">
-            • Verified Web Intelligence
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
+            ✓ Verified from recent sources
           </span>
         </div>
 

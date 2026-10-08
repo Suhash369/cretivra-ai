@@ -14,8 +14,8 @@ def _default_db_url() -> str:
 
 def _default_groq_key() -> str:
     env_val = os.getenv("GROQ_API_KEY")
-    if env_val:
-        return env_val
+    if env_val and not env_val.strip().startswith("your_") and not env_val.strip().endswith("_here"):
+        return env_val.strip()
     p1 = "gs" + "k_" + "Tbq7"
     p2 = "BkAmp8oOtHaZg"
     p3 = "TM2WGdyb3FYgJi3gzr7y6"
@@ -24,7 +24,7 @@ def _default_groq_key() -> str:
 
 def _default_gemini_key() -> str:
     env_val = os.getenv("GEMINI_API_KEY")
-    if env_val and not env_val.strip().startswith("your_"):
+    if env_val and not env_val.strip().startswith("your_") and not env_val.strip().endswith("_here"):
         return env_val.strip()
     g1 = "AQ.Ab8RN"
     g2 = "6IBSQPe8Rf"
@@ -32,10 +32,16 @@ def _default_gemini_key() -> str:
     g4 = "S9_Dw3lPWPMPDXw"
     return g1 + g2 + g3 + g4
 
+def _default_tavily_key() -> str:
+    env_val = os.getenv("TAVILY_API_KEY")
+    if env_val and not env_val.strip().startswith("your_") and not env_val.strip().endswith("_here"):
+        return env_val.strip()
+    return "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"
+
 def _default_openrouter_key() -> str:
     env_val = os.getenv("OPENROUTER_API_KEY")
-    if env_val:
-        return env_val
+    if env_val and not env_val.strip().startswith("your_") and not env_val.strip().endswith("_here"):
+        return env_val.strip()
     or1 = "sk-or-v1-"
     or2 = "05cf766c916cc287dc6e0c34a81d11c3"
     or3 = "ce534682acfeb45b24ac15e0c71e5ffc"
@@ -169,10 +175,23 @@ class Settings(BaseSettings):
         mode="before"
     )
     @classmethod
-    def ensure_string(cls, v: Any) -> str:
+    def ensure_string(cls, v: Any, info) -> str:
         if v is None:
             return ""
-        return str(v)
+        s = str(v).strip()
+        if s.startswith("your_") or s.endswith("_here"):
+            # If default factory exists for this field, return default
+            field_name = info.field_name
+            if field_name == "TAVILY_API_KEY":
+                return _default_tavily_key()
+            elif field_name == "GROQ_API_KEY":
+                return _default_groq_key()
+            elif field_name == "GEMINI_API_KEY":
+                return _default_gemini_key()
+            elif field_name == "OPENROUTER_API_KEY":
+                return _default_openrouter_key()
+            return ""
+        return s
 
     model_config = SettingsConfigDict(
         env_file=".env",

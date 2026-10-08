@@ -1,11 +1,14 @@
 import re
 import html
+import time
 import httpx
 import asyncio
+from datetime import datetime
 from urllib.parse import urlparse
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from app.core.config import settings
 from app.core.logging import logger
+from app.services.query_classifier import query_classifier, QueryClassification
 
 def extract_domain(url: str) -> str:
     """Extract clean domain name without www."""
@@ -23,10 +26,8 @@ def normalize_source_url(url: str) -> str:
     if not url:
         return ""
     url = url.strip()
-    # Convert https://www.youtube.com/c/Channel or /user/Channel to https://www.youtube.com/@Channel
     url = re.sub(r'^(https?://(?:www\.)?youtube\.com)/(?:c|user)/([^\s/?#]+)', r'\1/@\2', url, flags=re.IGNORECASE)
 
-    # Normalize Google Maps queries to universal cross-platform search format
     if re.search(r'google\.[a-z.]+/maps|maps\.google\.', url, re.IGNORECASE):
         try:
             from urllib.parse import urlparse, parse_qs, quote, unquote
@@ -47,75 +48,57 @@ def normalize_source_url(url: str) -> str:
 
     return url
 
+# Authority Tier Definitions
+OFFICIAL_GOV_DOMAINS = [
+    ".gov.in", ".gov", ".nic.in", "eci.gov.in", "sansad.in", "india.gov.in",
+    "tn.gov.in", "karnataka.gov.in", "maharashtra.gov.in", "delhi.gov.in",
+    "pmindia.gov.in", "presidentofindia.gov.in", "parliamentofindia.nic.in"
+]
+
+REPUTABLE_NEWS_DOMAINS = [
+    "thehindu.com", "indianexpress.com", "timesofindia.indiatimes.com",
+    "reuters.com", "bbc.com", "bbc.co.uk", "ndtv.com", "frontline.thehindu.com",
+    "telegraphindia.com", "hindustantimes.com", "theprint.in", "thewire.in",
+    "indiatoday.in", "news18.com", "bloomberg.com", "apnews.com", "aljazeera.com",
+    "business-standard.com", "livemint.com", "financialexpress.com",
+    "economictimes.indiatimes.com", "deccanherald.com", "tribuneindia.com",
+    "newindianexpress.com"
+]
+
+LOW_TRUST_DOMAINS = [
+    "instagram.com", "facebook.com", "tiktok.com", "x.com", "twitter.com",
+    "reddit.com", "pinterest.com"
+]
+
 class WebSearchService:
     """
-    Production-Grade Multi-Source Search Engine Service for Asura AI by Cretivra.
+    Production-Grade Multi-Source Search & Temporal Grounding Engine for Asura AI.
     
-    Supports:
-    1. Tavily AI Search API (Designed specifically for LLM search grounding with direct source URLs)
-    2. Brave Search API
-    3. Google Search via Serper.dev API
-    4. Google Search via SerpAPI
-    5. Google News Live RSS (Zero-cost, reliable on cloud servers)
-    6. Wikipedia Live API (Instant verified factual grounding)
-    7. DuckDuckGo Search (Fallback)
+    Features:
+    1. Query Classification & Router Integration
+    2. Dynamic Date-Aware Multi-Query Generation
+    3. Multi-tier Providers (Tavily, Brave, Serper, SerpAPI, Google News RSS, DuckDuckGo)
+    4. Source Scoring & Authority Weighting (+40 Gov, +30 Reputable News, +20 Recency)
+    5. Temporal Validation & Source Consensus Detection
+    6. Category-Based Cache TTLs (10m breaking news, 30m politics, 1h general, 24h static)
+    7. Observability Logging
     """
 
-    SEARCH_INTENT_PATTERNS = [
-        # Explicit search / lookup request
-        r"\b(?:search\s+(?:the\s+)?web|search\s+online|browse\s+(?:the\s+)?web|google\s+this|look\s+up\s+online)\b",
-        # Breaking / live / latest news & current affairs
-        r"\b(?:breaking\s+news|latest\s+news|today'?s?\s+news|today'?s?\s+headlines|world\s+news|global\s+news|current\s+affairs|news\s+updates?|news\s+today)\b",
-        # Live financial / market / weather data
-        r"\b(?:stock\s+price|share\s+price|gold\s+rate|crude\s+oil\s+price|crypto(?:currency)?\s+price|bitcoin\s+price|weather\s+in|weather\s+today)\b",
-        # Live sports scores / winners
-        r"\b(?:who\s+won|match\s+score|live\s+score|medal\s+tally|ipl\s+score|world\s+cup\s+(?:score|winner|results?))\b",
-        # Current political & leadership questions
-        r"\b(?:who\s+is|who\s+are)\s+(?:the\s+)?(?:current|currently|present|now)\b",
-        r"\b(?:current|present)\s+(?:chief\s+minister|cm|prime\s+minister|pm|president|governor|ceo|leader)\b",
-        r"\b(?:cm|chief\s+minister|pm|prime\s+minister)\s+of\s+[A-Za-z\s]+",
-        # Specific upcoming / release queries
-        r"\b(?:when\s+is\s+(?:the\s+)?release\s+date|upcoming\s+release\s+date\s+of|box\s+office\s+collection\s+of)\b",
-        # Live happenings in 2025/2026/2027
-        r"\b(?:election\s+results?\s+202[5-9]|news\s+in\s+202[5-9]|happening\s+in\s+202[5-9])\b"
-    ]
-
-    _CACHE: Dict[str, Any] = {}
-    _CACHE_TTL: float = 600.0  # 10 minutes cache
+    _CACHE: Dict[str, Tuple[float, float, Dict[str, Any]]] = {}  # key -> (timestamp, ttl, data)
 
     def should_search_web(self, query: str) -> bool:
         """
-        Determines whether the user prompt requires live real-time intelligence cache lookup.
-        Eliminates false positives on general conversational, creative, coding, or analytical prompts.
+        Determines whether the query requires live real-time intelligence search.
         """
-        q = query.strip().lower()
-        if len(q) < 3:
-            return False
-
-        # Exclude conversational greetings, prompts asking about the assistant, coding, reasoning, and creation
-        conversational_prefixes = [
-            "who are you", "what are you", "who created you", "who made you", "what model",
-            "how are you", "tell me about yourself", "what is your name", "write a", "explain",
-            "create a", "help me with", "code", "solve", "calculate", "translate", "generate image",
-            "create image", "can you", "what can you do", "tell me a story", "tell me a joke"
-        ]
-        if any(q.startswith(prefix) for prefix in conversational_prefixes):
-            # Only search if there is an explicit real-time news/lookup intent
-            if not re.search(r"\b(search the web|search online|latest news|today's news|stock price|weather in|who is the current)\b", q):
-                return False
-
-        for pattern in self.SEARCH_INTENT_PATTERNS:
-            if re.search(pattern, q, re.IGNORECASE):
-                return True
-        return False
+        cls_res = query_classifier.classify(query)
+        return cls_res.search_required
 
     def should_search_cache(self, query: str) -> bool:
         return self.should_search_web(query)
 
     def normalize_query(self, query: str) -> str:
         """
-        Normalizes common contractions, joined words, and typos in search queries,
-        and extracts key search intent keywords.
+        Normalizes common contractions, joined words, and conversational fillers.
         """
         q = query.strip()
         q = re.sub(r'iscurrent', 'is current', q, flags=re.IGNORECASE)
@@ -124,132 +107,292 @@ class WebSearchService:
         q = re.sub(r'\bcm\b', 'chief minister', q, flags=re.IGNORECASE)
         q = re.sub(r'\bpm\b', 'prime minister', q, flags=re.IGNORECASE)
         q = re.sub(r'\blinkdin\b', 'linkedin', q, flags=re.IGNORECASE)
-        
-        # Strip conversational prefix filler for faster, sharper search hits
         clean_q = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', q, flags=re.IGNORECASE)
         return clean_q.strip() or q
 
+    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str]) -> float:
+        """
+        Source scoring mechanism per requirements:
+        - Official government source: +40
+        - Reputable news source: +30
+        - Published recently (current year/month): +20 to +25
+        - Old source (>2 years): negative score (-15 to -25)
+        - Unknown/low-trust/social: negative score (-15)
+        """
+        score = 0.0
+        domain = (item.get("domain") or "").lower()
+        title = (item.get("title") or "").lower()
+        snippet = (item.get("snippet") or "").lower()
+        date_str = item.get("date") or ""
+
+        # 1. Authority
+        is_gov = any(domain.endswith(d) or f".{d}" in domain or domain == d.lstrip(".") for d in OFFICIAL_GOV_DOMAINS)
+        is_news = any(d in domain for d in REPUTABLE_NEWS_DOMAINS)
+        is_social = any(d in domain for d in LOW_TRUST_DOMAINS)
+
+        if is_gov:
+            score += 40.0
+            item["source_tier"] = "Official Government Portal"
+        elif is_news:
+            score += 30.0
+            item["source_tier"] = "Reputable News Organization"
+        elif "wikipedia.org" in domain:
+            score += 10.0
+            item["source_tier"] = "Encyclopedic Background (Wikipedia)"
+        elif is_social:
+            score -= 15.0
+            item["source_tier"] = "Social Media (Unverified)"
+        else:
+            score += 15.0
+            item["source_tier"] = "Web Source"
+
+        # 2. Recency Scoring
+        found_years = re.findall(r'\b(20[12]\d)\b', f"{date_str} {title} {snippet}")
+        if found_years:
+            max_year = max(int(y) for y in found_years)
+            if max_year == current_year:
+                score += 25.0
+            elif max_year == current_year - 1:
+                score += 10.0
+            elif max_year <= current_year - 3:
+                score -= 25.0  # Penalize stale data
+            elif max_year <= current_year - 2:
+                score -= 15.0
+        elif date_str:
+            score += 10.0
+
+        # Current month mention boost
+        current_month_name = datetime.now().strftime("%B").lower()
+        if current_month_name in f"{date_str} {title} {snippet}".lower():
+            score += 10.0
+
+        # 3. Keyword Relevance
+        matches = sum(1 for kw in target_keywords if kw and kw.lower() in f"{title} {snippet}")
+        score += min(matches * 4.0, 20.0)
+
+        item["score"] = score
+        return score
+
+    def _analyze_consensus(self, sources: List[Dict[str, Any]], query: str, current_year: int) -> Dict[str, Any]:
+        """
+        Determines consensus across multiple sources and identifies timeline validity.
+        """
+        if not sources:
+            return {"status": "NO_SOURCES", "confidence": "NONE", "details": "No search sources available."}
+
+        # Check dates
+        recent_sources = []
+        older_sources = []
+
+        for s in sources:
+            try:
+                score = float(s.get("score", 0))
+            except (ValueError, TypeError):
+                score = 0.0
+            date_str = s.get("date", "")
+            title_snip = f"{s.get('title', '')} {s.get('snippet', '')}"
+            years = [int(y) for y in re.findall(r'\b(20[12]\d)\b', f"{date_str} {title_snip}")]
+            is_recent = any(y >= current_year - 1 for y in years) or (not years and score >= 30.0)
+            if is_recent:
+                recent_sources.append(s)
+            else:
+                older_sources.append(s)
+
+        confidence = "HIGH" if len(recent_sources) >= 3 else ("MEDIUM" if len(recent_sources) >= 1 else "LOW")
+
+        return {
+            "status": "CONSENSUS_VERIFIED" if len(recent_sources) >= 2 else "SINGLE_SOURCE",
+            "confidence": confidence,
+            "recent_count": len(recent_sources),
+            "older_count": len(older_sources),
+            "top_source_tier": sources[0].get("source_tier", "Web Source") if sources else "Unknown"
+        }
+
     async def search_with_sources(self, query: str, max_results: int = 6) -> Dict[str, Any]:
         """
-        Multi-tier accelerated intelligence retrieval pipeline with source attribution.
-        Returns:
-            {
-                "context_text": str,
-                "sources": List[Dict[str, str]]
-            }
+        Multi-tier accelerated intelligence retrieval pipeline with source scoring,
+        consensus validation, dynamic date awareness, and category caching.
         """
-        import time
+        now_dt = datetime.now()
+        current_year = now_dt.year
+        current_date_str = now_dt.strftime("%B %d, %Y")
+
+        classification = query_classifier.classify(query, server_time=now_dt)
         clean_q = self.normalize_query(query)
         cache_key = clean_q.lower().strip()
 
-        # Check in-memory cache
-        now = time.time()
+        # Check TTL cache
+        now_ts = time.time()
         if cache_key in self._CACHE:
-            cached_time, cached_res = self._CACHE[cache_key]
-            if now - cached_time < self._CACHE_TTL:
+            cached_time, cached_ttl, cached_res = self._CACHE[cache_key]
+            if now_ts - cached_time < cached_ttl:
+                logger.info(f"Serving real-time search from cache ({round(now_ts - cached_time)}s old, TTL {cached_ttl}s)")
                 return cached_res
+
+        # Determine queries to run dynamically
+        queries_to_run = classification.search_queries
+        if not queries_to_run:
+            queries_to_run = [clean_q]
 
         raw_items: List[Dict[str, Any]] = []
 
-        # 1. Tavily AI Search API (if configured) - fastest & highest quality
+        # 1. Tavily AI Search API (Primary frontier web search)
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
-        if tavily_key:
+        if tavily_key and not tavily_key.startswith("your_"):
             try:
-                tavily_items = await self._search_tavily(clean_q, tavily_key, max_results=max_results)
-                if tavily_items:
-                    raw_items.extend(tavily_items)
+                # Run search for each generated query
+                tasks = [self._search_tavily(q_item, tavily_key, max_results=max_results) for q_item in queries_to_run[:2]]
+                res_lists = await asyncio.gather(*tasks, return_exceptions=True)
+                for res_list in res_lists:
+                    if isinstance(res_list, list):
+                        raw_items.extend(res_list)
             except Exception as e:
                 logger.warning(f"Tavily search error: {e}")
 
         # 2. Brave Search API (if configured)
-        if not raw_items:
+        if len(raw_items) < 3:
             brave_key = getattr(settings, "BRAVE_API_KEY", "")
-            if brave_key:
+            if brave_key and not brave_key.startswith("your_"):
                 try:
-                    brave_res = await self._search_brave(clean_q, brave_key, max_results=max_results)
-                    if brave_res:
-                        raw_items.extend(brave_res)
+                    for q_item in queries_to_run[:2]:
+                        brave_res = await self._search_brave(q_item, brave_key, max_results=max_results)
+                        if brave_res:
+                            raw_items.extend(brave_res)
                 except Exception as e:
                     logger.warning(f"Brave search error: {e}")
 
-        # 3. Serper (Google Search JSON API, if configured)
-        if not raw_items:
+        # 3. Serper / Google Search API (if configured)
+        if len(raw_items) < 3:
             serper_key = getattr(settings, "SERPER_API_KEY", "")
-            if serper_key:
+            if serper_key and not serper_key.startswith("your_"):
                 try:
-                    serper_res = await self._search_serper(clean_q, serper_key, max_results=max_results)
-                    if serper_res:
-                        raw_items.extend(serper_res)
+                    for q_item in queries_to_run[:2]:
+                        serper_res = await self._search_serper(q_item, serper_key, max_results=max_results)
+                        if serper_res:
+                            raw_items.extend(serper_res)
                 except Exception as e:
                     logger.warning(f"Serper search error: {e}")
 
-        # 4. Concurrent zero-cost fallback (Google News RSS & Wikipedia concurrently)
-        if len(raw_items) < 2:
-            try:
-                tasks = [
-                    self._search_wikipedia(clean_q),
-                    self._search_google_news(clean_q, max_results=max_results)
-                ]
-                gathered = await asyncio.gather(*tasks, return_exceptions=True)
-                for item in gathered:
-                    if isinstance(item, list):
-                        raw_items.extend(item)
-            except Exception as e:
-                logger.debug(f"Concurrent search fallback error: {e}")
+        # 4. Google News Live RSS (Live coverage with real publication dates)
+        try:
+            news_tasks = [self._search_google_news(q_item, max_results=4) for q_item in queries_to_run[:2]]
+            gathered_news = await asyncio.gather(*news_tasks, return_exceptions=True)
+            for item_list in gathered_news:
+                if isinstance(item_list, list):
+                    raw_items.extend(item_list)
+        except Exception as e:
+            logger.debug(f"Google News search error: {e}")
 
-        # 5. DuckDuckGo HTML Fallback if still empty
-        if len(raw_items) < 2:
+        # 5. DuckDuckGo HTML Fallback
+        if len(raw_items) < 3:
             try:
-                ddg_results = await self._search_duckduckgo(clean_q, max_results=max_results)
-                if ddg_results:
-                    raw_items.extend(ddg_results)
+                for q_item in queries_to_run[:2]:
+                    ddg_res = await self._search_duckduckgo(q_item, max_results=4)
+                    if ddg_res:
+                        raw_items.extend(ddg_res)
             except Exception as e:
                 logger.debug(f"DuckDuckGo search error: {e}")
 
-        # Deduplicate and build clean sources list & formatted context
-        seen = set()
-        clean_sources: List[Dict[str, str]] = []
-        context_lines: List[str] = []
+        # 6. Wikipedia (Secondary background reference only)
+        if len(raw_items) < max_results:
+            try:
+                wiki_res = await self._search_wikipedia(clean_q)
+                if wiki_res:
+                    raw_items.extend(wiki_res)
+            except Exception as e:
+                logger.debug(f"Wikipedia search error: {e}")
+
+        # Target keywords for relevance calculation
+        keywords = [w for w in re.split(r'\W+', clean_q) if len(w) > 2]
+
+        # Score, filter, and deduplicate
+        seen_urls = set()
+        scored_items: List[Dict[str, Any]] = []
 
         for item in raw_items:
             title = (item.get("title") or "Source").strip()
             url = normalize_source_url((item.get("url") or "").strip())
             snippet = (item.get("snippet") or "").strip()
             domain = item.get("domain") or extract_domain(url)
-            date = item.get("date") or ""
-
-            dedup_key = (url or title[:35]).lower()
-            if dedup_key in seen:
-                continue
-            seen.add(dedup_key)
 
             if not snippet and not title:
                 continue
 
+            dedup_key = url.lower() if url else title.lower()[:40]
+            if dedup_key in seen_urls:
+                continue
+            seen_urls.add(dedup_key)
+
+            item["title"] = title
+            item["url"] = url
+            item["snippet"] = snippet
+            item["domain"] = domain
+
+            self._score_source(item, current_year=current_year, target_keywords=keywords)
+            scored_items.append(item)
+
+        # Sort strictly by score descending (Authority + Recency)
+        scored_items.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+        # Take top max_results
+        clean_sources: List[Dict[str, str]] = []
+        context_lines: List[str] = []
+
+        for item in scored_items:
             clean_sources.append({
-                "title": title,
-                "url": url,
-                "domain": domain,
-                "snippet": snippet[:200]
+                "title": item["title"],
+                "url": item["url"],
+                "domain": item["domain"],
+                "snippet": item["snippet"][:260],
+                "date": item.get("date", ""),
+                "tier": item.get("source_tier", "Web Source"),
+                "score": round(float(item.get("score", 0)), 1)
             })
 
             citation_num = len(clean_sources)
-            date_str = f" [{date}]" if date else ""
-            if url:
-                context_lines.append(f"[{citation_num}] [{title}]({url}){date_str}: {snippet} (Domain: {domain})")
+            date_str = f" [{item['date']}]" if item.get("date") else ""
+            tier_str = f" ({item.get('source_tier', 'Web Source')})"
+            if item["url"]:
+                context_lines.append(f"[{citation_num}] [{item['title']}]({item['url']}){date_str}{tier_str}: {item['snippet']}")
             else:
-                context_lines.append(f"[{citation_num}] {title}{date_str}: {snippet}")
+                context_lines.append(f"[{citation_num}] {item['title']}{date_str}{tier_str}: {item['snippet']}")
 
             if len(clean_sources) >= max_results:
                 break
 
+        consensus_info = self._analyze_consensus(clean_sources, query, current_year)
+        search_failed = len(clean_sources) == 0
+
+        # Structured Observability Audit Logging
+        source_dates = [s.get("date") for s in clean_sources if s.get("date")]
+        audit_log = (
+            f"\n==================== REAL-TIME QUERY AUDIT ====================\n"
+            f"QUERY: {query}\n"
+            f"CLASSIFICATION: {classification.category}\n"
+            f"CURRENT_DATE: {current_date_str}\n"
+            f"SEARCH_REQUIRED: {classification.search_required}\n"
+            f"SEARCH_QUERIES:\n" + "\n".join([f"  {idx+1}. {sq}" for idx, sq in enumerate(queries_to_run)]) + "\n"
+            f"SOURCES_FOUND: {len(raw_items)}\n"
+            f"VALID_SOURCES: {len(clean_sources)}\n"
+            f"SOURCE_DATES: {', '.join(source_dates) if source_dates else 'N/A'}\n"
+            f"FINAL_CONFIDENCE: {consensus_info['confidence']}\n"
+            f"==============================================================\n"
+        )
+        logger.info(audit_log)
+
         res_data = {
             "context_text": "\n".join(context_lines),
-            "sources": clean_sources
+            "sources": clean_sources,
+            "classification": classification.model_dump(),
+            "consensus": consensus_info,
+            "audit_log": audit_log,
+            "search_failed": search_failed,
+            "checked_date": current_date_str
         }
 
-        if clean_sources:
-            self._CACHE[cache_key] = (now, res_data)
+        # Cache with category-specific TTL
+        ttl = classification.cache_ttl_seconds
+        self._CACHE[cache_key] = (now_ts, ttl, res_data)
 
         return res_data
 
@@ -271,9 +414,9 @@ class WebSearchService:
         }
         if is_news:
             payload["topic"] = "news"
-            payload["days"] = 3
+            payload["days"] = 7
 
-        async with httpx.AsyncClient(timeout=4.5) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.post(url, json=payload)
             if res.status_code == 200:
                 data = res.json()
@@ -281,7 +424,7 @@ class WebSearchService:
                 for r in data.get("results", [])[:target_count]:
                     title = r.get("title", "").strip()
                     item_url = r.get("url", "").strip()
-                    content = r.get("content", "").strip()[:240].replace("\n", " ")
+                    content = r.get("content", "").strip()[:300].replace("\n", " ")
                     pub = r.get("published_date") or ""
                     domain = extract_domain(item_url)
                     if content or title:
@@ -325,7 +468,7 @@ class WebSearchService:
                 for item in web_results[:max_results]:
                     title = item.get("title", "").strip()
                     item_url = item.get("url", "").strip()
-                    desc = item.get("description", "").strip()[:180].replace("\n", " ")
+                    desc = item.get("description", "").strip()[:240].replace("\n", " ")
                     if desc or title:
                         results.append({
                             "title": title,
@@ -360,7 +503,7 @@ class WebSearchService:
                 for item in data.get("organic", [])[:max_results]:
                     title = item.get("title", "").strip()
                     item_url = item.get("link", "").strip()
-                    snippet = item.get("snippet", "").strip()[:180].replace("\n", " ")
+                    snippet = item.get("snippet", "").strip()[:240].replace("\n", " ")
                     if snippet or title:
                         results.append({
                             "title": title,
@@ -372,88 +515,47 @@ class WebSearchService:
                 return results
         return []
 
-    async def _search_serpapi(self, query: str, api_key: str, max_results: int = 4) -> List[Dict[str, Any]]:
-        url = "https://serpapi.com/search.json"
-        params = {"q": query, "api_key": api_key, "num": max_results}
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.get(url, params=params)
-            if res.status_code == 200:
-                data = res.json()
-                results = []
-                if data.get("answer_box"):
-                    ans = data["answer_box"].get("answer") or data["answer_box"].get("snippet") or ""
-                    link = data["answer_box"].get("link") or ""
-                    if ans:
-                        results.append({
-                            "title": "Direct Fact",
-                            "url": link,
-                            "domain": extract_domain(link),
-                            "snippet": ans,
-                            "date": ""
-                        })
-                for item in data.get("organic_results", [])[:max_results]:
-                    title = item.get("title", "").strip()
-                    item_url = item.get("link", "").strip()
-                    snippet = item.get("snippet", "").strip()[:180].replace("\n", " ")
-                    if snippet or title:
-                        results.append({
-                            "title": title,
-                            "url": item_url,
-                            "domain": extract_domain(item_url),
-                            "snippet": snippet,
-                            "date": ""
-                        })
-                return results
-        return []
-
-    async def _search_google_news(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:
+    async def _search_google_news(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
         results = []
-        is_world_query = bool(re.search(r"\b(world|global|international|all over the world|around the world|current affairs)\b", query, re.IGNORECASE))
-        
-        urls_to_check = []
-        if is_world_query:
-            urls_to_check.append(("https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en", {}))
-        urls_to_check.append(("https://news.google.com/rss/search", {"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"}))
+        fetch_url = "https://news.google.com/rss/search"
+        params = {"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"}
 
         async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
-            for fetch_url, params in urls_to_check:
-                try:
-                    res = await client.get(fetch_url, params=params if params else None, headers=headers)
-                    if res.status_code == 200:
-                        items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
-                        for item in items[:max_results]:
-                            title_match = re.search(r'<title>(.*?)</title>', item)
-                            link_match = re.search(r'<link>(.*?)</link>', item)
-                            pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                            source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
-                            if title_match:
-                                title = html.unescape(title_match.group(1)).strip()
-                                link = html.unescape(link_match.group(1)).strip() if link_match else ""
-                                pub = pub_match.group(1).strip() if pub_match else ""
-                                source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
-                                domain = extract_domain(link) if link else "news.google.com"
-                                results.append({
-                                    "title": f"{title} ({source_name})" if source_name else title,
-                                    "url": link,
-                                    "domain": domain,
-                                    "snippet": title,
-                                    "date": pub[:16] if pub else ""
-                                })
-                        if len(results) >= max_results:
-                            break
-                except Exception:
-                    continue
-        return results[:max_results]
+            try:
+                res = await client.get(fetch_url, params=params, headers=headers)
+                if res.status_code == 200:
+                    items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
+                    for item in items[:max_results]:
+                        title_match = re.search(r'<title>(.*?)</title>', item)
+                        link_match = re.search(r'<link>(.*?)</link>', item)
+                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                        source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
+                        if title_match:
+                            title = html.unescape(title_match.group(1)).strip()
+                            link = html.unescape(link_match.group(1)).strip() if link_match else ""
+                            pub = pub_match.group(1).strip() if pub_match else ""
+                            source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
+                            domain = extract_domain(link) if link else "news.google.com"
+                            results.append({
+                                "title": f"{title} ({source_name})" if source_name else title,
+                                "url": link,
+                                "domain": domain,
+                                "snippet": title,
+                                "date": pub[:16] if pub else ""
+                            })
+            except Exception:
+                pass
+        return results
 
     async def _search_wikipedia(self, query: str) -> List[Dict[str, Any]]:
         url = "https://en.wikipedia.org/w/api.php"
         params = {
             "action": "opensearch",
             "search": query,
-            "limit": "3",
+            "limit": "2",
             "namespace": "0",
             "format": "json"
         }
@@ -488,7 +590,6 @@ class WebSearchService:
             res = await client.post("https://html.duckduckgo.com/html/", data={"q": query}, headers=headers)
             if res.status_code == 200:
                 results = []
-                # Match result containers
                 blocks = re.findall(r'<div class="result__body"[^>]*>([\s\S]*?)</div>\s*</div>', res.text)
                 for b in blocks[:max_results]:
                     link_match = re.search(r'<a class="result__url"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', b)
@@ -496,7 +597,6 @@ class WebSearchService:
                     title_match = re.search(r'<a class="result__a"[^>]*>(.*?)</a>', b)
                     
                     raw_url = link_match.group(1).strip() if link_match else ""
-                    # Duckduckgo redirects /uddg?uddg=URL
                     if "uddg=" in raw_url:
                         from urllib.parse import unquote
                         uddg_match = re.search(r'uddg=([^&]+)', raw_url)

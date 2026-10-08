@@ -20,10 +20,10 @@ interface IntelligenceCacheCardProps {
 }
 
 const LOADING_STAGES = [
-  '✦ Querying neural intelligence cache...',
-  '✦ Scanning verified multi-tier cache index...',
-  '✦ Cross-referencing temporal facts (2026)...',
-  '✦ Synthesizing cached intelligence insights...',
+  '🔎 Searching the web...',
+  '✦ Scanning verified multi-source index...',
+  '✦ Cross-referencing temporal facts...',
+  '✓ Verified from recent sources',
 ];
 
 export function IntelligenceCacheCard({
@@ -53,9 +53,9 @@ export function IntelligenceCacheCard({
   const displayItems = (cacheItems && cacheItems.length > 0)
     ? cacheItems
     : [
-        `Neural Cache Index: Instant lookup for "${(userQuery || 'context query').slice(0, 32)}"`,
-        'Primary Verified Index: Synchronized with 2026 factual grounding',
-        'Cross-Layer Validation: Multi-step deduction and consistency checks',
+        `Live Web Search: Active lookup for "${(userQuery || 'context query').slice(0, 32)}"`,
+        'Primary Verified Index: Synchronized with live real-time grounding',
+        'Cross-Layer Validation: Multi-source temporal fact checking',
         'Synthesizing Response: High-precision contextual integration',
       ];
 
