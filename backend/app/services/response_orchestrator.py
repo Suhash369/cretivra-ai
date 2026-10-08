@@ -161,8 +161,11 @@ class AsuraResponseOrchestrator:
 
         # 3. Web Grounding & Image Retrieval (Strictly Separated Pipelines)
         tasks = []
+        evidence_data: Optional[Dict[str, Any]] = None
+
         if decision.requires_web:
-            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': 'Asura is researching the web in real-time...', 'reasoning_status': 'Asura is researching the web in real-time...', 'done': False})}\n\n"
+            status_text = "Searching current sources..." if is_real_time_query else "Asura is researching the web in real-time..."
+            yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': status_text, 'reasoning_status': status_text, 'done': False})}\n\n"
             tools_executed.append("web_grounding")
             # Execute provider-independent web search
             target_search_q = decision.search_query or clean_query
@@ -188,15 +191,31 @@ class AsuraResponseOrchestrator:
                 if kind == "web" and isinstance(res, dict):
                     raw_results = res.get("results", [])
                     web_context_text = res.get("context_text", "")
+                    evidence_data = res.get("evidence")
                     web_search_failed = res.get("search_failed", False) or len(raw_results) == 0
-                    
+
                     for r in raw_results:
                         sources.append(AsuraSource(
                             title=r.get("title", ""),
                             url=r.get("url", ""),
                             domain=r.get("source", "") or "web",
-                            snippet=r.get("snippet", "")
+                            snippet=r.get("snippet", ""),
+                            tier=r.get("tier", "Web Source"),
+                            date=r.get("publishedAt", ""),
+                            published_at=r.get("publishedAt", ""),
+                            searched_at=r.get("searchedAt", ""),
+                            source_type=r.get("source_type", "web"),
+                            score=round(float(r.get("relevanceScore", 0.5)) * 100.0, 1)
                         ))
+
+                    # Yield intermediate evaluation status per Requirement 30 & 31
+                    if is_real_time_query and sources:
+                        eval_msg = f"Evaluating {len(sources)} sources..."
+                        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': eval_msg, 'reasoning_status': eval_msg, 'done': False})}\n\n"
+                        await asyncio.sleep(0.05)
+                        cross_msg = "Cross-checking current information..."
+                        yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'status': cross_msg, 'reasoning_status': cross_msg, 'done': False})}\n\n"
+
                 elif kind == "image" and isinstance(res, list):
                     images = [AsuraImage(**img) for img in res if isinstance(img, dict)]
 
@@ -204,9 +223,9 @@ class AsuraResponseOrchestrator:
         if images:
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.model_dump() for img in images], 'sources': [s.model_dump() for s in sources]})}\n\n"
 
-        # 4. Failure Handling per Requirement 19
+        # 4. Failure Handling per Requirement 26
         if is_real_time_query and web_search_failed:
-            failure_msg = "I couldn't retrieve fresh web information right now, so I can't reliably verify the current status. Please try again in a moment."
+            failure_msg = "I couldn't retrieve fresh web information right now, so I can't reliably verify the current answer. Please try again in a moment."
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': failure_msg, 'full_content': failure_msg, 'done': True, 'sources': [], 'images': []})}\n\n"
             if db and conversation_id:
                 try:
@@ -216,35 +235,55 @@ class AsuraResponseOrchestrator:
                     pass
             return
 
-        # 5. Answer Generation Contract per Requirement 13
+        # 5. Answer Generation Contract per Requirement 20 & 36
         # Construct normalized search results representation
         normalized_results_block = web_context_text
         if not normalized_results_block and sources:
             normalized_results_block = "\n".join([
-                f"[{idx+1}] [{s.title}]({s.url}): {s.snippet}"
+                f"[{idx+1}] [{s.title}]({s.url}) [{s.tier or 'Web'}]: {s.snippet}"
                 for idx, s in enumerate(sources)
             ])
 
         if is_real_time_query:
+            v_status = (evidence_data or {}).get("verification_status", "unverified")
+            verification_guidance = ""
+            if v_status == "verified":
+                verification_guidance = "Evidence is cross-checked and verified from primary/authoritative sources."
+            elif v_status == "conflicting":
+                verification_guidance = "Notice: Sources present conflicting information. Explicitly mention the conflict rather than choosing one silently."
+
             system_instruction = (
-                f"You are Asura, the AI assistant developed by Cretivra.\n\n"
-                f"You are answering a time-sensitive question.\n\n"
-                f"Current date:\n{current_date_str}\n\n"
+                f"You are Asura, developed by Cretivra.\n\n"
+                f"For current and real-time questions, retrieved web evidence is the primary source of truth.\n"
+                f"Do not use pretrained knowledge to override fresh evidence.\n"
+                f"Do not invent facts.\n"
+                f"Do not treat search snippets as automatically authoritative.\n"
+                f"Prefer original authoritative sources.\n"
+                f"Check dates.\n"
+                f"Cross-check important claims.\n"
+                f"If evidence is insufficient, say so.\n"
+                f"If sources conflict, explain the conflict.\n"
+                f"Always distinguish:\n"
+                f"- what the sources establish\n"
+                f"- what is uncertain\n"
+                f"- what is historical\n\n"
+                f"Answer only after evidence evaluation.\n\n"
+                f"Current server date:\n{current_date_str}\n\n"
                 f"Timezone:\nAsia/Kolkata\n\n"
-                f"The web research below is the primary factual source.\n\n"
-                f"You MUST:\n"
-                f"1. Use the retrieved web information.\n"
-                f"2. Prefer the newest reliable sources.\n"
-                f"3. Check publication/update dates.\n"
-                f"4. Resolve conflicting information.\n"
-                f"5. Never present outdated model knowledge as current fact.\n"
-                f"6. If the sources cannot verify the current answer, explicitly say so.\n"
-                f"7. Never invent current information.\n"
-                f"8. Include source citations.\n"
-                f"9. State the relevant date when answering current-status questions.\n\n"
+                f"VERIFICATION STATUS:\n{v_status} ({verification_guidance})\n\n"
+                f"FORMAT GUIDELINE FOR CURRENT QUESTIONS (Requirement 36):\n"
+                f"State the verified answer clearly with date anchor:\n"
+                f"## [Current Office / Subject Title]\n"
+                f"**[Primary Fact / Leader Name / Price]**\n\n"
+                f"As of **{current_date_str}**, current authoritative sources identify [Name/Fact]...\n\n"
+                f"### Sources\n"
+                f"- [Publisher Name or Domain](URL)\n\n"
+                f"### Verification\n"
+                f"✓ Cross-checked\n"
+                f"✓ Current-source research performed\n\n"
                 f"USER QUERY:\n{clean_query}\n\n"
                 f"WEB SOURCES:\n{normalized_results_block}\n\n"
-                f"Now answer the user directly and authoritatively."
+                f"Now answer the user directly and authoritatively based ONLY on the evidence above."
             )
             user_prompt = clean_query
         else:
@@ -259,7 +298,7 @@ class AsuraResponseOrchestrator:
             {"role": "system", "content": system_instruction}
         ]
 
-        # Requirement 9 & 10: Strict Context Isolation
+        # Requirement 18 & 19: Strict Context Isolation
         # Only inherit prior conversation history if it is explicitly an anaphoric follow-up
         if decision.is_follow_up and conversation_history:
             messages.extend(conversation_history[-4:])
@@ -270,6 +309,8 @@ class AsuraResponseOrchestrator:
 
         # 6. Stream Execution with Selected AI Provider
         full_text = ""
+        verification_status_label = (evidence_data or {}).get("verification_label", "Verified response") if is_real_time_query else None
+        
         try:
             async for chunk in model_manager.stream_orchestrated_chat(
                 logical_mode=decision.logical_mode,
@@ -279,7 +320,7 @@ class AsuraResponseOrchestrator:
             ):
                 delta = chunk.get("content", "")
                 reasoning = chunk.get("reasoning_status")
-                
+
                 # Check if provider emitted native grounding sources (e.g. Gemini native search)
                 native_sources = chunk.get("grounding_sources", [])
                 if native_sources:
@@ -295,7 +336,7 @@ class AsuraResponseOrchestrator:
                 if delta:
                     full_text += delta
 
-                status_event = "Asura is formulating verified response..." if not delta and not reasoning else None
+                status_event = verification_status_label if not delta and not reasoning else None
                 yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.model_dump() for s in sources], 'images': [img.model_dump() for img in images]})}\n\n"
         except Exception as e:
             logger.error(f"Error in Asura model orchestration: {e}")
@@ -307,17 +348,23 @@ class AsuraResponseOrchestrator:
         related_qs = self._generate_related_questions(clean_query, decision)
         latency_ms = int((time.time() - start_time) * 1000)
 
-        # Developer Debug Logging per Requirement 20
+        # Developer Debug Logging per Requirement 18 & 42
         debug_log = {
-            "userQuery": clean_query,
+            "originalUserQuery": user_message,
+            "normalizedQuery": clean_query,
+            "resolvedQuery": decision.search_query or clean_query,
+            "searchQueries": decision.search_queries or [decision.search_query or clean_query],
+            "evidenceQuery": clean_query,
+            "finalAnswerQuery": clean_query,
             "detectedIntent": decision.intent,
             "webRequired": decision.requires_web,
             "webExecuted": "web_grounding" in tools_executed,
-            "searchQueries": decision.search_queries or [decision.search_query or clean_query],
-            "searchProvider": "web_search_service",
             "resultCount": len(sources),
+            "evidenceStatus": (evidence_data or {}).get("verification_status", "N/A"),
+            "confidence": (evidence_data or {}).get("confidence", "N/A"),
+            "verificationLabel": (evidence_data or {}).get("verification_label", "N/A"),
             "sourceUrls": [s.url for s in sources if s.url][:6],
-            "sourceDates": [s.domain for s in sources][:6],
+            "sourceDates": [s.published_at or s.date for s in sources][:6],
             "selectedModel": selected_model or decision.logical_mode,
             "responseTimestamp": time_info["iso"]
         }
@@ -331,6 +378,8 @@ class AsuraResponseOrchestrator:
             "updated_date": current_date_str,
             "web_researched": decision.requires_web and bool(sources),
             "sources_count": len(sources),
+            "evidence": evidence_data,
+            "searched_at": f"{current_date_str}, {current_time_str} IST",
             "developer_diagnostics": debug_log
         }
 

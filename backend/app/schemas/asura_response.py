@@ -14,6 +14,13 @@ class AsuraSource(BaseModel):
     url: str
     domain: str
     snippet: Optional[str] = None
+    tier: Optional[str] = None
+    date: Optional[str] = None
+    published_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    searched_at: Optional[str] = None
+    source_type: Optional[str] = None
+    score: Optional[float] = None
 
 class AsuraGeneratedImage(BaseModel):
     url: str

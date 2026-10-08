@@ -8,9 +8,21 @@ from app.core.time_utils import getCurrentDateTime
 from app.core.logging import logger
 
 class QueryIntent(str, Enum):
-    REAL_TIME = "REAL_TIME"
-    CURRENT_AFFAIRS = "CURRENT_AFFAIRS"
     GENERAL_KNOWLEDGE = "GENERAL_KNOWLEDGE"
+    CURRENT_AFFAIRS = "CURRENT_AFFAIRS"
+    REAL_TIME = "REAL_TIME"
+    NEWS = "NEWS"
+    POLITICS = "POLITICS"
+    ELECTION = "ELECTION"
+    GOVERNMENT = "GOVERNMENT"
+    BUSINESS = "BUSINESS"
+    SPORTS = "SPORTS"
+    FINANCE = "FINANCE"
+    TECHNOLOGY = "TECHNOLOGY"
+    AI_NEWS = "AI_NEWS"
+    WEATHER = "WEATHER"
+    PRICE = "PRICE"
+    HISTORICAL = "HISTORICAL"
     REASONING = "REASONING"
     CODING = "CODING"
     DOCUMENT = "DOCUMENT"
@@ -52,6 +64,7 @@ REAL_TIME_KEYWORDS = [
     r"\bcurrent\s+status\b",
     r"\bthis\s+week\b",
     r"\bthis\s+month\b",
+    r"\bthis\s+year\b",
     r"\b2026\b",
     r"\bnewly\s+appointed\b",
     r"\brecently\s+appointed\b",
@@ -70,21 +83,27 @@ REAL_TIME_KEYWORDS = [
     r"\blatest\s+movie\s+collection\b",
     r"\blatest\s+company\s+news\b",
     r"\bwhat\s+happened\b",
+    r"\bwhat\s+happened\s+today\b",
+    r"\bwhat\s+happened\s+recently\b",
     r"\bwho\s+won\b",
     r"\blive\s+score\b",
     r"\bwho\s+is\s+in\s+power\b"
 ]
 
-CURRENT_AFFAIRS_KEYWORDS = [
-    r"\bcurrent\s+affairs\b",
-    r"\bbreaking\s+news\b",
-    r"\blatest\s+news\b",
-    r"\bnews\s+today\b",
-    r"\bwhat\s+happened\s+in\b",
-    r"\bnews\s+this\s+week\b",
-    r"\bnews\s+about\b",
-    r"\bheadlines\b",
-    r"\baffairs\s+of\s+today\b"
+AI_KEYWORDS = [
+    r"\b(?:ai|artificial\s+intelligence|llm|gpt|openai|gemini|groq|anthropic|claude|deepseek|nvidia)\b",
+    r"\b(?:chatgpt|qwen|model\s+release|latest\s+gemini|latest\s+openai|latest\s+groq)\b"
+]
+
+PRICE_KEYWORDS = [
+    r"\b(?:gold|silver|petrol|diesel|crude|stock|bitcoin|crypto|share)\s+(?:price|rate)\b",
+    r"\b(?:price|rate)\s+of\s+(?:gold|silver|petrol|diesel|bitcoin)\b",
+    r"\b(?:today'?s\s+gold\s+price|current\s+gold\s+rate|latest\s+price)\b"
+]
+
+SPORTS_KEYWORDS = [
+    r"\b(?:cricket|football|ipl|world\s+cup|match|tennis|badminton|olympics)\b",
+    r"\b(?:who\s+won|score\s+of|match\s+result|won\s+the\s+match)\b"
 ]
 
 POLITICAL_OFFICES = [
@@ -141,7 +160,7 @@ def is_anaphoric_follow_up(query: str) -> bool:
     """
     q_lower = query.strip().lower()
     
-    # If the query mentions a new state/country/subject, it is NOT a follow-up
+    # If the query explicitly introduces a new state/country/subject, it is NOT a follow-up
     entities_locations = [
         "tamil nadu", "kerala", "karnataka", "andhra", "telangana", "maharashtra",
         "delhi", "punjab", "bengal", "gujarat", "bihar", "uttar pradesh",
@@ -152,7 +171,6 @@ def is_anaphoric_follow_up(query: str) -> bool:
         if loc in q_lower:
             return False
 
-    # Check for pronoun continuity
     pronoun_patterns = [
         r"^(?:how\s+old\s+is\s+(?:he|she|they))\b",
         r"\b(?:what\s+about\s+(?:him|her|them|it|his|hers))\b",
@@ -170,22 +188,14 @@ def query_router(
 ) -> Dict[str, Any]:
     """
     Production Intent Router for Asura AI.
-    Classifies queries into:
-    - REAL_TIME
-    - GENERAL_KNOWLEDGE
-    - REASONING
-    - CODING
-    - DOCUMENT
-    - IMAGE
-    - CREATIVE
-    - CURRENT_AFFAIRS
-
-    Supports semantic intent detection and dynamic temporal formulation.
+    Classifies queries into the 20 exact intents with semantic detection,
+    and automatically forces web grounding for all real-time/current knowledge.
     """
     q = (query or "").strip()
     q_lower = q.lower()
     time_info = getCurrentDateTime()
     current_year = time_info["year"]
+    current_month = time_info["month"]
     current_date_str = time_info["formatted_date"]
 
     has_image_attachment = False
@@ -263,8 +273,8 @@ def query_router(
 
     if is_historical:
         return {
-            "intent": QueryIntent.GENERAL_KNOWLEDGE.value,
-            "detected_intent": QueryIntent.GENERAL_KNOWLEDGE,
+            "intent": QueryIntent.HISTORICAL.value,
+            "detected_intent": QueryIntent.HISTORICAL,
             "requires_web": False,
             "force_web_search": False,
             "requires_images": False,
@@ -274,27 +284,39 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 5. CURRENT_AFFAIRS
-    is_current_affairs = any(re.search(p, q_lower) for p in CURRENT_AFFAIRS_KEYWORDS)
+    # 5. Specialized Real-Time Domain Detection
+    is_ai_news = any(re.search(p, q_lower) for p in AI_KEYWORDS) and any(term in q_lower for term in ["news", "latest", "today", "this week", "model", "release"])
+    is_price = any(re.search(p, q_lower) for p in PRICE_KEYWORDS)
+    is_sports = any(re.search(p, q_lower) for p in SPORTS_KEYWORDS)
+    is_office = any(re.search(p, q_lower) for p in POLITICAL_OFFICES)
+    is_election = bool(re.search(r"\b(?:election|bypoll|polls|voting)\b", q_lower))
+    has_rt_kw = any(re.search(p, q_lower) for p in REAL_TIME_KEYWORDS)
 
-    # 6. REAL_TIME Detection (Semantic intent + keywords + office holders)
-    has_rt_keyword = any(re.search(p, q_lower) for p in REAL_TIME_KEYWORDS)
-    is_office_query = any(re.search(p, q_lower) for p in POLITICAL_OFFICES)
-    
-    # Semantic office holders or leadership query is inherently REAL_TIME (e.g. "who is cm of kerala", "who leads tamil nadu")
-    is_real_time = has_rt_keyword or is_office_query or ("who is" in q_lower and ("cm" in q_lower or "pm" in q_lower or "ceo" in q_lower or "president" in q_lower))
+    # Classify into specific real-time intent
+    detected = None
+    if is_ai_news:
+        detected = QueryIntent.AI_NEWS
+    elif is_price:
+        detected = QueryIntent.PRICE
+    elif is_sports:
+        detected = QueryIntent.SPORTS
+    elif is_election:
+        detected = QueryIntent.ELECTION
+    elif is_office:
+        detected = QueryIntent.POLITICS
+    elif has_rt_kw or "who is cm" in q_lower or "who is pm" in q_lower or "who leads" in q_lower or "who is governor" in q_lower:
+        detected = QueryIntent.REAL_TIME
+    elif "news" in q_lower or "happened" in q_lower:
+        detected = QueryIntent.NEWS
 
-    if is_current_affairs or is_real_time:
-        detected = QueryIntent.CURRENT_AFFAIRS if is_current_affairs else QueryIntent.REAL_TIME
-        
-        # Formulate search queries with current date/month/year
-        month_name = time_info["month"]
+    if detected:
+        # Generate 3-5 targeted search queries
         search_queries = [
-            f"{q} {month_name} {current_year}".strip(),
+            f"{q} {current_month} {current_year}".strip(),
             f"{q} official {current_year}".strip(),
+            f"{q} latest news {current_year}".strip(),
             q
         ]
-        
         return {
             "intent": detected.value,
             "detected_intent": detected,
@@ -305,12 +327,12 @@ def query_router(
             "search_query": search_queries[0],
             "search_queries": search_queries,
             "logical_mode": "Asura Balanced",
-            "reasoning": f"Real-time knowledge requested; requires live web grounding as of {current_date_str}",
+            "reasoning": f"Real-time {detected.value} query detected; forces web research as of {current_date_str}",
             "current_date": current_date_str,
             "timezone": time_info["timezone"]
         }
 
-    # 7. CODING
+    # 6. CODING
     if any(re.search(p, q_lower) for p in CODE_KEYWORDS) and any(w in q_lower for w in ["code", "function", "script", "program", "error", "debug"]):
         return {
             "intent": QueryIntent.CODING.value,
@@ -324,7 +346,7 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 8. REASONING
+    # 7. REASONING
     if any(re.search(p, q_lower) for p in REASONING_KEYWORDS):
         return {
             "intent": QueryIntent.REASONING.value,
@@ -338,7 +360,7 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 9. IMAGE SEARCH (visual retrieval, separate from web search)
+    # 8. IMAGE SEARCH (visual retrieval, separate from web search)
     if any(re.search(p, q_lower) for p in IMAGE_SEARCH_KEYWORDS):
         clean_sub = re.sub(r"\b(?:show\s+me|images?\s+of|photos?\s+of|pictures?\s+of)\s*", "", q, flags=re.IGNORECASE).strip()
         return {
@@ -354,7 +376,7 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 10. GENERAL_KNOWLEDGE
+    # 9. GENERAL_KNOWLEDGE
     return {
         "intent": QueryIntent.GENERAL_KNOWLEDGE.value,
         "detected_intent": QueryIntent.GENERAL_KNOWLEDGE,
@@ -367,12 +389,11 @@ def query_router(
         "timezone": time_info["timezone"]
     }
 
-# Function alias matching Requirement 1
 def queryRouter(query: str, attachments: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     return query_router(query, attachments)
 
 class AsuraRouter:
-    """Class wrapper for backward compatibility with existing orchestrator."""
+    """Class wrapper for router."""
 
     async def route_async(
         self,
@@ -389,11 +410,11 @@ class AsuraRouter:
         is_follow = is_anaphoric_follow_up(query)
         res["is_follow_up"] = is_follow
 
-        # Honor explicit web toggle
+        # Honor explicit web toggle if manually set, otherwise auto-enforce for real-time
         if force_web_search is True:
             res["requires_web"] = True
             res["search_query"] = res.get("search_query") or query
-        elif force_web_search is False and not (res["detected_intent"] in [QueryIntent.REAL_TIME, QueryIntent.CURRENT_AFFAIRS]):
+        elif force_web_search is False and not res.get("force_web_search", False):
             res["requires_web"] = False
 
         if force_image_mode is True:

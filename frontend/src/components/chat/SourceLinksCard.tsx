@@ -88,7 +88,7 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
             Sources: {activeSources.length}
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300/60 dark:border-emerald-700/60">
-            Updated: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            Searched: {activeSources[0]?.searched_at || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
           </span>
         </div>
 
@@ -120,6 +120,7 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
                 : null;
 
               const hasFaviconFailed = Boolean(failedFavicons[domain]);
+              const pubDate = s.published_at || s.date;
 
               return (
                 <a
@@ -146,8 +147,8 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
                         ) : (
                           <Link2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
                         )}
-                        <span className="font-medium text-slate-600 dark:text-slate-400 truncate max-w-[130px]">
-                          {domain}
+                        <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[130px]">
+                          {s.publisher || domain}
                         </span>
                       </div>
                       <span className="font-mono text-[10px] font-semibold text-cyan-700 dark:text-cyan-300 px-1.5 py-0.2 rounded bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800/60 shrink-0">
@@ -155,14 +156,30 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
                       </span>
                     </div>
 
+                    {/* Source Tier Badge if present */}
+                    {s.tier && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9.5px] font-medium px-1.5 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {s.tier}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Source Title */}
                     <h4 className="text-[12.5px] font-semibold text-slate-800 dark:text-slate-200 leading-snug line-clamp-2 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors">
                       {s.title || domain}
                     </h4>
 
+                    {/* Published Date if distinct */}
+                    {pubDate && (
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        Published: {pubDate}
+                      </div>
+                    )}
+
                     {/* Snippet preview if present */}
                     {s.snippet && (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 leading-relaxed">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                         {s.snippet}
                       </p>
                     )}
@@ -170,7 +187,7 @@ export const SourceLinksCard: React.FC<SourceLinksCardProps> = ({ sources, messa
 
                   {/* Bottom link indicator */}
                   <div className="flex items-center justify-end pt-2 text-[10.5px] text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                    <span className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">Visit source</span>
+                    <span className="mr-1 opacity-0 group-hover:opacity-100 transition-opacity">Open source</span>
                     <ExternalLink className="w-3 h-3 shrink-0" />
                   </div>
                 </a>

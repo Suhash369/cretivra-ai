@@ -35,7 +35,14 @@ export interface SourceLink {
   title: string;
   url: string;
   domain?: string;
+  publisher?: string;
   snippet?: string;
+  tier?: string;
+  date?: string;
+  published_at?: string;
+  searched_at?: string;
+  source_type?: string;
+  score?: number;
 }
 
 export interface VisualImage {

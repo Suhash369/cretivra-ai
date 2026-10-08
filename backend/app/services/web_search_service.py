@@ -48,22 +48,27 @@ def normalize_source_url(url: str) -> str:
 
     return url
 
-# Authority Tier Definitions
+# Authority Tier Definitions per Requirement 9 & 10
 OFFICIAL_GOV_DOMAINS = [
     ".gov.in", ".gov", ".nic.in", "eci.gov.in", "sansad.in", "india.gov.in",
     "tn.gov.in", "kerala.gov.in", "karnataka.gov.in", "maharashtra.gov.in", "delhi.gov.in",
     "pmindia.gov.in", "presidentofindia.gov.in", "parliamentofindia.nic.in",
-    "rbi.org.in", "sci.gov.in", "supremecourtofindia.nic.in", "election.gov.in"
+    "rbi.org.in", "sci.gov.in", "supremecourtofindia.nic.in", "election.gov.in",
+    "nvidia.com", "openai.com", "google.com", "bcci.tv", "icc-cricket.com"
 ]
 
 REPUTABLE_NEWS_DOMAINS = [
-    "thehindu.com", "indianexpress.com", "timesofindia.indiatimes.com",
-    "reuters.com", "bbc.com", "bbc.co.uk", "ndtv.com", "frontline.thehindu.com",
+    "thehindu.com", "indianexpress.com", "reuters.com", "bbc.com", "bbc.co.uk",
+    "bloomberg.com", "apnews.com", "aljazeera.com", "ft.com", "wsj.com"
+]
+
+SECONDARY_NEWS_DOMAINS = [
+    "ndtv.com", "timesofindia.indiatimes.com", "frontline.thehindu.com",
     "telegraphindia.com", "hindustantimes.com", "theprint.in", "thewire.in",
-    "indiatoday.in", "news18.com", "bloomberg.com", "apnews.com", "aljazeera.com",
-    "business-standard.com", "livemint.com", "financialexpress.com",
-    "economictimes.indiatimes.com", "deccanherald.com", "tribuneindia.com",
-    "newindianexpress.com"
+    "indiatoday.in", "news18.com", "business-standard.com", "livemint.com",
+    "financialexpress.com", "economictimes.indiatimes.com", "deccanherald.com",
+    "tribuneindia.com", "newindianexpress.com", "newsonair.gov.in",
+    "techcrunch.com", "theverge.com", "wired.com", "cricbuzz.com", "espncricinfo.com"
 ]
 
 LOW_TRUST_DOMAINS = [
@@ -71,36 +76,53 @@ LOW_TRUST_DOMAINS = [
     "reddit.com", "pinterest.com"
 ]
 
+def infer_domain_from_publisher_name(name: str) -> str:
+    """Infers canonical publisher domain from publisher name when RSS source URL is opaque."""
+    n = (name or "").lower()
+    if "hindu" in n: return "thehindu.com"
+    if "reuters" in n: return "reuters.com"
+    if "bbc" in n: return "bbc.com"
+    if "ndtv" in n: return "ndtv.com"
+    if "news on air" in n or "air news" in n: return "newsonair.gov.in"
+    if "express" in n: return "newindianexpress.com" if "new" in n else "indianexpress.com"
+    if "times of india" in n: return "timesofindia.indiatimes.com"
+    if "hindustan times" in n: return "hindustantimes.com"
+    if "business standard" in n: return "business-standard.com"
+    if "frontline" in n: return "frontline.thehindu.com"
+    if "livemint" in n or "mint" in n: return "livemint.com"
+    if "economic times" in n: return "economictimes.indiatimes.com"
+    if "deccan herald" in n: return "deccanherald.com"
+    if "the print" in n or "theprint" in n: return "theprint.in"
+    if "the wire" in n or "thewire" in n: return "thewire.in"
+    if "ani" in n: return "aninews.in"
+    if "pti" in n: return "ptinews.com"
+    if "jagran" in n: return "jagranjosh.com"
+    if "techcrunch" in n: return "techcrunch.com"
+    if "verge" in n: return "theverge.com"
+    if "cricbuzz" in n: return "cricbuzz.com"
+    if "espn" in n: return "espncricinfo.com"
+    return "news.google.com"
+
 class WebSearchService:
     """
-    Production-Grade Multi-Source Search & Temporal Grounding Engine for Asura AI.
-    
+    Production Evidence-Based Real-Time Search Engine for Asura AI.
     Features:
-    1. Query Classification & Router Integration
-    2. Dynamic Date-Aware Multi-Query Generation
-    3. Multi-tier Providers (Tavily, Brave, Serper, SerpAPI, Google News RSS, DuckDuckGo)
-    4. Source Scoring & Authority Weighting (+40 Gov, +30 Reputable News, +20 Recency)
-    5. Temporal Validation & Source Consensus Detection
-    6. Category-Based Cache TTLs (10m breaking news, 30m politics, 1h general, 24h static)
-    7. Observability Logging
+    1. 5-Tier Authority Hierarchy & Multi-Factor Scoring Formula
+    2. Dynamic Date-Aware Multi-Query Generation (3-5 targeted queries)
+    3. Multi-tier Providers (Tavily, Brave, Serper, Google News RSS, DuckDuckGo)
+    4. Original Domain Resolution (resolves Google News to real publishers)
+    5. Temporal Recency Tracking (separates searchedAt from publishedAt)
+    6. Cross-State Conflict Penalty (prevents cross-entity contamination)
+    7. Evidence Engine & Consensus Validation
     """
 
-    _CACHE: Dict[str, Tuple[float, float, Dict[str, Any]]] = {}  # key -> (timestamp, ttl, data)
+    _CACHE: Dict[str, Tuple[float, float, Dict[str, Any]]] = {}
 
     def should_search_web(self, query: str) -> bool:
-        """
-        Determines whether the query requires live real-time intelligence search.
-        """
         cls_res = query_classifier.classify(query)
         return cls_res.search_required
 
-    def should_search_cache(self, query: str) -> bool:
-        return self.should_search_web(query)
-
     def normalize_query(self, query: str) -> str:
-        """
-        Normalizes common contractions, joined words, and conversational fillers.
-        """
         q = query.strip()
         q = re.sub(r'iscurrent', 'is current', q, flags=re.IGNORECASE)
         q = re.sub(r'whois', 'who is', q, flags=re.IGNORECASE)
@@ -111,68 +133,208 @@ class WebSearchService:
         clean_q = re.sub(r'^(?:can you tell me|tell me|what is|when was|when is|when did|who is|who was)\s+', '', q, flags=re.IGNORECASE)
         return clean_q.strip() or q
 
-    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str]) -> float:
+    def generate_targeted_queries(self, query: str, server_dt: datetime) -> List[str]:
         """
-        Source scoring mechanism per requirements:
-        - Official government source: +40
-        - Reputable news source: +30
-        - Published recently (current year/month): +20 to +25
-        - Old source (>2 years): negative score (-15 to -25)
-        - Unknown/low-trust/social: negative score (-15)
+        Generates 3-5 targeted queries for important real-time / current questions per Requirement 6 & 7:
+        - Incorporates current month & year (e.g., October 2026)
+        - Targets official government domains and office keywords
+        - Avoids single-keyword noisy queries
         """
-        score = 0.0
+        clean_q = self.normalize_query(query)
+        month_year = server_dt.strftime("%B %Y")
+        year_str = str(server_dt.year)
+        q_lower = clean_q.lower()
+
+        # Office holder queries: CM, PM, President, Governor, CEO, etc.
+        states = {
+            "tamil nadu": {"portal": "tn.gov.in", "cm_site": "tn.gov.in"},
+            "kerala": {"portal": "kerala.gov.in", "cm_site": "keralacm.gov.in"},
+            "karnataka": {"portal": "karnataka.gov.in", "cm_site": "karnataka.gov.in"},
+            "andhra pradesh": {"portal": "ap.gov.in", "cm_site": "ap.gov.in"},
+            "telangana": {"portal": "telangana.gov.in", "cm_site": "telangana.gov.in"},
+            "maharashtra": {"portal": "maharashtra.gov.in", "cm_site": "maharashtra.gov.in"},
+            "delhi": {"portal": "delhi.gov.in", "cm_site": "delhi.gov.in"},
+            "west bengal": {"portal": "wb.gov.in", "cm_site": "wb.gov.in"}
+        }
+
+        detected_state = None
+        for s in states:
+            if s in q_lower:
+                detected_state = s
+                break
+
+        if "chief minister" in q_lower or "cm" in q_lower:
+            st = detected_state.title() if detected_state else "State"
+            portal = states[detected_state]["portal"] if detected_state else "gov.in"
+            return [
+                f"current Chief Minister of {st} {month_year}",
+                f"{st} Chief Minister official {month_year}",
+                f"site:{portal} Chief Minister {st}",
+                f"{st} current government Chief Minister {year_str}",
+                f"who is Chief Minister of {st} {year_str}"
+            ]
+
+        if "prime minister" in q_lower or "pm" in q_lower:
+            return [
+                f"current Prime Minister of India {month_year}",
+                f"Prime Minister of India official pmindia.gov.in {month_year}",
+                f"site:pmindia.gov.in Prime Minister",
+                f"India current government Prime Minister {year_str}",
+                f"who is Prime Minister of India {year_str}"
+            ]
+
+        if "president" in q_lower and "india" in q_lower:
+            return [
+                f"current President of India {month_year}",
+                f"President of India official presidentofindia.gov.in {month_year}",
+                f"site:presidentofindia.gov.in President",
+                f"who is President of India {year_str}"
+            ]
+
+        if "governor" in q_lower:
+            st = detected_state.title() if detected_state else "Tamil Nadu"
+            portal = states[detected_state]["portal"] if detected_state else "tn.gov.in"
+            return [
+                f"current Governor of {st} {month_year}",
+                f"{st} Governor official {month_year}",
+                f"site:{portal} Governor {st}",
+                f"who is Governor of {st} {year_str}"
+            ]
+
+        if any(term in q_lower for term in ["gold price", "price of gold", "gold rate"]):
+            return [
+                f"latest gold price in India today {month_year}",
+                f"24k 22k gold rate in India today live {year_str}",
+                f"gold price in India today per gram {month_year}",
+                f"current gold price India {year_str}"
+            ]
+
+        if "cricket" in q_lower or "match" in q_lower:
+            return [
+                f"latest cricket match result India {month_year}",
+                f"recent cricket match score bcci icc {year_str}",
+                f"latest cricket tournament results {year_str}"
+            ]
+
+        if any(term in q_lower for term in ["ai news", "openai", "google ai", "gemini", "groq", "nvidia"]):
+            tech_entity = "AI"
+            if "openai" in q_lower: tech_entity = "OpenAI"
+            elif "google" in q_lower or "gemini" in q_lower: tech_entity = "Google AI Gemini"
+            elif "groq" in q_lower: tech_entity = "Groq"
+            elif "nvidia" in q_lower: tech_entity = "NVIDIA"
+            return [
+                f"latest {tech_entity} news {month_year}",
+                f"{tech_entity} latest announcement model release {year_str}",
+                f"what happened in {tech_entity} this week {year_str}",
+                f"latest {tech_entity} updates {month_year}"
+            ]
+
+        # Default multi-query generation (3-4 targeted queries)
+        return [
+            f"{clean_q} {month_year}",
+            f"{clean_q} official {year_str}",
+            f"{clean_q} latest update {year_str}",
+            f"{clean_q} {year_str}"
+        ]
+
+    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str], target_query: str) -> float:
+        """
+        Multi-factor source scoring formula per Requirement 10:
+        finalScore = (
+            authorityScore * 0.35 +
+            relevanceScore * 0.30 +
+            recencyScore * 0.20 +
+            originalityScore * 0.10 +
+            contentQualityScore * 0.05
+        )
+        With Cross-State conflict penalty.
+        """
         domain = (item.get("domain") or "").lower()
         title = (item.get("title") or "").lower()
         snippet = (item.get("snippet") or "").lower()
         date_str = item.get("date") or ""
 
-        # 1. Authority
+        # 1. Authority Score (Tier 1: 100, Tier 2: 90, Tier 3: 70, Tier 4: 40, Tier 5: 15)
         is_gov = any(domain.endswith(d) or f".{d}" in domain or domain == d.lstrip(".") for d in OFFICIAL_GOV_DOMAINS)
-        is_news = any(d in domain for d in REPUTABLE_NEWS_DOMAINS)
+        is_reputable = any(d in domain for d in REPUTABLE_NEWS_DOMAINS)
+        is_secondary = any(d in domain for d in SECONDARY_NEWS_DOMAINS)
         is_social = any(d in domain for d in LOW_TRUST_DOMAINS)
 
         if is_gov:
-            score += 40.0
-            item["source_tier"] = "Official Government Portal"
-        elif is_news:
-            score += 30.0
-            item["source_tier"] = "Reputable News Organization"
+            authority_score = 100.0
+            item["source_tier"] = "Official Government Source"
+            item["source_type"] = "official"
+        elif is_reputable:
+            authority_score = 90.0
+            item["source_tier"] = "High-Quality News (Tier 2)"
+            item["source_type"] = "news"
+        elif is_secondary:
+            authority_score = 70.0
+            item["source_tier"] = "Established Publication"
+            item["source_type"] = "news"
         elif "wikipedia.org" in domain:
-            score += 10.0
-            item["source_tier"] = "Encyclopedic Background (Wikipedia)"
+            authority_score = 55.0
+            item["source_tier"] = "Encyclopedic Reference"
+            item["source_type"] = "reference"
         elif is_social:
-            score -= 15.0
+            authority_score = 15.0
             item["source_tier"] = "Social Media (Unverified)"
+            item["source_type"] = "social"
         else:
-            score += 15.0
+            authority_score = 45.0
             item["source_tier"] = "Web Source"
+            item["source_type"] = "web"
 
-        # 2. Recency Scoring
+        # 2. Relevance Score (0-100)
+        kw_matches = sum(1 for kw in target_keywords if kw and kw.lower() in f"{title} {snippet}")
+        relevance_score = min(kw_matches * 25.0, 100.0)
+
+        # 3. Recency Score (0-100)
+        recency_score = 50.0
         found_years = re.findall(r'\b(20[12]\d)\b', f"{date_str} {title} {snippet}")
         if found_years:
             max_year = max(int(y) for y in found_years)
             if max_year == current_year:
-                score += 25.0
+                recency_score = 100.0
             elif max_year == current_year - 1:
-                score += 10.0
+                recency_score = 65.0
             elif max_year <= current_year - 3:
-                score -= 25.0  # Penalize stale data
+                recency_score = 10.0  # severely penalize obsolete knowledge
             elif max_year <= current_year - 2:
-                score -= 15.0
+                recency_score = 25.0
         elif date_str:
-            score += 10.0
+            recency_score = 75.0
 
-        # Current month mention boost
         current_month_name = datetime.now().strftime("%B").lower()
         if current_month_name in f"{date_str} {title} {snippet}".lower():
-            score += 10.0
+            recency_score = min(recency_score + 15.0, 100.0)
 
-        # 3. Keyword Relevance
-        matches = sum(1 for kw in target_keywords if kw and kw.lower() in f"{title} {snippet}")
-        score += min(matches * 4.0, 20.0)
+        # 4. Originality Score (0-100)
+        originality_score = 90.0 if not item.get("is_aggregator") else 40.0
 
-        item["score"] = score
-        return score
+        # 5. Content Quality Score (0-100)
+        content_quality = min(len(snippet) / 1.5, 100.0)
+
+        # Weighted composite score
+        final_score = (
+            authority_score * 0.35 +
+            relevance_score * 0.30 +
+            recency_score * 0.20 +
+            originality_score * 0.10 +
+            content_quality * 0.05
+        )
+
+        # Cross-State Conflict Penalty per Requirement 18:
+        # If query is for Kerala and article is about Tamil Nadu without mentioning Kerala, severely penalize!
+        q_clean = target_query.lower()
+        t_clean = (title + " " + snippet).lower()
+        if "kerala" in q_clean and "tamil nadu" in t_clean and "kerala" not in t_clean:
+            final_score -= 60.0
+        elif "tamil nadu" in q_clean and "kerala" in t_clean and "tamil nadu" not in t_clean:
+            final_score -= 60.0
+
+        item["score"] = round(final_score, 1)
+        return final_score
 
     def _analyze_consensus(self, sources: List[Dict[str, Any]], query: str, current_year: int) -> Dict[str, Any]:
         """
@@ -230,10 +392,10 @@ class WebSearchService:
                 logger.info(f"Serving real-time search from cache ({round(now_ts - cached_time)}s old, TTL {cached_ttl}s)")
                 return cached_res
 
-        # Determine queries to run dynamically
-        queries_to_run = classification.search_queries
+        # Determine queries to run dynamically (generate 3-5 targeted queries per Requirement 6 & 7)
+        queries_to_run = self.generate_targeted_queries(clean_q, now_dt)
         if not queries_to_run:
-            queries_to_run = [clean_q]
+            queries_to_run = classification.search_queries or [clean_q]
 
         raw_items: List[Dict[str, Any]] = []
 
@@ -241,7 +403,6 @@ class WebSearchService:
         tavily_key = getattr(settings, "TAVILY_API_KEY", "")
         if tavily_key and not tavily_key.startswith("your_"):
             try:
-                # Run search for each generated query
                 tasks = [self._search_tavily(q_item, tavily_key, max_results=max_results) for q_item in queries_to_run[:2]]
                 res_lists = await asyncio.gather(*tasks, return_exceptions=True)
                 for res_list in res_lists:
@@ -274,9 +435,9 @@ class WebSearchService:
                 except Exception as e:
                     logger.warning(f"Serper search error: {e}")
 
-        # 4. Google News Live RSS (Live coverage with real publication dates)
+        # 4. Google News Live RSS across generated queries
         try:
-            news_tasks = [self._search_google_news(q_item, max_results=4) for q_item in queries_to_run[:2]]
+            news_tasks = [self._search_google_news(q_item, max_results=4) for q_item in queries_to_run[:3]]
             gathered_news = await asyncio.gather(*news_tasks, return_exceptions=True)
             for item_list in gathered_news:
                 if isinstance(item_list, list):
@@ -285,7 +446,7 @@ class WebSearchService:
             logger.debug(f"Google News search error: {e}")
 
         # 5. DuckDuckGo HTML Fallback
-        if len(raw_items) < 3:
+        if len(raw_items) < 4:
             try:
                 for q_item in queries_to_run[:2]:
                     ddg_res = await self._search_duckduckgo(q_item, max_results=4)
@@ -329,24 +490,29 @@ class WebSearchService:
             item["snippet"] = snippet
             item["domain"] = domain
 
-            self._score_source(item, current_year=current_year, target_keywords=keywords)
+            self._score_source(item, current_year=current_year, target_keywords=keywords, target_query=clean_q)
             scored_items.append(item)
 
-        # Sort strictly by score descending (Authority + Recency)
+        # Sort strictly by multi-factor score descending (Authority + Recency + Relevance)
         scored_items.sort(key=lambda x: x.get("score", 0), reverse=True)
 
         # Take top max_results
-        clean_sources: List[Dict[str, str]] = []
+        clean_sources: List[Dict[str, Any]] = []
         context_lines: List[str] = []
+        searched_at_str = now_dt.strftime("%d %b %Y, %I:%M %p IST")
 
         for item in scored_items:
             clean_sources.append({
                 "title": item["title"],
                 "url": item["url"],
                 "domain": item["domain"],
+                "publisher": item.get("publisher", item["domain"]),
                 "snippet": item["snippet"][:260],
                 "date": item.get("date", ""),
+                "published_at": item.get("date", ""),
+                "searched_at": searched_at_str,
                 "tier": item.get("source_tier", "Web Source"),
+                "source_type": item.get("source_type", "web"),
                 "score": round(float(item.get("score", 0)), 1)
             })
 
@@ -361,6 +527,8 @@ class WebSearchService:
             if len(clean_sources) >= max_results:
                 break
 
+        from app.services.evidence_engine import evidence_engine
+        evidence_item = evidence_engine.evaluate_evidence(clean_q, clean_sources, current_date_str)
         consensus_info = self._analyze_consensus(clean_sources, query, current_year)
         search_failed = len(clean_sources) == 0
 
@@ -376,6 +544,7 @@ class WebSearchService:
             f"SOURCES_FOUND: {len(raw_items)}\n"
             f"VALID_SOURCES: {len(clean_sources)}\n"
             f"SOURCE_DATES: {', '.join(source_dates) if source_dates else 'N/A'}\n"
+            f"EVIDENCE_STATUS: {evidence_item.verification_status}\n"
             f"FINAL_CONFIDENCE: {consensus_info['confidence']}\n"
             f"==============================================================\n"
         )
@@ -384,11 +553,13 @@ class WebSearchService:
         res_data = {
             "context_text": "\n".join(context_lines),
             "sources": clean_sources,
+            "evidence": evidence_item.model_dump(),
             "classification": classification.model_dump(),
             "consensus": consensus_info,
             "audit_log": audit_log,
             "search_failed": search_failed,
-            "checked_date": current_date_str
+            "checked_date": current_date_str,
+            "searched_at": searched_at_str
         }
 
         # Cache with category-specific TTL (capped at 5 minutes / 300s for real-time / current affairs)
@@ -428,17 +599,22 @@ class WebSearchService:
                 "title": s.get("title", ""),
                 "url": s.get("url", ""),
                 "snippet": s.get("snippet", ""),
-                "publishedAt": s.get("date", ""),
+                "publishedAt": s.get("published_at") or s.get("date", ""),
+                "searchedAt": s.get("searched_at", ""),
                 "source": s.get("domain", "") or s.get("tier", "web"),
+                "publisher": s.get("publisher", s.get("domain", "")),
+                "tier": s.get("tier", "Web Source"),
                 "relevanceScore": norm_score
             })
             
         return {
             "query": query,
             "results": normalized_results,
+            "evidence": raw_res.get("evidence"),
             "context_text": raw_res.get("context_text", ""),
             "search_failed": raw_res.get("search_failed", False),
-            "checked_date": raw_res.get("checked_date", "")
+            "checked_date": raw_res.get("checked_date", ""),
+            "searched_at": raw_res.get("searched_at", "")
         }
 
     async def searchWeb(self, query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -581,18 +757,42 @@ class WebSearchService:
                         link_match = re.search(r'<link>(.*?)</link>', item)
                         pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
                         source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
+                        source_url_match = re.search(r'<source[^>]*url="([^"]+)"', item)
                         if title_match:
-                            title = html.unescape(title_match.group(1)).strip()
+                            raw_title = html.unescape(title_match.group(1)).strip()
                             link = html.unescape(link_match.group(1)).strip() if link_match else ""
                             pub = pub_match.group(1).strip() if pub_match else ""
-                            source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
-                            domain = extract_domain(link) if link else "news.google.com"
+                            source_name = html.unescape(source_match.group(1)).strip() if source_match else ""
+
+                            # Resolve original publisher domain per Requirement 8
+                            pub_domain = None
+                            if source_url_match:
+                                s_dom = extract_domain(source_url_match.group(1))
+                                if s_dom and s_dom != "news.google.com":
+                                    pub_domain = s_dom
+                            if not pub_domain and source_name:
+                                inferred = infer_domain_from_publisher_name(source_name)
+                                if inferred != "news.google.com":
+                                    pub_domain = inferred
+                            if not pub_domain:
+                                link_dom = extract_domain(link)
+                                pub_domain = link_dom if link_dom != "news.google.com" else "news.google.com"
+
+                            # Clean title by removing trailing " - Publisher Name"
+                            clean_title = raw_title
+                            if source_name:
+                                clean_title = re.sub(rf'\s*-\s*{re.escape(source_name)}$', '', raw_title, flags=re.IGNORECASE).strip()
+
+                            is_aggregator = (pub_domain == "news.google.com")
+
                             results.append({
-                                "title": f"{title} ({source_name})" if source_name else title,
+                                "title": clean_title or raw_title,
                                 "url": link,
-                                "domain": domain,
-                                "snippet": title,
-                                "date": pub[:16] if pub else ""
+                                "domain": pub_domain,
+                                "publisher": source_name or pub_domain,
+                                "snippet": clean_title or raw_title,
+                                "date": pub[:16] if pub else "",
+                                "is_aggregator": is_aggregator
                             })
             except Exception:
                 pass
