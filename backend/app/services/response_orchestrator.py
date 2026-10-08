@@ -62,16 +62,17 @@ class AsuraResponseOrchestrator:
             timestamp=time_info["iso"]
         )
 
-        # 0. Conversation History (for follow-up checks ONLY)
+        # 0. Fetch recent conversation context with lean column projection & limit
         conversation_history = []
         if db and conversation_id:
             try:
-                db_msgs = db.query(MessageDB).filter(
+                limit_n = min(getattr(settings, "MAX_CONTEXT_MESSAGES", 10), 12)
+                db_msgs = db.query(MessageDB.role, MessageDB.content).filter(
                     MessageDB.conversation_id == conversation_id
-                ).order_by(MessageDB.created_at.asc()).all()
+                ).order_by(MessageDB.created_at.desc()).limit(limit_n).all()
                 conversation_history = [
-                    {"role": m.role, "content": m.content}
-                    for m in db_msgs[-settings.MAX_CONTEXT_MESSAGES:]
+                    {"role": r, "content": c}
+                    for r, c in reversed(db_msgs)
                 ]
             except Exception as e:
                 logger.debug(f"Could not load conversation history: {e}")
@@ -270,6 +271,8 @@ class AsuraResponseOrchestrator:
 
         # 6. Stream Execution with Selected AI Provider
         full_text = ""
+        ttft_ms = None
+        llm_start_time = time.time()
         try:
             async for chunk in model_manager.stream_orchestrated_chat(
                 logical_mode=decision.logical_mode,
@@ -294,6 +297,8 @@ class AsuraResponseOrchestrator:
 
                 if delta:
                     full_text += delta
+                    if ttft_ms is None:
+                        ttft_ms = int((time.time() - start_time) * 1000)
 
                 status_event = "Asura is formulating verified response..." if not delta and not reasoning else None
                 yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': delta, 'full_content': full_text, 'done': False, 'reasoning_status': reasoning or status_event, 'sources': [s.model_dump() for s in sources], 'images': [img.model_dump() for img in images]})}\n\n"
@@ -302,6 +307,8 @@ class AsuraResponseOrchestrator:
             err_notice = "\n\nAsura is temporarily unable to process this request. Please try again."
             full_text += err_notice
             yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': err_notice, 'full_content': full_text, 'done': False})}\n\n"
+
+        llm_duration_ms = int((time.time() - llm_start_time) * 1000)
 
         # 7. Follow-up Questions & Observability
         related_qs = self._generate_related_questions(clean_query, decision)
@@ -331,7 +338,18 @@ class AsuraResponseOrchestrator:
             "updated_date": current_date_str,
             "web_researched": decision.requires_web and bool(sources),
             "sources_count": len(sources),
-            "developer_diagnostics": debug_log
+            "ttft_ms": ttft_ms or latency_ms,
+            "llm_duration_ms": llm_duration_ms,
+            "developer_diagnostics": {
+                **debug_log,
+                "ttft_ms": ttft_ms,
+                "llm_duration_ms": llm_duration_ms,
+                "total_latency_ms": latency_ms,
+                "tools": tools_executed,
+                "routing": decision.model_dump(),
+                "sources_count": len(sources),
+                "images_count": len(images)
+            }
         }
 
         cleaned_answer = clean_ai_response(full_text)

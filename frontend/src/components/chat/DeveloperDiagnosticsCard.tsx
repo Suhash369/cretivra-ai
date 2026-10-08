@@ -66,8 +66,15 @@ export const DeveloperDiagnosticsCard: React.FC<DeveloperDiagnosticsProps> = ({ 
             {latency && (
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3 h-3 text-amber-400 shrink-0" />
-                <span className="text-amber-400/70">Latency:</span>
+                <span className="text-amber-400/70">Total Latency:</span>
                 <span className="font-semibold text-amber-100">{latency} ms</span>
+              </div>
+            )}
+            {diag.ttft_ms && (
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-amber-400 shrink-0" />
+                <span className="text-amber-400/70">TTFT:</span>
+                <span className="font-semibold text-emerald-400">{diag.ttft_ms} ms</span>
               </div>
             )}
           </div>

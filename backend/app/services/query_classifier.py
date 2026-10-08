@@ -100,6 +100,30 @@ class QueryClassifier:
 
         reasons = []
 
+        # 0. Fast conversational & chit-chat check (bypasses search for greetings even if containing 'today')
+        conversational_patterns = [
+            r"^(?:hi|hello|hey|greetings|howdy|hola|namaste)(?:[\s,!.]+.*)?$",
+            r"^how\s+are\s+you(?:\s+(?:doing|today))?[\s.?!]*$",
+            r"^how('s|s|\s+is)\s+it\s+going[\s.?!]*$",
+            r"^good\s+(?:morning|afternoon|evening|night|day)(?:[\s,!.]+.*)?$",
+            r"^what('s|\s+is)\s+up[\s.?!]*$",
+            r"^who\s+are\s+you[\s.?!]*$",
+            r"^who\s+(?:made|created|built)\s+you[\s.?!]*$",
+            r"^what\s+(?:can\s+you\s+do|are\s+your\s+capabilities)[\s.?!]*$",
+            r"^tell\s+me\s+a\s+(?:joke|story|riddle)[\s.?!]*$",
+            r"^(?:thanks|thank\s+you|ok|okay|cool|great|awesome|bye|goodbye)[\s.?!]*$"
+        ]
+        if any(re.match(p, lower_q) for p in conversational_patterns):
+            return QueryClassification(
+                is_real_time=False,
+                category="conversational",
+                search_required=False,
+                is_historical=False,
+                time_sensitivity="NONE",
+                cache_ttl_seconds=86400,
+                confidence="HIGH"
+            )
+
         # 1. Check for pure non-search code/math/translation prompts
         if any(lower_q.startswith(prefix) for prefix in [
             "write code", "implement a function", "solve math", "calculate",

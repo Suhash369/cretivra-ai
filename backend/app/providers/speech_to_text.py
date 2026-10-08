@@ -4,12 +4,13 @@ import httpx
 from typing import Optional
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.http_client import get_shared_client
 from app.providers.base import BaseSTTProvider
 
 class SpeechToTextProvider(BaseSTTProvider):
     """
     Internal Speech-to-Text Provider for Asura AI by Cretivra.
-    Supports Google Gemini multimodal audio transcription and Groq Whisper fallback.
+    Supports ultra-low-latency Groq Whisper (primary, ~150ms) and Google Gemini multimodal fallback.
     """
     def __init__(self):
         self.enabled = getattr(settings, "STT_ENABLED", True)
@@ -18,17 +19,7 @@ class SpeechToTextProvider(BaseSTTProvider):
         if not self.enabled or not audio_bytes:
             return ""
 
-        # 1. Try Gemini Multimodal Audio Perception
-        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
-        if gemini_key:
-            try:
-                text = await self._transcribe_gemini(audio_bytes, mime_type)
-                if text and text.strip():
-                    return text.strip()
-            except Exception as e:
-                logger.debug(f"Gemini audio perception notice: {e}")
-
-        # 2. Try Groq Whisper API
+        # 1. Try Groq Whisper (ultra-fast, ~150-250ms)
         groq_key = getattr(settings, "GROQ_API_KEY", "")
         if groq_key:
             try:
@@ -38,6 +29,30 @@ class SpeechToTextProvider(BaseSTTProvider):
             except Exception as e:
                 logger.debug(f"Groq Whisper transcription notice: {e}")
 
+        # 2. Fallback to Gemini Multimodal Audio Perception
+        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
+        if gemini_key:
+            try:
+                text = await self._transcribe_gemini(audio_bytes, mime_type)
+                if text and text.strip():
+                    return text.strip()
+            except Exception as e:
+                logger.debug(f"Gemini audio perception notice: {e}")
+
+        return ""
+
+    async def _transcribe_groq(self, audio_bytes: bytes, mime_type: str) -> str:
+        groq_key = getattr(settings, "GROQ_API_KEY", "")
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+        headers = {"Authorization": f"Bearer {groq_key}"}
+        ext = "webm" if "webm" in mime_type else "wav"
+        files = {"file": (f"speech.{ext}", audio_bytes, mime_type)}
+        data = {"model": "whisper-large-v3-turbo"}
+
+        client = get_shared_client()
+        res = await client.post(url, headers=headers, files=files, data=data, timeout=10.0)
+        if res.status_code == 200:
+            return res.json().get("text", "")
         return ""
 
     async def _transcribe_gemini(self, audio_bytes: bytes, mime_type: str) -> str:
@@ -63,31 +78,18 @@ class SpeechToTextProvider(BaseSTTProvider):
             ]
         }
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            res = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={clean_key}",
-                json=payload
-            )
-            if res.status_code == 200:
-                data = res.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    return "".join(p.get("text", "") for p in parts)
-        return ""
-
-    async def _transcribe_groq(self, audio_bytes: bytes, mime_type: str) -> str:
-        groq_key = getattr(settings, "GROQ_API_KEY", "")
-        url = "https://api.groq.com/openai/v1/audio/transcriptions"
-        headers = {"Authorization": f"Bearer {groq_key}"}
-        ext = "webm" if "webm" in mime_type else "wav"
-        files = {"file": (f"speech.{ext}", audio_bytes, mime_type)}
-        data = {"model": "whisper-large-v3-turbo"}
-
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            res = await client.post(url, headers=headers, files=files, data=data)
-            if res.status_code == 200:
-                return res.json().get("text", "")
+        client = get_shared_client()
+        res = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={clean_key}",
+            json=payload,
+            timeout=15.0
+        )
+        if res.status_code == 200:
+            data = res.json()
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return "".join(p.get("text", "") for p in parts)
         return ""
 
 stt_provider = SpeechToTextProvider()

@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from typing import Optional, List, Dict, Any, Tuple
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.http_client import get_shared_client
 from app.services.query_classifier import query_classifier, QueryClassification
 
 def extract_domain(url: str) -> str:
@@ -464,8 +465,9 @@ class WebSearchService:
             payload["topic"] = "news"
             payload["days"] = 7
 
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            res = await client.post(url, json=payload)
+        client = get_shared_client()
+        try:
+            res = await client.post(url, json=payload, timeout=5.0)
             if res.status_code == 200:
                 data = res.json()
                 results = []
@@ -484,6 +486,8 @@ class WebSearchService:
                             "date": pub[:10] if pub else ""
                         })
                 return results
+        except Exception:
+            pass
         return []
 
     async def _search_brave(self, query: str, api_key: str, max_results: int = 4) -> List[Dict[str, Any]]:
@@ -571,31 +575,31 @@ class WebSearchService:
         fetch_url = "https://news.google.com/rss/search"
         params = {"q": query, "hl": "en-US", "gl": "US", "ceid": "US:en"}
 
-        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
-            try:
-                res = await client.get(fetch_url, params=params, headers=headers)
-                if res.status_code == 200:
-                    items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
-                    for item in items[:max_results]:
-                        title_match = re.search(r'<title>(.*?)</title>', item)
-                        link_match = re.search(r'<link>(.*?)</link>', item)
-                        pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
-                        source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
-                        if title_match:
-                            title = html.unescape(title_match.group(1)).strip()
-                            link = html.unescape(link_match.group(1)).strip() if link_match else ""
-                            pub = pub_match.group(1).strip() if pub_match else ""
-                            source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
-                            domain = extract_domain(link) if link else "news.google.com"
-                            results.append({
-                                "title": f"{title} ({source_name})" if source_name else title,
-                                "url": link,
-                                "domain": domain,
-                                "snippet": title,
-                                "date": pub[:16] if pub else ""
-                            })
-            except Exception:
-                pass
+        client = get_shared_client()
+        try:
+            res = await client.get(fetch_url, params=params, headers=headers, timeout=4.0)
+            if res.status_code == 200:
+                items = re.findall(r'<item>(.*?)</item>', res.text, re.DOTALL)
+                for item in items[:max_results]:
+                    title_match = re.search(r'<title>(.*?)</title>', item)
+                    link_match = re.search(r'<link>(.*?)</link>', item)
+                    pub_match = re.search(r'<pubDate>(.*?)</pubDate>', item)
+                    source_match = re.search(r'<source[^>]*>(.*?)</source>', item)
+                    if title_match:
+                        title = html.unescape(title_match.group(1)).strip()
+                        link = html.unescape(link_match.group(1)).strip() if link_match else ""
+                        pub = pub_match.group(1).strip() if pub_match else ""
+                        source_name = html.unescape(source_match.group(1)).strip() if source_match else "Google News"
+                        domain = extract_domain(link) if link else "news.google.com"
+                        results.append({
+                            "title": f"{title} ({source_name})" if source_name else title,
+                            "url": link,
+                            "domain": domain,
+                            "snippet": title,
+                            "date": pub[:16] if pub else ""
+                        })
+        except Exception:
+            pass
         return results
 
     async def _search_wikipedia(self, query: str) -> List[Dict[str, Any]]:
@@ -609,8 +613,9 @@ class WebSearchService:
         }
         headers = {"User-Agent": "CretivraAI/1.0 (https://ai.cretivra.com)"}
 
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            res = await client.get(url, params=params, headers=headers)
+        client = get_shared_client()
+        try:
+            res = await client.get(url, params=params, headers=headers, timeout=4.0)
             if res.status_code == 200:
                 data = res.json()
                 results = []
@@ -628,14 +633,17 @@ class WebSearchService:
                             "date": ""
                         })
                 return results
+        except Exception:
+            pass
         return []
 
     async def _search_duckduckgo(self, query: str, max_results: int = 4) -> List[Dict[str, Any]]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         }
-        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
-            res = await client.post("https://html.duckduckgo.com/html/", data={"q": query}, headers=headers)
+        client = get_shared_client()
+        try:
+            res = await client.post("https://html.duckduckgo.com/html/", data={"q": query}, headers=headers, timeout=4.0)
             if res.status_code == 200:
                 results = []
                 blocks = re.findall(r'<div class="result__body"[^>]*>([\s\S]*?)</div>\s*</div>', res.text)
@@ -666,6 +674,8 @@ class WebSearchService:
                             "date": ""
                         })
                 return results
+        except Exception:
+            pass
         return []
 
     async def search_multi_provider(self, query: str, max_results: int = 6) -> List[Dict[str, Any]]:

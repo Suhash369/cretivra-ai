@@ -91,14 +91,21 @@ class EntityDetector:
         words = q.split()
         proper_noun_sequences = []
         current_seq = []
-        stop_words = {"Who", "What", "Where", "When", "Why", "How", "Can", "Could", "Would", "Should", "Is", "Are", "Was", "Were", "Tell", "Show", "Give", "Explain", "Write"}
+        stop_words = {
+            "Who", "What", "Where", "When", "Why", "How", "Can", "Could", "Would", "Should",
+            "Is", "Are", "Was", "Were", "Tell", "Show", "Give", "Explain", "Write",
+            "Hello", "Hi", "Hey", "Greetings", "Please", "Thanks", "Thank", "Asura", "Cretivra", "AI"
+        }
+        assistant_tokens = {"hello", "hi", "hey", "asura", "cretivra", "ai"}
 
         for w in words:
             clean_w = re.sub(r'^[^\w]+|[^\w]+$', '', w)
             if not clean_w:
                 continue
             clean_lower = clean_w.lower()
-            if clean_lower in TECHNICAL_TERMS:
+            if clean_lower in TECHNICAL_TERMS or clean_lower in assistant_tokens:
+                if len(current_seq) >= 2:
+                    proper_noun_sequences.append(" ".join(current_seq))
                 current_seq = []
                 continue
             if clean_w[0].isupper() and clean_w not in stop_words:
@@ -110,8 +117,14 @@ class EntityDetector:
         if len(current_seq) >= 2:
             proper_noun_sequences.append(" ".join(current_seq))
 
-        if proper_noun_sequences:
-            return proper_noun_sequences[0], EntityType.PERSON
+        # Filter out sequences composed entirely of greetings or assistant brand names
+        valid_sequences = [
+            seq for seq in proper_noun_sequences
+            if not all(tok.lower() in assistant_tokens for tok in seq.split())
+        ]
+
+        if valid_sequences:
+            return valid_sequences[0], EntityType.PERSON
 
         return None, EntityType.OTHER
 
@@ -146,12 +159,24 @@ class EntityDetector:
         ]
         return any(re.search(p, q_lower) for p in role_patterns)
 
+    _office_cache: Dict[str, Any] = {}
+
     async def resolve_office_holder(self, query: str) -> Optional[str]:
         """
         Dynamically resolves the actual person holding the requested office or position.
-        Uses live search grounding and current server date to ensure temporal accuracy.
-        Guarantees NO static hardcoding.
+        Uses live search grounding with in-memory TTL cache and fast 1.8s timeout
+        to prevent blocking conversational routing.
         """
+        import time
+        clean_q = query.strip().lower()
+        now = time.time()
+        
+        # 1. Fast in-memory cache check (1-hour TTL)
+        if clean_q in self._office_cache:
+            val, exp = self._office_cache[clean_q]
+            if now < exp:
+                return val
+
         try:
             from app.providers.groq import GroqProvider
             from app.services.web_search_service import web_search_service
@@ -162,39 +187,49 @@ class EntityDetector:
             if not gp.is_available():
                 return None
 
-            now_dt = datetime.now()
-            today_str = now_dt.strftime("%B %d, %Y")
-            current_year = now_dt.year
+            async def _resolve_internal():
+                now_dt = datetime.now()
+                today_str = now_dt.strftime("%B %d, %Y")
+                current_year = now_dt.year
 
-            # Obtain quick live grounding snippets for the office query
-            search_context = ""
-            try:
-                live_data = await web_search_service.search_with_sources(query, max_results=4)
-                if live_data and live_data.get("context_text"):
-                    search_context = live_data["context_text"]
-            except Exception:
-                pass
+                # Obtain quick live grounding snippets for the office query
+                search_context = ""
+                try:
+                    live_data = await asyncio.wait_for(
+                        web_search_service.search_with_sources(query, max_results=3),
+                        timeout=1.2
+                    )
+                    if live_data and live_data.get("context_text"):
+                        search_context = live_data["context_text"]
+                except Exception:
+                    pass
 
-            context_block = f"\n[Live Verified Intelligence as of {today_str}]:\n{search_context}\n" if search_context else ""
+                context_block = f"\n[Live Verified Intelligence as of {today_str}]:\n{search_context}\n" if search_context else ""
 
-            prompt = (
-                f"Today is {today_str} (Year {current_year}).{context_block}\n"
-                f"Based strictly on the verified live intelligence sources above, who is the current incumbent holding the office or leadership role described in: \"{query}\" as of {today_str}? "
-                "Return ONLY the incumbent person's full name as reported in the live news (e.g. 'Vijay'). Do not mention past leaders, titles, dates, or quotes."
-            )
-            resp = await gp.chat("fast", [{"role": "user", "content": prompt}])
-            raw_name = resp.get("message", {}).get("content", "").strip()
-            
-            # Normalize all unicode whitespace to standard ASCII space
-            raw_name = re.sub(r'[\s\u202f\xa0]+', ' ', raw_name).strip()
-            # Strip parenthetical clarifications, e.g. "Vijay K. (Vijay)" -> "Vijay K."
-            clean_name = re.sub(r'\(.*?\)', '', raw_name).strip()
-            clean_name = re.sub(r'["\'.]', '', clean_name).strip()
-            if not clean_name or "unknown" in clean_name.lower() or "sorry" in clean_name.lower() or len(clean_name) > 60:
-                return None
-            resolved = clean_name.strip(" '\"`.")
-            logger.info(f"[ASURA] Resolved office holder for '{query}': '{resolved}'")
-            return resolved
+                prompt = (
+                    f"Today is {today_str} (Year {current_year}).{context_block}\n"
+                    f"Based strictly on the verified live intelligence sources above, who is the current incumbent holding the office or leadership role described in: \"{query}\" as of {today_str}? "
+                    "Return ONLY the incumbent person's full name as reported in the live news (e.g. 'Vijay'). Do not mention past leaders, titles, dates, or quotes."
+                )
+                resp = await gp.chat("fast", [{"role": "user", "content": prompt}])
+                raw_name = resp.get("message", {}).get("content", "").strip()
+                
+                # Normalize all unicode whitespace to standard ASCII space
+                raw_name = re.sub(r'[\s\u202f\xa0]+', ' ', raw_name).strip()
+                # Strip parenthetical clarifications, e.g. "Vijay K. (Vijay)" -> "Vijay K."
+                clean_name = re.sub(r'\(.*?\)', '', raw_name).strip()
+                clean_name = re.sub(r'["\'.]', '', clean_name).strip()
+                if not clean_name or "unknown" in clean_name.lower() or "sorry" in clean_name.lower() or len(clean_name) > 60:
+                    return None
+                resolved = clean_name.strip(" '\"`.")
+                logger.info(f"[ASURA] Resolved office holder for '{query}': '{resolved}'")
+                return resolved
+
+            # Fast timeout (1.8s) so router never hangs
+            res = await asyncio.wait_for(_resolve_internal(), timeout=1.8)
+            if res:
+                self._office_cache[clean_q] = (res, now + 3600)
+            return res
         except Exception:
             return None
 

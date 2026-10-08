@@ -433,7 +433,7 @@ export const AsuraTable: React.FC<AsuraTableProps> = ({ columns, rows, title }) 
   );
 };
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
   content,
   className = '',
 }) => {
@@ -722,4 +722,4 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       </ReactMarkdown>
     </div>
   );
-};
+});
