@@ -153,7 +153,7 @@ class AsuraRouter:
                 # Entity resolved to specific person - search by person name directly
                 requires_images = settings.IMAGE_SEARCH_AUTO
                 image_search_query = entity
-                search_query = f"{entity} {clean_role} biography records"
+                search_query = q
             else:
                 # If office-holder could not be verified, do NOT do generic image search (prevents random statues/monuments)
                 requires_images = False

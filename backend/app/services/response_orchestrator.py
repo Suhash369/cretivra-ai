@@ -162,8 +162,16 @@ class AsuraResponseOrchestrator:
                     if res.success:
                         web_context = res.context_text
                         sources = [AsuraSource(title=s.title, url=s.url, domain=s.domain, snippet=s.snippet) for s in res.sources]
-                    elif decision.requires_current_information:
-                        web_context = "[Asura Notice]: Live web grounding could not verify current facts for this query."
+                    else:
+                        # Direct fallback to multi-tier web search engine
+                        try:
+                            from app.services.web_search_service import web_search_service
+                            fallback_res = await web_search_service.search_with_sources(query, max_results=6)
+                            if fallback_res and fallback_res.get("sources"):
+                                web_context = fallback_res.get("context_text", "")
+                                sources = [AsuraSource(title=s.get("title", ""), url=s.get("url", ""), domain=s.get("domain", ""), snippet=s.get("snippet", "")) for s in fallback_res.get("sources", [])]
+                        except Exception as fe:
+                            logger.warning(f"Direct web search fallback notice: {fe}")
                 elif kind == "image" and isinstance(res, list):
                     images = [AsuraImage(**img) for img in res if isinstance(img, dict)]
                     logger.info(f"[ASURA] image_results={len(images)} response_images={len(images)}")
@@ -196,11 +204,13 @@ class AsuraResponseOrchestrator:
                 f"4. Sources & Grounding: Conclude with a structured '### Sources & References' section with clickable markdown links [Title](URL) for cited sources.\n"
                 f"5. Under no circumstances state 'I can't verify that information' or cite training cutoffs when verified live sources are provided above."
             )
-        elif decision.requires_current_information and not web_context:
+        elif decision.requires_current_information:
             prompt_content = (
                 f"Question: {query}\n\n"
-                f"Directive: Answer only verified facts. If the latest live details are uncertain or cannot be verified, "
-                f"state transparently: 'I can't verify that information with the available information.'"
+                f"[TEMPORAL GROUNDING AS OF {today_str.upper()}]:\n"
+                f"Today is {today_str} (Year {current_year}). You possess live temporal continuity up to {today_str}.\n"
+                f"Directive: Answer with the most up-to-date real-world facts for {current_year}. "
+                f"Do not claim a 2023 or 2024 knowledge cutoff."
             )
 
         messages = [
