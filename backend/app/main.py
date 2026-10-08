@@ -21,11 +21,17 @@ from app.api import health, models, conversations, chat, files, settings as sett
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("Starting CRETIVRA ASURA service...", flush=True)
     logger.info("Starting CRETIVRA ASURA service...")
-    try:
-        await asyncio.wait_for(asyncio.to_thread(init_db), timeout=10.0)
-    except Exception as e:
-        logger.warning(f"Database initialization non-fatal notice: {e}")
+
+    async def _async_init_db():
+        try:
+            await asyncio.to_thread(init_db)
+        except Exception as e:
+            logger.warning(f"Database initialization non-fatal notice: {e}")
+
+    # Initialize DB in background so port binding and health check respond immediately
+    asyncio.create_task(_async_init_db())
 
     try:
         os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -140,9 +146,10 @@ if __name__ == "__main__":
         port = int(str(raw_port).strip())
     except (ValueError, TypeError):
         port = 10000
+    print(f"Starting Asura AI server on 0.0.0.0:{port}...", flush=True)
     logger.info(f"Starting Asura AI server on 0.0.0.0:{port}...")
     uvicorn.run(
-        "app.main:app",
+        app,
         host="0.0.0.0",
         port=port,
         proxy_headers=True,
