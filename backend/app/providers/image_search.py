@@ -77,6 +77,13 @@ class ImageSearchProvider(BaseImageSearchProvider):
         if not clean_q:
             clean_q = query.strip()
 
+        # Resolve office holder if query is a political role or office
+        from app.core.entity import entity_detector
+        if entity_detector.is_office_or_role_query(clean_q) or entity_detector.is_office_or_role_query(query):
+            office_holder = entity_detector.resolve_office_holder_sync(clean_q) or entity_detector.resolve_office_holder_sync(query)
+            if office_holder:
+                clean_q = office_holder
+
         logger.debug(f"[ASURA] image_search_query={clean_q}")
         candidates: List[Dict[str, Any]] = []
         seen_fingerprints: set = set()
@@ -85,6 +92,8 @@ class ImageSearchProvider(BaseImageSearchProvider):
         headers = {
             "User-Agent": "CretivraAsura/2.0 (https://asura.cretivra.com; assistant@cretivra.com)"
         }
+
+        name_tokens = [tok.lower() for tok in clean_q.split() if len(tok) > 2]
 
         async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=5.0) as client:
             # 1. Wikipedia Page Summary & Media List
@@ -113,6 +122,8 @@ class ImageSearchProvider(BaseImageSearchProvider):
                                         encoded_title = cand_enc
                                         orig_url = orig.get("source")
                                         thumb_url = thumb.get("source") if thumb else orig_url
+                                        if orig_url.lower().endswith((".tif", ".tiff")):
+                                            orig_url = thumb_url
                                         fp = extract_image_fingerprint(orig_url)
                                         if fp and fp not in seen_fingerprints and orig_url not in seen_urls:
                                             seen_fingerprints.add(fp)
@@ -138,8 +149,8 @@ class ImageSearchProvider(BaseImageSearchProvider):
                             top_title = hits[0].get("title", "")
                             encoded_title = top_title.replace(" ", "_")
 
-                        # B. Fetch Secondary Photos from Article Media List
-                        if len(candidates) < max_results:
+                        # B. Fetch Secondary Photos from Article Media List (strictly filtering for subject relevance)
+                        if len(candidates) < max_results and encoded_title:
                             try:
                                 media_res = await client.get(f"https://en.wikipedia.org/api/rest_v1/page/media-list/{quote(encoded_title)}")
                                 if media_res.status_code == 200:
@@ -148,8 +159,8 @@ class ImageSearchProvider(BaseImageSearchProvider):
                                         if it.get("type") != "image":
                                             continue
                                         file_title = it.get("title", "")
-                                        # Skip SVG logos, icons, signatures, flags, and UI elements
-                                        if any(k in file_title.lower() for k in [".svg", "signature", "logo", "flag", "icon", "map", "symbol", "stub", "disambig"]):
+                                        # Skip SVG logos, icons, signatures, flags, maps, and UI elements
+                                        if any(k in file_title.lower() for k in [".svg", "signature", "logo", "flag", "icon", "map", "symbol", "stub", "disambig", "chart", "graph", "diagram"]):
                                             continue
 
                                         srcset = it.get("srcset", [])
@@ -162,12 +173,21 @@ class ImageSearchProvider(BaseImageSearchProvider):
                                         if thumb_src and not thumb_src.startswith("http"):
                                             thumb_src = "https:" + thumb_src
 
+                                        if best_src.lower().endswith((".tif", ".tiff")):
+                                            best_src = thumb_src
+
                                         fp = extract_image_fingerprint(best_src)
                                         if not fp or fp in seen_fingerprints or best_src in seen_urls:
                                             continue
 
                                         clean_caption = file_title.replace("File:", "").replace("_", " ")
                                         clean_caption = re.sub(r"\.[a-zA-Z0-9]+$", "", clean_caption)
+
+                                        # Ensure caption contains relevant subject token if searching a person
+                                        if name_tokens:
+                                            caption_lower = clean_caption.lower()
+                                            if not any(tok in caption_lower for tok in name_tokens):
+                                                continue
 
                                         if best_src:
                                             seen_fingerprints.add(fp)
@@ -192,7 +212,7 @@ class ImageSearchProvider(BaseImageSearchProvider):
             except Exception as e:
                 logger.debug(f"Wikipedia API lookup notice: {e}")
 
-            # 2. Fallback to Wikimedia Commons Search API if needed
+            # 2. Fallback to Wikimedia Commons Search API for authentic photographic portraits
             if len(candidates) < max_results:
                 try:
                     wiki_commons = await self._search_wikimedia_commons(
@@ -296,11 +316,17 @@ class ImageSearchProvider(BaseImageSearchProvider):
                         # Require valid bitmap image (reject svg, audio, video, pdf)
                         if not mime.startswith("image/") or mime == "image/svg+xml":
                             continue
-                        img_url = info.get("url")
+                        img_url = info.get("url") or ""
                         thumb_url = info.get("thumburl") or img_url
+                        if img_url.lower().endswith((".tif", ".tiff")):
+                            if thumb_url and not thumb_url.lower().endswith((".tif", ".tiff")):
+                                img_url = thumb_url
+                            else:
+                                continue
+
                         raw_title = page.get("title", "")
                         title = raw_title.replace("File:", "").replace("_", " ")
-                        if any(k in title.lower() for k in [".svg", "signature", "logo", "icon", "flag", "map", "symbol", "stub"]):
+                        if any(k in title.lower() for k in [".svg", "signature", "logo", "icon", "flag", "map", "symbol", "stub", "chart", "graph", "diagram", "table"]):
                             continue
                         if not img_url:
                             continue
@@ -312,7 +338,7 @@ class ImageSearchProvider(BaseImageSearchProvider):
                         if fp:
                             fps.add(fp)
                         urls.add(img_url)
-                        clean_caption = re.sub(r"\.[a-zA-Z0-9]+$", "", title)
+                        clean_caption = re.sub(r"\.[a-zA-Z0-9]+$", "", title).strip()
                         results.append({
                             "url": img_url,
                             "thumbnail": thumb_url,

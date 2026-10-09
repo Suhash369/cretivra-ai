@@ -165,7 +165,7 @@ class EntityDetector:
         q_lower = query.lower()
         if "tamil nadu" in q_lower:
             if any(term in q_lower for term in ["cm", "chief minister"]):
-                return "M. K. Stalin"
+                return "C. Joseph Vijay"
             if "governor" in q_lower:
                 return "R. N. Ravi"
         if "kerala" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):

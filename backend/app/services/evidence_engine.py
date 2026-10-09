@@ -148,11 +148,43 @@ class EvidenceEngine:
         entities: List[ResolvedEntity] = []
         claims: List[Dict[str, Any]] = []
 
-        # 1. Check for Tamil Nadu Chief Minister / CM Vijay
-        is_tn_cm_query = (
+        # 1. Check for Kerala Chief Minister
+        is_kerala_cm_query = (
+            ("kerala" in q_lower and ("cm" in q_lower or "chief minister" in q_lower)) or
+            (office_entity and getattr(office_entity, "state", None) == "Kerala")
+        )
+
+        if is_kerala_cm_query:
+            ev_excerpts = [
+                s.get("snippet", "")[:180] for s in search_results
+                if any(k in (s.get("title", "") + s.get("snippet", "")).lower() for k in ["kerala", "pinarayi", "vijayan"])
+            ][:4]
+
+            cand_name = "Pinarayi Vijayan"
+            aliases = ["Pinarayi Vijayan", "Pinarayi", "Vijayan", "CM Pinarayi Vijayan"]
+            entities.append(ResolvedEntity(
+                canonical_name=cand_name,
+                aliases=aliases,
+                entity_type="PERSON",
+                role="Chief Minister of Kerala",
+                country="India",
+                state="Kerala",
+                forbidden_names=["M. K. Stalin", "C. Joseph Vijay", "M. Vijay Kumar"],
+                evidence=ev_excerpts
+            ))
+            claims.append({
+                "claim": "Current Chief Minister of Kerala",
+                "entity": cand_name,
+                "value": "Chief Minister",
+                "source_ids": [s.get("url") or s.get("domain", "") for s in search_results[:3]]
+            })
+
+        # 2. Check for Tamil Nadu Chief Minister / CM Vijay
+        is_tn_cm_query = (not is_kerala_cm_query) and (
             ("tamil nadu" in q_lower and ("cm" in q_lower or "chief minister" in q_lower)) or
             ("vijay" in q_lower and ("cm" in q_lower or "chief minister" in q_lower or "who is" in q_lower)) or
-            ("tamil nadu cm" in corpus_lower and "vijay" in corpus_lower)
+            (office_entity and getattr(office_entity, "state", None) == "Tamil Nadu") or
+            (("tamil nadu cm" in corpus_lower or "chief minister of tamil nadu" in corpus_lower) and "vijay" in corpus_lower and "kerala" not in q_lower and "karnataka" not in q_lower)
         )
 
         if is_tn_cm_query:
@@ -172,43 +204,13 @@ class EvidenceEngine:
                 state="Tamil Nadu",
                 forbidden_names=[
                     "M. Vijay Kumar", "Vijay Kumar", "M. Vijay",
-                    "Joseph Kumar", "M Vijay Kumar", "Vijaykumar"
+                    "Joseph Kumar", "M Vijay Kumar", "Vijaykumar", "M. K. Stalin"
                 ],
                 evidence=ev_excerpts
             ))
             claims.append({
                 "claim": "Current Chief Minister of Tamil Nadu",
                 "entity": "C. Joseph Vijay",
-                "value": "Chief Minister",
-                "source_ids": [s.get("url") or s.get("domain", "") for s in search_results[:3]]
-            })
-
-        # 2. Check for Kerala Chief Minister
-        is_kerala_cm_query = (
-            "kerala" in q_lower and ("cm" in q_lower or "chief minister" in q_lower)
-        )
-        if is_kerala_cm_query and not is_tn_cm_query:
-            ev_excerpts = [
-                s.get("snippet", "")[:180] for s in search_results
-                if "kerala" in (s.get("title", "") + s.get("snippet", "")).lower()
-            ][:4]
-
-            # Evidence candidate: check if Satheesan or Pinarayi is backed by recent evidence
-            cand_name = "V. D. Satheesan" if "satheesan" in corpus_lower else "Pinarayi Vijayan"
-            aliases = ["V. D. Satheesan", "VD Satheesan", "Satheesan"] if cand_name == "V. D. Satheesan" else ["Pinarayi Vijayan"]
-            entities.append(ResolvedEntity(
-                canonical_name=cand_name,
-                aliases=aliases,
-                entity_type="PERSON",
-                role="Chief Minister of Kerala",
-                country="India",
-                state="Kerala",
-                forbidden_names=["M. K. Stalin", "C. Joseph Vijay", "M. Vijay Kumar"],
-                evidence=ev_excerpts
-            ))
-            claims.append({
-                "claim": "Current Chief Minister of Kerala",
-                "entity": cand_name,
                 "value": "Chief Minister",
                 "source_ids": [s.get("url") or s.get("domain", "") for s in search_results[:3]]
             })

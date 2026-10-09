@@ -265,6 +265,21 @@ class AsuraResponseOrchestrator:
         normalized_evidence = evidence_engine.entity_resolver(clean_query, sources_dicts)
         top_entity = normalized_evidence.entities[0] if (normalized_evidence and normalized_evidence.entities) else None
 
+        # Synchronize images with resolved canonical entity to guarantee proper images
+        if top_entity and top_entity.canonical_name:
+            target_name = top_entity.canonical_name
+            name_tokens = [tok.lower() for tok in target_name.split() if len(tok) > 2]
+            images_match = any(
+                any(tok in (img.title or "").lower() or tok in (img.url or "").lower() for tok in name_tokens)
+                for img in images
+            ) if images else False
+
+            if not images_match and (decision.requires_images or is_real_time_query):
+                refreshed_imgs = await image_search_provider.search(target_name, max_results=4)
+                if refreshed_imgs:
+                    images = [AsuraImage(**img) for img in refreshed_imgs if isinstance(img, dict)]
+                    yield f"data: {json.dumps({'assistant': 'asura', 'conversation_id': conversation_id, 'content': '', 'full_content': '', 'done': False, 'images': [img.model_dump() for img in images], 'sources': [s.model_dump() for s in sources]})}\n\n"
+
         if is_real_time_query or top_entity:
             v_status = (evidence_data or {}).get("verification_status", "unverified")
             verification_guidance = ""
@@ -285,8 +300,7 @@ class AsuraResponseOrchestrator:
                     f"- Entity Role: {top_entity.role}\n"
                     f"- Jurisdiction: {top_entity.state or top_entity.country}\n"
                     f"- Approved Aliases: {', '.join(top_entity.aliases)}\n"
-                    f"- FORBIDDEN NAMES (DO NOT USE UNDER ANY CIRCUMSTANCES): {', '.join(top_entity.forbidden_names)}\n"
-                    f"- STRICT ENFORCEMENT: Never expand initials without explicit evidence. Never invent surnames. Output '{top_entity.canonical_name}'. Never output '{top_entity.forbidden_names[0] if top_entity.forbidden_names else 'any invented name'}'.\n"
+                    f"- MANDATORY INSTRUCTION: You MUST state clearly and directly that {top_entity.canonical_name} is the {top_entity.role}. Do not withhold the name or claim policy restrictions.\n"
                 )
 
             # Internal system instruction for STRICT_FACT_MODE (Requirement 21)
