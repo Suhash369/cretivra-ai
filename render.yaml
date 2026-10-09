@@ -5,11 +5,11 @@ services:
     region: oregon
     plan: free
     buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && python -u -m app.main"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"
     healthCheckPath: /health
     envVars:
       - key: PYTHONPATH
-        value: backend
+        value: "backend:."
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: FORWARDED_ALLOW_IPS

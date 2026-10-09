@@ -17,57 +17,60 @@
 
 @layer base {
   :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
+    --background: #f7f7f5;
+    --foreground: #18181b;
     --surface: #ffffff;
-    --surface-secondary: #f1f5f9;
-    --surface-hover: #e2e8f0;
-    --surface-active: #cbd5e1;
-    --border: #e2e8f0;
-    --border-subtle: #cbd5e1;
-    --muted: #f1f5f9;
-    --muted-foreground: #475569;
-    --primary: #0284c7;
+    --surface-secondary: #efefea;
+    --surface-hover: #e8e8e2;
+    --surface-active: #dfdfd9;
+    --border: #e7e7e4;
+    --border-subtle: #ecece8;
+    --muted: #f4f4f0;
+    --muted-foreground: #71717a;
+    --primary: #18181b;
     --primary-foreground: #ffffff;
-    --primary-hover: #0369a1;
-    --secondary: #64748b;
+    --primary-hover: #27272a;
+    --secondary: #71717a;
     --secondary-foreground: #ffffff;
-    --accent: #7c3aed;
+    --accent: #06b6d4;
     --accent-foreground: #ffffff;
-    --success: #059669;
-    --warning: #d97706;
-    --error: #e11d48;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #f43f5e;
     --card: #ffffff;
-    --card-foreground: #0f172a;
+    --card-foreground: #18181b;
     --input-bg: #ffffff;
     --input-background: #ffffff;
-    --input-border: #cbd5e1;
+    --input-border: #e7e7e4;
     --dropdown-bg: #ffffff;
-    --dropdown-border: #e2e8f0;
-    --sidebar-bg: #ffffff;
-    --header-bg: rgba(255, 255, 255, 0.88);
+    --dropdown-border: #e7e7e4;
+    --sidebar-bg: #efefea;
+    --header-bg: rgba(247, 247, 245, 0.88);
     --modal-background: #ffffff;
-    --modal-overlay: rgba(15, 23, 42, 0.55);
-    --user-bubble-bg: #eef2ff;
-    --user-bubble-text: #1e1b4b;
-    --user-bubble-border: #c7d2fe;
-    --assistant-text: #0f172a;
+    --modal-overlay: rgba(24, 24, 27, 0.45);
+    --user-bubble-bg: #efefea;
+    --user-bubble-text: #18181b;
+    --user-bubble-border: #e7e7e4;
+    --assistant-text: #18181b;
 
     /* Legacy compatibility variables */
-    --bg-base: #f8fafc;
+    --bg-base: #f7f7f5;
     --bg-panel: #ffffff;
-    --bg-card: #f1f5f9;
-    --cyan: #0284c7;
+    --bg-card: #efefea;
+    --cyan: #06b6d4;
     --blue: #2563eb;
-    --violet: #7c3aed;
+    --violet: #8b5cf6;
     --purple: #9333ea;
-    --green: #059669;
-    --amber: #d97706;
-    --rose: #e11d48;
-    --text: #0f172a;
-    --text-dim: #475569;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --text: #18181b;
+    --text-dim: #71717a;
 
-    /* Centralized Motion Tokens */
+    /* Centralized Motion & Radius Tokens */
+    --radius-card: 18px;
+    --radius-composer: 24px;
+    --radius-chip: 9999px;
     --motion-fast: 150ms;
     --motion-normal: 250ms;
     --motion-slow: 400ms;
@@ -79,7 +82,7 @@
   :root[data-theme="dark"],
   html.dark,
   body.dark {
-    --background: #060911;
+    --background: #070a12;
     --foreground: #e7eaf4;
     --surface: #0d121f;
     --surface-secondary: #151c2e;
@@ -90,7 +93,7 @@
     --muted: #1e293b;
     --muted-foreground: #8891a8;
     --primary: #06b6d4;
-    --primary-foreground: #060911;
+    --primary-foreground: #070a12;
     --primary-hover: #0891b2;
     --secondary: #94a3b8;
     --secondary-foreground: #ffffff;
@@ -107,7 +110,7 @@
     --dropdown-bg: #0d121f;
     --dropdown-border: #232d45;
     --sidebar-bg: #0b0f19;
-    --header-bg: rgba(6, 9, 17, 0.82);
+    --header-bg: rgba(7, 10, 18, 0.85);
     --modal-background: #0d121f;
     --modal-overlay: rgba(0, 0, 0, 0.72);
     --user-bubble-bg: #151c2e;
@@ -116,7 +119,7 @@
     --assistant-text: #e7eaf4;
 
     /* Legacy compatibility variables */
-    --bg-base: #060911;
+    --bg-base: #070a12;
     --bg-panel: #0d121f;
     --bg-card: #151c2e;
     --cyan: #06b6d4;
@@ -1633,6 +1636,172 @@ html.light .animate-shimmer {
   animation: asura-aperture-zoom 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ==========================================================================
+   Bento Grid, Glow Surface, and Interactive Illustrations Engine
+   ========================================================================== */
+
+@property --border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes bento-border-spin {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+.bento-border-animated {
+  animation: bento-border-spin 7s linear infinite;
+}
+
+@keyframes bento-breathe-1 {
+  0%, 100% { opacity: 0.22; transform: scale(0.96); }
+  50% { opacity: 0.65; transform: scale(1.06); }
+}
+
+@keyframes bento-breathe-2 {
+  0%, 100% { opacity: 0.22; transform: scale(0.96); }
+  50% { opacity: 0.65; transform: scale(1.06); }
+}
+
+@keyframes bento-breathe-3 {
+  0%, 100% { opacity: 0.22; transform: scale(0.96); }
+  50% { opacity: 0.65; transform: scale(1.06); }
+}
+
+@keyframes bento-breathe-4 {
+  0%, 100% { opacity: 0.22; transform: scale(0.96); }
+  50% { opacity: 0.65; transform: scale(1.06); }
+}
+
+.bento-breathe-1 { animation: bento-breathe-1 4.2s ease-in-out infinite; }
+.bento-breathe-2 { animation: bento-breathe-2 4.2s ease-in-out 1.1s infinite; }
+.bento-breathe-3 { animation: bento-breathe-3 4.2s ease-in-out 2.2s infinite; }
+.bento-breathe-4 { animation: bento-breathe-4 4.2s ease-in-out 3.3s infinite; }
+
+@keyframes bento-pixel-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes bento-coin-float {
+  0%, 100% { transform: translateY(0); opacity: 0.8; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+
+@keyframes bento-star-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50% { opacity: 0.95; transform: scale(1.2); }
+}
+
+.animate-bento-bob { animation: bento-pixel-bob 2s ease-in-out infinite; }
+.animate-bento-coin { animation: bento-coin-float 2.4s ease-in-out infinite; }
+.animate-bento-twinkle { animation: bento-star-twinkle 3.2s ease-in-out infinite; }
+
+@keyframes bento-wireframe-draw {
+  0% { stroke-dashoffset: 160; opacity: 0.4; }
+  50% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0.85; }
+}
+
+.animate-bento-wireframe {
+  stroke-dasharray: 160;
+  animation: bento-wireframe-draw 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+}
+
+@keyframes bento-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-bento-entrance-1 { animation: bento-fade-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both; }
+.animate-bento-entrance-2 { animation: bento-fade-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s both; }
+.animate-bento-entrance-3 { animation: bento-fade-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.19s both; }
+.animate-bento-entrance-4 { animation: bento-fade-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.26s both; }
+.animate-bento-entrance-carousel { animation: bento-fade-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.33s both; }
+
+@keyframes composer-click-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(6, 182, 212, 0.2), 0 0 25px rgba(6, 182, 212, 0.25); }
+  100% { box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+}
+
+.animate-composer-pulse {
+  animation: composer-click-pulse 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.carousel-mask-edges {
+  mask-image: linear-gradient(to right, transparent 0px, black 28px, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0px, black 28px, black calc(100% - 28px), transparent 100%);
+}
+
+/* Floating Glass Composer Tokens & Classes */
+.floating-glass-composer {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 1.5rem; /* rounded-3xl */
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .floating-glass-composer {
+  background: rgba(18, 24, 38, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.floating-glass-composer:focus-within,
+.floating-glass-composer.is-focused {
+  border-color: rgba(6, 182, 212, 0.6) !important;
+  box-shadow: 0 20px 50px -20px rgba(6, 182, 212, 0.28), 0 0 0 1px rgba(6, 182, 212, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .floating-glass-composer {
+    background: rgba(255, 255, 255, 0.92);
+  }
+  .dark .floating-glass-composer {
+    background: rgba(18, 24, 38, 0.92);
+  }
+}
+
+/* Prefill Toast Animation */
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.animate-toast-slide {
+  animation: toastSlideIn 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes toastFadeOnly {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .animate-toast-slide {
+    animation: toastFadeOnly 200ms ease-out forwards;
+    transform: translateX(-50%) !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cv-orb, .cv-logo-pulse, .cv-logo-pulse circle, .cv-gradient-text, .cv-card::before, .cv-cursor,
   .animate-float-slow, .animate-scan-beam, .animate-pulse-ring, .cv-search-glow-aura, .cv-option-button,
@@ -1640,7 +1809,11 @@ html.light .animate-shimmer {
   .animate-enter, .animate-fade, .animate-slide-up, .animate-scale, .animate-panel,
   .animate-pulse-soft, .animate-shimmer, .animate-stream, .animate-success, .animate-error,
   .asura-btn-interactive, .asura-card-interactive, .asura-ambient-orb,
-  .asura-animate-pulse-core, .asura-animate-sweep, .asura-animate-ripple, .asura-animate-signal {
+  .asura-animate-pulse-core, .asura-animate-sweep, .asura-animate-ripple, .asura-animate-signal,
+  .bento-border-animated, .animate-bento-entrance-1, .animate-bento-entrance-2, .animate-bento-entrance-3,
+  .animate-bento-entrance-4, .animate-bento-entrance-carousel, .animate-bento-wireframe,
+  .animate-bento-bob, .animate-bento-coin, .animate-bento-twinkle,
+  .bento-breathe-1, .bento-breathe-2, .bento-breathe-3, .bento-breathe-4 {
     animation: none !important;
     transition: none !important;
   }

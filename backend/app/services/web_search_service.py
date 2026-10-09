@@ -401,6 +401,10 @@ class WebSearchService:
             elif "tamil nadu" in q_clean and "kerala" in t_clean and "tamil nadu" not in t_clean:
                 final_score -= 60.0
 
+        # Obsolete data penalty: if published >= 3 years ago, penalize composite score heavily
+        if found_years and max(int(y) for y in found_years) <= current_year - 3:
+            final_score -= 50.0
+
         item["score"] = round(final_score, 1)
         return final_score
 

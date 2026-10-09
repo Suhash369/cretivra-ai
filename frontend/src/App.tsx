@@ -79,6 +79,8 @@ import { SketchModal } from './components/chat/SketchModal';
 import { LibraryModal } from './components/chat/LibraryModal';
 import { WorkspaceSidebar, type WorkspaceView } from './components/navigation/WorkspaceSidebar';
 import { ContextualHeader } from './components/navigation/ContextualHeader';
+import { TopBar } from './components/navigation/TopBar';
+import { SubscriptionModal } from './components/subscription/SubscriptionModal';
 import { HomeWorkspace } from './components/landing/HomeWorkspace';
 import { GoalComposer } from './components/composer/GoalComposer';
 import { AgentWorkspace } from './components/agent/AgentWorkspace';
@@ -227,6 +229,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [replayOpening, setReplayOpening] = useState(false);
+  const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
 
   const handleOpeningComplete = useCallback(() => {
     setTimeout(() => {
@@ -645,6 +648,8 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
     }
   }, [isGenerating, scrollToBottom]);
 
+  const isLanding = messages.length === 0;
+
   // User input listeners to distinguish intentional user scroll from programmatic auto-follow
   const handleUserWheel = (e: React.WheelEvent) => {
     if (isLanding || !scrollRef.current) {
@@ -978,232 +983,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
     category: 'Balanced',
     capabilities: ['chat', 'code', 'web', 'reasoning'],
   };
-
-  const isCurrentImg = isImageModel(currentModelObj as CretivraModel);
-  const languageModels = availableModels.filter((m) => !isImageModel(m));
-  const imageModels = availableModels.filter((m) => isImageModel(m));
-
-  const isLanding = messages.length === 0;
-
-  const renderComposer = (isCenter: boolean = false) => {
-    return (
-      <div className={`w-full ${isCenter ? 'relative' : ''}`}>
-        <div className={isCenter ? 'relative w-full group' : ''}>
-          {isCenter && <div className="cv-search-glow-aura" />}
-          <div
-            className={`relative z-10 transition-all ${
-              isCenter
-                ? 'rounded-[28px] bg-white dark:bg-[#111520] border border-slate-200/90 dark:border-gray-800/90 shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)] focus-within:border-slate-400 dark:focus-within:border-gray-600 focus-within:shadow-[0_12px_36px_rgb(0,0,0,0.09)] p-4 sm:p-5'
-                : isCurrentImg
-                ? 'rounded-2xl bg-white dark:bg-gray-900 border-2 border-purple-400 dark:border-purple-500/40 focus-within:border-purple-500 p-3 sm:p-3.5'
-                : 'rounded-2xl bg-white dark:bg-gray-900 border-2 border-slate-300 dark:border-gray-800 focus-within:border-cyan-500 dark:focus-within:border-cyan-500/60 shadow-lg p-3 sm:p-3.5'
-            }`}
-          >
-              {/* Live response status banner */}
-              {isGenerating && (
-                <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-cyan-500/10 dark:bg-cyan-950/40 border border-cyan-500/20 text-xs text-cyan-700 dark:text-cyan-300 backdrop-blur-sm animate-in fade-in">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500" />
-                    </span>
-                    <span className="font-medium text-xs">
-                      {deepThinkEnabled ? 'Asura DeepThink reasoning in progress...' : webSearchEnabled ? 'Searching real-time cache and formulating answer...' : 'Asura AI is responding...'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={stopGeneration}
-                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-[11px] border border-rose-500/30 cursor-pointer transition-colors"
-                  >
-                    <Square size={10} fill="currentColor" />
-                    <span>Stop</span>
-                  </button>
-                </div>
-              )}
-              {/* Attachment preview chips */}
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 pb-2 mb-2 border-b border-slate-200 dark:border-gray-800">
-                  {attachments.map((att) => {
-                    const isImg = att.mime_type.startsWith('image/');
-                    const isPpt = att.filename.toLowerCase().endsWith('.pptx') || att.filename.toLowerCase().endsWith('.ppt');
-                    return (
-                      <div key={att.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-xs text-slate-800 dark:text-gray-200">
-                        {isImg && att.data_url ? (
-                          <img src={att.data_url} alt="" className="w-4 h-4 rounded object-cover" />
-                        ) : isImg ? (
-                          <ImageIcon size={12} className="text-purple-500 dark:text-purple-400" />
-                        ) : isPpt ? (
-                          <Presentation size={12} className="text-orange-500 dark:text-orange-400" />
-                        ) : (
-                          <FileText size={12} className="text-cyan-600 dark:text-cyan-400" />
-                        )}
-                        <span className="truncate max-w-[120px]">{att.filename}</span>
-                        <X size={12} className="cursor-pointer hover:text-rose-500" onClick={() => removeAttachment(att.id)} />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <textarea
-                ref={textareaRef}
-                rows={isCenter ? 2 : 1}
-                placeholder={
-                  isCenter
-                    ? 'Assign a task or ask anything'
-                    : isCurrentImg
-                    ? `Prompt visual with ${currentModelObj.display_name}...`
-                    : webSearchEnabled
-                    ? 'Ask anything with live web intelligence...'
-                    : deepThinkEnabled
-                    ? 'Message with deep reasoning activated...'
-                    : 'Message Asura AI by Cretivra...'
-                }
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                className={`w-full bg-transparent text-slate-900 dark:text-gray-100 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none resize-none leading-relaxed ${
-                  isCenter ? 'text-base sm:text-[17px] min-h-[70px] max-h-60' : 'text-sm max-h-52'
-                }`}
-              />
-
-              <div className="flex items-center justify-between pt-2 mt-1 border-t border-slate-200 dark:border-gray-800/80">
-                <div className="flex items-center gap-1.5">
-                  {/* Action Menu (+) Button */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setActionMenuOpen(!actionMenuOpen)}
-                      className={`p-1.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
-                        actionMenuOpen
-                          ? 'bg-cyan-600 text-white border-cyan-500 shadow-md rotate-45'
-                          : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-gray-800/90 hover:bg-slate-200 dark:hover:bg-gray-700 border-slate-300 dark:border-gray-700/60'
-                      }`}
-                      title="Add photos, files, presentations, sketches, or tools"
-                    >
-                      <Plus size={16} className="transition-transform duration-200" />
-                    </button>
-
-                    <ActionMenu
-                      isOpen={actionMenuOpen}
-                      onClose={() => setActionMenuOpen(false)}
-                      onUploadFile={() => fileInputRef.current?.click()}
-                      onOpenLibrary={() => setLibraryModalOpen(true)}
-                      onOpenImageStudio={() => setImageStudioOpen(true)}
-                      onCreateImage={() => {
-                        setInput('Create an image of ');
-                        textareaRef.current?.focus();
-                      }}
-                      onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-                      webSearchActive={webSearchEnabled}
-                      onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                      deepThinkActive={deepThinkEnabled}
-                      onCreatePresentation={() => {
-                        setInput('Create a 5-slide presentation on ');
-                        textareaRef.current?.focus();
-                      }}
-                      onCreatePdf={() => {
-                        setInput('Generate a comprehensive PDF document for ');
-                        textareaRef.current?.focus();
-                      }}
-                      onOpenSketch={() => setSketchModalOpen(true)}
-                      onVisualizeData={() => {
-                        setInput('Create an interactive chart and visualization for ');
-                        textareaRef.current?.focus();
-                      }}
-                      onOpenGitHub={() => {
-                        setInput('Analyze GitHub repository code and summarize recent commit changes.');
-                        textareaRef.current?.focus();
-                      }}
-                    />
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files) {
-                        Array.from(e.target.files).forEach((file) => handleFileUpload(file));
-                        e.target.value = '';
-                      }
-                    }}
-                    accept=".pdf,.docx,.pptx,.ppt,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
-                  />
-
-                  {/* Web Search Toggle (Perplexity-style) */}
-                  <button
-                    type="button"
-                    onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                      webSearchEnabled
-                        ? 'bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border-cyan-400 dark:border-cyan-500/50 shadow-sm'
-                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
-                    }`}
-                    title={webSearchEnabled ? 'Web search enabled' : 'Toggle real-time web intelligence'}
-                  >
-                    <Globe size={12} className={webSearchEnabled ? 'text-cyan-600 dark:text-cyan-400 animate-pulse' : ''} />
-                    <span>Search</span>
-                  </button>
-
-                  {/* Deep Reasoning Toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-                      deepThinkEnabled
-                        ? 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border-purple-400 dark:border-purple-500/50 shadow-sm'
-                        : 'bg-slate-100 dark:bg-gray-800/50 hover:bg-slate-200 dark:hover:bg-gray-800 border-slate-300 dark:border-gray-700/60 text-slate-700 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200'
-                    }`}
-                    title={deepThinkEnabled ? 'Deep reasoning active' : 'Toggle deep step-by-step reasoning'}
-                  >
-                    <Brain size={12} className={deepThinkEnabled ? 'text-purple-600 dark:text-purple-400' : ''} />
-                    <span>DeepThink</span>
-                  </button>
-                </div>
-
-                {/* Send or Stop Generation Button */}
-                <button
-                  type="button"
-                  className={`transition-all cursor-pointer flex items-center justify-center ${
-                    isCenter ? 'w-9 h-9 rounded-full' : 'p-2 rounded-xl text-white'
-                  } ${
-                    isGenerating
-                      ? 'bg-rose-600 hover:bg-rose-500 shadow-md text-white'
-                      : isCenter
-                      ? input.trim() || attachments.length > 0
-                        ? 'bg-[#18181b] hover:bg-black dark:bg-white dark:hover:bg-gray-200 text-white dark:text-gray-950 shadow-sm scale-100'
-                        : 'bg-slate-100 dark:bg-gray-800 text-slate-400 dark:text-gray-600 cursor-not-allowed scale-95'
-                      : 'bg-slate-900 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-indigo-600 hover:bg-slate-800 dark:hover:opacity-95 shadow-md disabled:bg-slate-200 dark:disabled:bg-gray-800 disabled:text-slate-400 dark:disabled:text-gray-600 disabled:cursor-not-allowed text-white'
-                  }`}
-                  disabled={!isGenerating && !input.trim() && attachments.length === 0}
-                  onClick={() => (isGenerating ? stopGeneration() : handleSend())}
-                  title={isGenerating ? 'Stop generating' : 'Send message (Enter)'}
-                >
-                  {isGenerating ? <Square size={13} fill="currentColor" /> : <ArrowUp size={isCenter ? 18 : 15} />}
-                </button>
-              </div>
-            </div>
-          </div>
-        {!isCenter && (
-          <div className="text-center text-[11px] text-slate-500 dark:text-gray-500 mt-2">
-            {isCurrentImg
-              ? 'Asura Creative Studio generates visuals in real time at zero cost.'
-              : webSearchEnabled
-              ? 'Real-time intelligence cache synchronized with 2026 facts.'
-              : 'Asura AI by Cretivra processes queries with frontier intelligence. Verify important output.'}
-          </div>
-        )}
-      </div>
-    );
-  };  return (
+  return (
     <div className="flex h-[100dvh] w-full max-h-[100dvh] bg-[#060911] text-[#E7EAF4] overflow-hidden font-sans relative">
       {/* Background Ambient Glowing Orbs (Part 49) */}
       <div
@@ -1244,31 +1024,34 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
         onOpenSearch={() => setSearchOpen(true)}
         user={user}
         onOpenAuth={() => setAuthOpen(true)}
+        onOpenImageStudio={() => setImageStudioOpen(true)}
+        onOpenVoiceMode={() => setVoiceModalOpen(true)}
+        onOpenSuggestions={() => {
+          const btn = document.querySelector('[data-suggestion-trigger]') as HTMLElement;
+          if (btn) btn.click();
+        }}
+        onReplayAnimation={() => setReplayOpening(true)}
+        onOpenUpgrade={() => setSubscriptionModalOpen(true)}
       />
 
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative bg-[var(--background)] text-[var(--foreground)] transition-colors duration-200">
-        {/* Contextual Header (Part 11) */}
-        <ContextualHeader
+        {/* TopBar (Section C) */}
+        <TopBar
           currentView={workspaceView}
           contextTitle={contextTitle}
           isGenerating={isGenerating}
           onStopGeneration={stopGeneration}
-          onOpenVoiceMode={() => setVoiceModalOpen(true)}
           selectedModel={selectedModel}
           availableModels={availableModels}
-          onSelectModel={handleSelectModel}
           onOpenModelSelector={() => setModelOpen(true)}
-          webSearchEnabled={webSearchEnabled}
-          onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-          deepThinkEnabled={deepThinkEnabled}
-          onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+          user={user}
+          onOpenUpgrade={() => setSubscriptionModalOpen(true)}
           theme={theme}
           onToggleTheme={handleToggleTheme}
-          healthStatus={healthStatus}
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMobileMenu={() => setSidebarOpen(true)}
-          onReplayAnimation={() => setReplayOpening(true)}
+          onOpenVoiceMode={() => setVoiceModalOpen(true)}
           taskStatus={activePlaygroundRunId ? 'RUNNING' : undefined}
         />
 
@@ -1371,7 +1154,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
             {/* Scrollable Message Feed */}
             <div
-              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
+              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 pb-[200px] space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
               ref={scrollRef}
               onScroll={handleChatScroll}
               onWheel={handleUserWheel}
@@ -1383,11 +1166,11 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                 </div>
               ) : (
                 messages.map((m, i) => (
-                  <div key={m.id || i} className="w-full max-w-4xl mx-auto">
+                  <div key={m.id || i} className="w-full max-w-3xl mx-auto">
                     {m.role === 'user' ? (
                       <div className="flex justify-end group my-2">
                         {editingUserMsgId === m.id ? (
-                          <div className="flex flex-col gap-2 w-full max-w-2xl bg-[var(--surface-secondary)] border border-[#06B6D4]/50 rounded-2xl p-4 shadow-sm">
+                          <div className="flex flex-col gap-2 w-full max-w-2xl bg-[var(--surface-secondary)] border border-cyan-500/50 rounded-2xl p-4 shadow-sm">
                             <textarea
                               value={editUserText}
                               onChange={(e) => setEditUserText(e.target.value)}
@@ -1404,7 +1187,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                               </button>
                               <button
                                 onClick={() => handleSaveEditUser(m.id)}
-                                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#06B6D4] text-black hover:bg-[#06B6D4]/90 transition-colors shadow-xs"
+                                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-neutral-900 text-white dark:bg-cyan-500 dark:text-neutral-950 transition-colors shadow-xs"
                               >
                                 Save & Submit
                               </button>
@@ -1428,7 +1211,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                                 <Trash2 size={13} />
                               </button>
                             </div>
-                            <div className="bg-[#2f2f2f] text-white dark:bg-[#303030] dark:text-gray-100 rounded-[24px] px-5 py-3 text-[15px] leading-relaxed shadow-xs border border-transparent dark:border-neutral-700/30 selection:bg-cyan-500/30">
+                            <div className="bg-[var(--surface-secondary)] text-[var(--foreground)] border border-[var(--border)] rounded-2xl px-4.5 py-2.5 text-[14.5px] sm:text-[15px] leading-relaxed shadow-2xs selection:bg-cyan-500/20">
                               {m.content}
                             </div>
                           </div>
@@ -1585,7 +1368,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
 
             {/* Jump to latest button */}
             {showScrollBottom && (
-              <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 animate-enter">
+              <div className="absolute bottom-[160px] left-1/2 -translate-x-1/2 z-30 animate-enter">
                 <button
                   type="button"
                   onClick={() => scrollToBottom(true)}
@@ -1597,43 +1380,48 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
               </div>
             )}
 
-            {/* Bottom Anchored Composer */}
-            <div className="p-4 bg-[var(--background)]/90 backdrop-blur-md border-t border-[var(--border)] shrink-0">
-              <GoalComposer
-                input={input}
-                onInputChange={setInput}
-                onSubmit={() => {
-                  if (input.trim() || attachments.length > 0) {
-                    sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled, visualMode);
-                    setInput('');
-                  }
-                }}
-                isGenerating={isGenerating}
-                onStop={stopGeneration}
-                placeholder="Ask Asura anything..."
-                visualMode={visualMode}
-                onToggleVisualMode={setVisualMode}
-                attachments={attachments}
-                onUploadFile={handleFileUpload}
-                onRemoveAttachment={removeAttachment}
-                webSearchEnabled={webSearchEnabled}
-                onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
-                deepThinkEnabled={deepThinkEnabled}
-                onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
-                imageModeEnabled={imageModeEnabled}
-                onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
-                onOpenImageStudio={() => setImageStudioOpen(true)}
-                selectedModel={selectedModel}
-                availableModels={availableModels}
-                onSelectModel={handleSelectModel}
-                onOpenModelSelector={() => setModelOpen(true)}
-                onOpenSketch={() => setSketchModalOpen(true)}
-                onOpenLibrary={() => setLibraryModalOpen(true)}
-                onOpenSlides={() => setSlideModalOpen(true)}
-                onOpenWebsite={() => setWebsiteModalOpen(true)}
-                onOpenGame={() => setGameModalOpen(true)}
-                onOpenVoiceMode={() => setVoiceModalOpen(true)}
-              />
+            {/* Soft fade gradient behind composer */}
+            <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none z-10 bg-gradient-to-t from-[var(--background)] to-transparent" />
+
+            {/* Floating Glass Composer */}
+            <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-3 sm:px-6 pointer-events-none">
+              <div className="w-full max-w-[1100px] pointer-events-auto relative">
+                <GoalComposer
+                  input={input}
+                  onInputChange={setInput}
+                  onSubmit={() => {
+                    if (input.trim() || attachments.length > 0) {
+                      sendMessage(input, selectedModel, webSearchEnabled, deepThinkEnabled, imageModeEnabled, visualMode);
+                      setInput('');
+                    }
+                  }}
+                  isGenerating={isGenerating}
+                  onStop={stopGeneration}
+                  placeholder="Assign a task or type / for more"
+                  visualMode={visualMode}
+                  onToggleVisualMode={setVisualMode}
+                  attachments={attachments}
+                  onUploadFile={handleFileUpload}
+                  onRemoveAttachment={removeAttachment}
+                  webSearchEnabled={webSearchEnabled}
+                  onToggleWebSearch={() => setWebSearchEnabled(!webSearchEnabled)}
+                  deepThinkEnabled={deepThinkEnabled}
+                  onToggleDeepThink={() => setDeepThinkEnabled(!deepThinkEnabled)}
+                  imageModeEnabled={imageModeEnabled}
+                  onToggleImageMode={() => setImageModeEnabled(!imageModeEnabled)}
+                  onOpenImageStudio={() => setImageStudioOpen(true)}
+                  selectedModel={selectedModel}
+                  availableModels={availableModels}
+                  onSelectModel={handleSelectModel}
+                  onOpenModelSelector={() => setModelOpen(true)}
+                  onOpenSketch={() => setSketchModalOpen(true)}
+                  onOpenLibrary={() => setLibraryModalOpen(true)}
+                  onOpenSlides={() => setSlideModalOpen(true)}
+                  onOpenWebsite={() => setWebsiteModalOpen(true)}
+                  onOpenGame={() => setGameModalOpen(true)}
+                  onOpenVoiceMode={() => setVoiceModalOpen(true)}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -1795,6 +1583,16 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
         isOpen={!!previewArtifact}
         onClose={() => setPreviewArtifact(null)}
         artifact={previewArtifact}
+      />
+
+      {/* Subscription & Upgrade Modal */}
+      <SubscriptionModal
+        isOpen={subscriptionModalOpen}
+        onClose={() => setSubscriptionModalOpen(false)}
+        user={user}
+        onSubscriptionUpdated={() => {
+          fetchCurrentUserProfileApi().then(() => {});
+        }}
       />
 
       {/* Drag & Drop File Upload Overlay */}

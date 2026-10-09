@@ -1,16 +1,9 @@
-import React from 'react';
-import {
-  Search,
-  Globe2,
-  FileCode2,
-  PieChart,
-  Presentation,
-  Users,
-  Code2,
-  Sparkles,
-} from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ArrowDown } from 'lucide-react';
 import { CretivraMark } from '../common/CretivraLogo';
 import { GoalComposer } from '../composer/GoalComposer';
+import { BentoGrid } from './bento/BentoGrid';
+import { TemplatesCarousel } from './bento/TemplatesCarousel';
 import type { Attachment, CretivraModel } from '../../types';
 
 interface HomeWorkspaceProps {
@@ -40,40 +33,9 @@ interface HomeWorkspaceProps {
   onOpenWebsite?: () => void;
   onOpenGame?: () => void;
   onOpenVoiceMode?: () => void;
+  selectedProjectId?: string | null;
+  onSelectProject?: (projectId: string | null) => void;
 }
-
-const SUGGESTIONS = [
-  {
-    label: 'Research a market',
-    icon: Globe2,
-    prompt: 'Research the AI market trends in 2026 and synthesize a structured analysis.',
-  },
-  {
-    label: 'Build a website',
-    icon: FileCode2,
-    prompt: 'Build a modern responsive landing page for an AI robotics company.',
-  },
-  {
-    label: 'Analyze a document',
-    icon: PieChart,
-    prompt: 'Analyze the attached data and extract key statistical insights and takeaways.',
-  },
-  {
-    label: 'Create a presentation',
-    icon: Presentation,
-    prompt: 'Create a 10-slide executive presentation on autonomous AI agents architecture.',
-  },
-  {
-    label: 'Find customers',
-    icon: Users,
-    prompt: 'Find potential B2B customers and enterprise ICP targets for cloud AI solutions.',
-  },
-  {
-    label: 'Write code',
-    icon: Code2,
-    prompt: 'Write a high-performance Python FastAPI service with asyncio and connection pooling.',
-  },
-];
 
 export function HomeWorkspace({
   input,
@@ -101,108 +63,147 @@ export function HomeWorkspace({
   onOpenWebsite,
   onOpenGame,
   onOpenVoiceMode,
+  selectedProjectId,
+  onSelectProject,
 }: HomeWorkspaceProps) {
+  const [composerPulsing, setComposerPulsing] = useState(false);
+  const [showPrefillToast, setShowPrefillToast] = useState(false);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const typeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerComposerPulse = () => {
+    setComposerPulsing(true);
+    setTimeout(() => setComposerPulsing(false), 600);
+  };
+
+  const triggerPrefillToast = () => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setShowPrefillToast(true);
+    toastTimerRef.current = setTimeout(() => {
+      setShowPrefillToast(false);
+    }, 2200);
+  };
+
+  const handleSelectPromptQuickly = (promptText: string) => {
+    triggerComposerPulse();
+    triggerPrefillToast();
+
+    // Fast-type transition (~300ms) with zero auto-scrolling
+    if (typeIntervalRef.current) {
+      clearInterval(typeIntervalRef.current);
+    }
+
+    const totalLen = promptText.length;
+    const chunk = Math.max(2, Math.floor(totalLen / 10));
+    let progress = 0;
+
+    typeIntervalRef.current = setInterval(() => {
+      progress += chunk;
+      if (progress >= totalLen) {
+        onInputChange(promptText);
+        if (typeIntervalRef.current) clearInterval(typeIntervalRef.current);
+      } else {
+        onInputChange(promptText.slice(0, progress));
+      }
+    }, 30);
+  };
+
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center min-h-full px-4 py-8 overflow-y-auto z-10 text-[var(--foreground)]">
-      {/* Subtle Ambient Gradient Orbs */}
-      <div
-        className="asura-ambient-orb w-[460px] h-[460px] bg-[#06B6D4] top-[-100px] left-[20%]"
-        aria-hidden="true"
-      />
-      <div
-        className="asura-ambient-orb w-[520px] h-[520px] bg-[#8B5CF6] bottom-[-120px] right-[18%]"
-        aria-hidden="true"
-      />
+    <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden text-[var(--foreground)]">
+      {/* 1. SCROLL AREA (absolute inset-0, overflow-y-auto, centered, max-w ~1100px, px-6) */}
+      <div className="absolute inset-0 overflow-y-auto px-4 sm:px-6">
+        <div className="w-full max-w-[1100px] mx-auto pt-6 pb-[200px] flex flex-col items-center">
+          {/* Compact header at the very top: small logo, 28-32px heading, muted Think beyond */}
+          <div className="flex flex-col items-center text-center mb-5 animate-fade select-none shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-2.5 shadow-2xs">
+              <CretivraMark size={18} />
+            </div>
+            <h1 className="text-2xl sm:text-[30px] font-semibold text-[var(--foreground)] tracking-tight leading-tight">
+              What do you want Asura to accomplish?
+            </h1>
+            <p className="text-xs sm:text-sm text-[var(--muted-foreground)] mt-1 font-medium">
+              Think beyond.
+            </p>
+          </div>
 
-      {/* Centered Command Center Container */}
-      <div className="w-full max-w-[860px] flex flex-col items-center text-center">
-        {/* 1. Logo (Stagger 1: 0ms) */}
-        <div
-          className="mb-4 flex items-center justify-center w-12 h-12 rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/30 text-[#06B6D4] shadow-sm animate-enter"
-          style={{ animationDelay: '0ms' }}
-        >
-          <CretivraMark size={26} />
-        </div>
-
-        {/* 2. Hero Typography (Stagger 2: 80ms) */}
-        <div
-          className="mb-2 space-y-1 animate-enter"
-          style={{ animationDelay: '80ms' }}
-        >
-          <h1 className="text-3xl sm:text-4xl font-semibold text-[var(--foreground)] tracking-tight">
-            ASURA
-          </h1>
-          <p className="text-xl sm:text-2xl font-manus-serif italic text-[var(--muted-foreground)] font-normal">
-            Think beyond.
-          </p>
-        </div>
-
-        {/* 3. Primary Prompt Lead (Stagger 3: 160ms) */}
-        <div
-          className="mb-6 animate-enter"
-          style={{ animationDelay: '160ms' }}
-        >
-          <p className="text-sm sm:text-[15px] text-[var(--muted-foreground)] font-medium">
-            What do you want Asura to accomplish?
-          </p>
-        </div>
-
-        {/* 4. Large Floating Composer (Stagger 4: 240ms) */}
-        <div
-          className="w-full mb-6 animate-enter"
-          style={{ animationDelay: '240ms' }}
-        >
-          <GoalComposer
-            input={input}
-            onInputChange={onInputChange}
-            onSubmit={() => onSubmit()}
-            isGenerating={isGenerating}
-            onStop={onStop}
-            placeholder="Tell Asura what you want done..."
-            attachments={attachments}
+          {/* BENTO GRID directly below header (mt ~20px) */}
+          <BentoGrid
+            onSelectPrompt={handleSelectPromptQuickly}
             onUploadFile={onUploadFile}
-            onRemoveAttachment={onRemoveAttachment}
-            webSearchEnabled={webSearchEnabled}
-            onToggleWebSearch={onToggleWebSearch}
-            deepThinkEnabled={deepThinkEnabled}
-            onToggleDeepThink={onToggleDeepThink}
-            imageModeEnabled={imageModeEnabled}
-            onToggleImageMode={onToggleImageMode}
-            onOpenImageStudio={onOpenImageStudio}
-            selectedModel={selectedModel}
-            availableModels={availableModels}
-            onSelectModel={onSelectModel}
-            onOpenModelSelector={onOpenModelSelector}
-            onOpenSketch={onOpenSketch}
-            onOpenLibrary={onOpenLibrary}
-            onOpenSlides={onOpenSlides}
             onOpenWebsite={onOpenWebsite}
+            onOpenSlides={onOpenSlides}
             onOpenGame={onOpenGame}
-            onOpenVoiceMode={onOpenVoiceMode}
+            onOpenImageStudio={onOpenImageStudio}
+            triggerComposerPulse={triggerComposerPulse}
+          />
+
+          {/* TEMPLATES & EXAMPLES carousel below the grid */}
+          <TemplatesCarousel
+            onSelectPrompt={handleSelectPromptQuickly}
+            triggerComposerPulse={triggerComposerPulse}
           />
         </div>
+      </div>
 
-        {/* 5. Lightweight Suggestion Pills (Stagger 5: 320ms) */}
-        <div
-          className="w-full flex flex-wrap items-center justify-center gap-2 animate-enter"
-          style={{ animationDelay: '320ms' }}
-        >
-          {SUGGESTIONS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.label}
-                onClick={() => {
-                  onInputChange(item.prompt);
-                }}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:border-[#06B6D4]/50 transition-all asura-btn-interactive group shadow-xs"
-                title={item.prompt}
-              >
-                <Icon size={12} className="text-[var(--muted-foreground)] group-hover:text-[#06B6D4] transition-colors" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+      {/* Soft fade gradient behind composer (h-24, page background to transparent, pointer-events-none) */}
+      <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none z-10 bg-gradient-to-t from-[var(--background)] to-transparent" />
+
+      {/* 2. FLOATING GLASS COMPOSER (absolute bottom-4, centered, max-w ~1100px, z-20, inside main area) */}
+      <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-3 sm:px-6 pointer-events-none">
+        <div className="w-full max-w-[1100px] pointer-events-auto relative">
+          {/* Prefill Toast above composer */}
+          {showPrefillToast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="absolute -top-10 left-1/2 -translate-x-1/2 z-30 pointer-events-none animate-toast-slide"
+            >
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-secondary)]/95 backdrop-blur-md border border-cyan-500/40 text-xs text-[var(--foreground)] font-medium shadow-md">
+                <span>Prompt added below</span>
+                <ArrowDown size={12} className="text-cyan-500 animate-bounce motion-reduce:animate-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Composer with Pulse Ring */}
+          <div
+            className={`w-full rounded-3xl transition-all duration-300 ${
+              composerPulsing ? 'animate-composer-pulse ring-2 ring-cyan-500/60' : ''
+            }`}
+          >
+            <GoalComposer
+              input={input}
+              onInputChange={onInputChange}
+              onSubmit={() => onSubmit()}
+              isGenerating={isGenerating}
+              onStop={onStop}
+              placeholder="Assign a task or type / for more"
+              attachments={attachments}
+              onUploadFile={onUploadFile}
+              onRemoveAttachment={onRemoveAttachment}
+              webSearchEnabled={webSearchEnabled}
+              onToggleWebSearch={onToggleWebSearch}
+              deepThinkEnabled={deepThinkEnabled}
+              onToggleDeepThink={onToggleDeepThink}
+              imageModeEnabled={imageModeEnabled}
+              onToggleImageMode={onToggleImageMode}
+              onOpenImageStudio={onOpenImageStudio}
+              selectedModel={selectedModel}
+              availableModels={availableModels}
+              onSelectModel={onSelectModel}
+              onOpenModelSelector={onOpenModelSelector}
+              onOpenSketch={onOpenSketch}
+              onOpenLibrary={onOpenLibrary}
+              onOpenSlides={onOpenSlides}
+              onOpenWebsite={onOpenWebsite}
+              onOpenGame={onOpenGame}
+              onOpenVoiceMode={onOpenVoiceMode}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={onSelectProject}
+            />
+          </div>
         </div>
       </div>
     </div>
