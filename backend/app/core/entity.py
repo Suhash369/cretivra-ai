@@ -269,20 +269,59 @@ class EntityDetector:
         except Exception:
             return None
 
-    def _extract_recent_entity_from_context(self, context: List[Dict[str, Any]]) -> Optional[str]:
-        """Extracts the active entity from previous conversation turns."""
-        for msg in reversed(context):
-            content = msg.get("content", "")
-            if msg.get("role") == "user":
+    def _extract_recent_entity_from_context(self, context: List[Dict[str, Any]], current_query: Optional[str] = None) -> Optional[str]:
+        """Extracts the active entity or topic from previous conversation turns."""
+        if not context:
+            return None
+
+        q_clean = (current_query or "").strip().lower()
+        prior_messages = [
+            m for m in context
+            if not q_clean or m.get("content", "").strip().lower() != q_clean
+        ]
+
+        for msg in reversed(prior_messages):
+            content = (msg.get("content") or "").strip()
+            role = msg.get("role")
+
+            # 1. From Assistant message: Check markdown headings, bold subjects, or tournament/event names
+            if role == "assistant":
+                # Check for ## [Heading]
+                heading_match = re.search(r"^##\s+([^\n]+)", content, re.MULTILINE)
+                if heading_match:
+                    heading = heading_match.group(1).strip()
+                    clean_h = re.sub(r"\b(?:closing\s+date|start\s+date|schedule|results?|venue|location|overview|summary)\b", "", heading, flags=re.IGNORECASE).strip()
+                    if clean_h and len(clean_h) > 2 and not any(w in clean_h.lower() for w in ["asura", "cretivra", "answer"]):
+                        return self._clean_entity_name(clean_h)
+
+                # Check for explicit bold entity at top: **Entity Name**
+                bold_match = re.search(r"^\*\*([^\*]+)\*\*", content, re.MULTILINE)
+                if bold_match:
+                    cand = bold_match.group(1).strip()
+                    if not re.search(r"\b(?:january|february|march|april|may|june|july|august|september|october|november|december|\d{4})\b", cand.lower()):
+                        if len(cand) > 2 and not any(w in cand.lower() for w in ["asura", "cretivra", "verified"]):
+                            return self._clean_entity_name(cand)
+
+                # Check for major games / events in content
+                event_m = re.search(r"\b((?:(?:19|20)\d{2}\s+)?(?:Asian\s+Games|Olympics?|Olympic\s+Games|World\s+Cup|Commonwealth\s+Games|Champions\s+Trophy)(?:\s+(?:19|20)\d{2})?)\b", content, re.IGNORECASE)
+                if event_m:
+                    return event_m.group(1).strip()
+
+            # 2. From User message: Extract entity candidate
+            elif role == "user":
+                event_m = re.search(r"\b((?:(?:19|20)\d{2}\s+)?(?:Asian\s+Games|Olympics?|Olympic\s+Games|World\s+Cup|Commonwealth\s+Games|Champions\s+Trophy)(?:\s+(?:19|20)\d{2})?)\b", content, re.IGNORECASE)
+                if event_m:
+                    return event_m.group(1).strip()
+
                 ent, etype = self.detect_entity(content)
-                if ent and etype != EntityType.TECHNOLOGY and ent.lower() not in ["he", "she", "it", "they"]:
+                if ent and etype != EntityType.TECHNOLOGY and ent.lower() not in ["he", "she", "it", "they", "that", "this"]:
                     return self._clean_entity_name(ent)
-            elif msg.get("role") == "assistant":
-                m = re.search(r"\b([A-Z][a-z]+(?:[\s\u202f\xa0]+[A-Z][a-z]+)+)\b", content)
-                if m:
-                    cand = m.group(1)
-                    if not any(w in cand for w in ["Asura", "Cretivra", "Artificial Intelligence", "United States"]):
-                        return self._clean_entity_name(cand)
+
+                clean_user = re.sub(r"^(?:when\s+is|when\s+was|where\s+is|where\s+was|who\s+is|who\s+was|what\s+is|tell\s+me\s+about)\s+", "", content, flags=re.IGNORECASE).rstrip("?").strip()
+                clean_user = re.sub(r"\b(?:closing\s+date|starting\s+date|start\s+date|end\s+date|schedule|date)\b", "", clean_user, flags=re.IGNORECASE).strip()
+                if len(clean_user) > 3 and not any(clean_user.lower() == w for w in ["it", "he", "she", "they", "that", "this"]):
+                    return self._clean_entity_name(clean_user)
+
         return None
 
 entity_detector = EntityDetector()

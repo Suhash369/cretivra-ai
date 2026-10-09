@@ -161,7 +161,7 @@ DOCUMENT_KEYWORDS = [
 def is_anaphoric_follow_up(query: str) -> bool:
     """
     Checks if a query is an anaphoric follow-up relying on prior conversation turn.
-    Returns True for: 'How old is he?', 'What is his party?', 'Tell me more about them'.
+    Returns True for: 'How old is he?', 'What is his party?', 'where it is conducted', 'where is it held'.
     Returns False for standalone queries or queries introducing new entities or locations.
     """
     q_lower = query.strip().lower()
@@ -170,23 +170,26 @@ def is_anaphoric_follow_up(query: str) -> bool:
     entities_locations = [
         "tamil nadu", "kerala", "karnataka", "andhra", "telangana", "maharashtra",
         "delhi", "punjab", "bengal", "gujarat", "bihar", "uttar pradesh",
-        "india", "usa", "us", "uk", "russia", "china", "japan", "germany",
-        "gemini", "openai", "nvidia", "gold", "silver", "cricket"
+        "usa", "uk", "russia", "china", "germany",
+        "gemini", "openai", "nvidia", "gold", "silver"
     ]
     for loc in entities_locations:
         if loc in q_lower:
             return False
 
-    pronoun_patterns = [
-        r"^(?:how\s+old\s+is\s+(?:he|she|they))\b",
-        r"^(?:who\s+is\s+(?:he|she|they|that))\b",
-        r"\b(?:what\s+about\s+(?:him|her|them|it|his|hers))\b",
-        r"\b(?:tell\s+me\s+more\s+about\s+(?:him|her|them|that|this))\b",
-        r"\b(?:what\s+is\s+(?:his|her|their)\s+(?:party|age|net\s+worth|career|salary|background))\b",
-        r"^(?:and\s+his|and\s+her|and\s+their)\b",
-        r"^(?:why\s+did\s+(?:he|she|they))\b"
+    tokens = set(re.findall(r'\b\w+\b', q_lower))
+    pronoun_set = {"he", "him", "his", "she", "her", "hers", "they", "them", "their", "it", "its", "that", "this", "there"}
+    if any(p in tokens for p in pronoun_set):
+        return True
+
+    follow_up_patterns = [
+        r"\b(?:where|when|who|how|why)\b.*\b(?:conducted|held|organized|located|hosted|venue|stadium|started|ended|place|dates?)\b",
+        r"\b(?:where|when|who|how|why)\s+(?:is|was|will|are|were|it|he|she|they)\b",
+        r"\b(?:tell\s+me\s+more|more\s+details|elaborate|explain\s+further)\b",
+        r"\b(?:what\s+about|and\s+what|what\s+else)\b",
+        r"\b(?:who\s+(?:won|leads?|hosts?|is\s+the\s+winner))\b"
     ]
-    return any(re.search(pat, q_lower) for pat in pronoun_patterns)
+    return any(re.search(pat, q_lower) for pat in follow_up_patterns)
 
 def extract_concise_search_keywords(prompt: str) -> str:
     """Extracts clean, concise keywords for search engines from potentially long prompts."""
@@ -331,6 +334,41 @@ def query_router(
             "current_date": current_date_str,
             "timezone": time_info["timezone"]
         }
+
+    # 4B. ANAPHORIC FOLLOW-UP RESOLUTION WITH CONTEXT PRESERVATION
+    is_follow = is_anaphoric_follow_up(q)
+    if is_follow and conversation_history:
+        from app.core.entity import entity_detector
+        active_entity = entity_detector._extract_recent_entity_from_context(conversation_history, current_query=q)
+        if active_entity:
+            clean_sub_q = re.sub(r"\b(?:it|this|that|he|she|they|them|his|her)\b", "", q, flags=re.IGNORECASE).strip()
+            clean_sub_q = re.sub(r"[\s\u202f\xa0]+", " ", clean_sub_q).strip()
+            primary_search = f"{active_entity} {clean_sub_q}".strip()
+            venue_terms = "location venue host city" if any(w in q_lower for w in ["where", "conducted", "held", "venue", "place", "location"]) else "latest"
+            search_queries = [
+                f"{active_entity} {venue_terms} {current_year}".strip(),
+                f"{primary_search} official".strip(),
+                f"{active_entity} {venue_terms}".strip(),
+                active_entity
+            ]
+            return {
+                "intent": QueryIntent.REAL_TIME.value,
+                "detected_intent": QueryIntent.REAL_TIME,
+                "entity": active_entity,
+                "entity_type": "EVENT" if any(w in active_entity.lower() for w in ["games", "cup", "tournament", "olympic"]) else "ENTITY",
+                "requires_web": True,
+                "force_web_search": True,
+                "requires_current_information": True,
+                "requires_images": True,
+                "image_search_query": active_entity,
+                "search_query": search_queries[0],
+                "search_queries": search_queries,
+                "is_follow_up": True,
+                "logical_mode": "Asura Balanced",
+                "reasoning": f"Follow-up query resolved with context entity '{active_entity}'",
+                "current_date": current_date_str,
+                "timezone": time_info["timezone"]
+            }
 
     # 5. Specialized Real-Time Domain Detection
     is_ai_news = any(re.search(p, q_lower) for p in AI_KEYWORDS) and any(term in q_lower for term in ["news", "latest", "today", "this week", "model", "release"])

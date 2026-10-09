@@ -359,7 +359,11 @@ class AsuraResponseOrchestrator:
         # Requirement 18 & 19: Strict Context Isolation
         # Only inherit prior conversation history if it is explicitly an anaphoric follow-up
         if decision.is_follow_up and conversation_history:
-            messages.extend(conversation_history[-4:])
+            prior_history = [
+                m for m in conversation_history
+                if (m.get("content") or "").strip().lower() != clean_query.lower()
+            ]
+            messages.extend(prior_history[-4:])
         # For fresh queries (especially REAL_TIME), we do NOT append previous conversation messages,
         # preventing previous query/entity (e.g. Tamil Nadu) from contaminating the new query (e.g. Kerala).
 
