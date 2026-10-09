@@ -2,16 +2,17 @@ import React from 'react';
 
 export function BuildIllustration() {
   return (
-    <div className="relative w-28 h-20 sm:w-34 sm:h-24 md:w-40 md:h-26 shrink-0 overflow-hidden select-none pointer-events-none">
+    <div className="relative w-full h-full max-h-full max-w-[220px] flex items-center justify-center shrink-0 overflow-hidden select-none pointer-events-none">
       {/* Background blueprint grid snippet */}
       <div className="absolute inset-0 cv-blueprint-grid opacity-30 rounded-xl" />
 
       {/* Mini Browser Window Wireframe */}
       <svg
         viewBox="0 0 176 120"
+        preserveAspectRatio="xMidYMid meet"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full relative z-10 drop-shadow-sm transition-transform duration-300 group-hover:scale-[1.03]"
+        className="w-full h-full max-h-full relative z-10 drop-shadow-sm transition-transform duration-300 group-hover:scale-[1.03]"
       >
         {/* Outer browser frame */}
         <rect

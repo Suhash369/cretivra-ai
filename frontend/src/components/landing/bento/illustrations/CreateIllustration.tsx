@@ -2,7 +2,7 @@ import React from 'react';
 
 export function CreateIllustration() {
   return (
-    <div className="relative w-28 h-20 sm:w-34 sm:h-24 md:w-38 md:h-26 shrink-0 flex items-center justify-center select-none pointer-events-none">
+    <div className="relative w-full h-full max-h-full max-w-[200px] flex items-center justify-center select-none pointer-events-none scale-90 sm:scale-100">
       {/* Background Soft Diagonal Paper Texture Lines */}
       <div
         className="absolute inset-0 opacity-20 pointer-events-none"

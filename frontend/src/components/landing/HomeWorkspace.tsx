@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowDown } from 'lucide-react';
 import { CretivraMark } from '../common/CretivraLogo';
 import { GoalComposer } from '../composer/GoalComposer';
@@ -70,6 +70,23 @@ export function HomeWorkspace({
   const [showPrefillToast, setShowPrefillToast] = useState(false);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const typeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const viewContainerRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+
+  // Measure composer with ResizeObserver and publish --composer-h on the view container
+  useEffect(() => {
+    if (!composerRef.current || !viewContainerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height);
+        if (h > 0 && viewContainerRef.current) {
+          viewContainerRef.current.style.setProperty('--composer-h', `${h}px`);
+        }
+      }
+    });
+    ro.observe(composerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const triggerComposerPulse = () => {
     setComposerPulsing(true);
@@ -111,10 +128,17 @@ export function HomeWorkspace({
   };
 
   return (
-    <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden text-[var(--foreground)]">
-      {/* 1. SCROLL AREA (absolute inset-0, overflow-y-auto, centered, max-w ~1100px, px-6) */}
+    <div
+      ref={viewContainerRef}
+      className="relative flex-1 w-full h-full min-h-0 overflow-hidden text-[var(--foreground)]"
+      style={{ ['--composer-h' as any]: '120px' }}
+    >
+      {/* 1. SCROLL AREA with padding-bottom: calc(var(--composer-h) + 48px) */}
       <div className="absolute inset-0 overflow-y-auto px-4 sm:px-6">
-        <div className="w-full max-w-[1100px] mx-auto pt-6 pb-[200px] flex flex-col items-center">
+        <div
+          className="w-full max-w-[1100px] mx-auto pt-6 flex flex-col items-center"
+          style={{ paddingBottom: 'calc(var(--composer-h, 120px) + 48px)' }}
+        >
           {/* Compact header at the very top: small logo, 28-32px heading, muted Think beyond */}
           <div className="flex flex-col items-center text-center mb-5 animate-fade select-none shrink-0">
             <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-2.5 shadow-2xs">
@@ -147,12 +171,15 @@ export function HomeWorkspace({
         </div>
       </div>
 
-      {/* Soft fade gradient behind composer (h-24, page background to transparent, pointer-events-none) */}
-      <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none z-10 bg-gradient-to-t from-[var(--background)] to-transparent" />
+      {/* SCRIM behind composer: content < scrim < composer */}
+      <div
+        className="composer-scrim pointer-events-none absolute bottom-0 inset-x-0 z-10"
+        style={{ height: 'calc(var(--composer-h, 120px) + 40px)' }}
+      />
 
       {/* 2. FLOATING GLASS COMPOSER (absolute bottom-4, centered, max-w ~1100px, z-20, inside main area) */}
       <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-3 sm:px-6 pointer-events-none">
-        <div className="w-full max-w-[1100px] pointer-events-auto relative">
+        <div ref={composerRef} className="w-full max-w-[1100px] pointer-events-auto relative">
           {/* Prefill Toast above composer */}
           {showPrefillToast && (
             <div

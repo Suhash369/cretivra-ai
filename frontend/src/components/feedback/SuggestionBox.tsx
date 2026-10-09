@@ -21,6 +21,9 @@ import { submitSuggestion, SuggestionCategory } from '../../services/supabase';
 interface SuggestionBoxProps {
   user?: { id?: string; email?: string; full_name?: string } | null;
   className?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onToggleOpen?: () => void;
 }
 
 const CATEGORIES: { id: SuggestionCategory; label: string; icon: React.ComponentType<{ className?: string; size?: number }> }[] = [
@@ -39,8 +42,22 @@ const PLACEHOLDERS: Record<SuggestionCategory, string> = {
   comment: 'Share your thoughts, impressions, or feedback with the Cretivra team...',
 };
 
-export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function SuggestionBox({ user, className = '', isOpen: controlledIsOpen, onClose, onToggleOpen }: SuggestionBoxProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+  const toggleOpen = () => {
+    if (onToggleOpen) {
+      onToggleOpen();
+    } else if (onClose && isOpen) {
+      onClose();
+    } else {
+      setInternalIsOpen(!internalIsOpen);
+    }
+  };
+  const closeBox = () => {
+    if (onClose) onClose();
+    else setInternalIsOpen(false);
+  };
   const [category, setCategory] = useState<SuggestionCategory>('suggestion');
   const [comment, setComment] = useState('');
   const [rating, setRating] = useState<number>(5);
@@ -59,7 +76,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        setIsOpen(false);
+        closeBox();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -125,10 +142,10 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
 
   return (
     <div
-      className={`fixed z-40 font-sans select-none pointer-events-auto ${className}`}
+      className={`fixed ${isOpen ? 'z-50' : 'z-10'} font-sans select-none pointer-events-auto ${className}`}
       style={{
-        bottom: 'max(14px, env(safe-area-inset-bottom, 14px))',
-        right: 'max(16px, env(safe-area-inset-right, 16px))',
+        bottom: 'calc(var(--composer-h, 120px) + 32px)',
+        right: '24px',
       }}
       id="cretivra-suggestion-widget"
     >
@@ -137,7 +154,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
         <div
           ref={cardRef}
           className="mb-3 w-[360px] sm:w-[410px] max-w-[calc(100vw-32px)] bg-[#0d121f]/95 backdrop-blur-2xl border border-cyan-500/35 rounded-2xl shadow-2xl shadow-cyan-950/50 text-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
-          style={{ maxHeight: '88vh' }}
+          style={{ maxHeight: '80vh' }}
         >
           {/* Glowing Ambient Backdrop Accents */}
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none" />
@@ -164,19 +181,19 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+                onClick={closeBox}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
                 title="Minimize"
               >
                 <ChevronDown size={17} />
               </button>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors"
+                onClick={closeBox}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
                 title="Close"
               >
-                <X size={15} />
+                <X size={16} />
               </button>
             </div>
           </div>
@@ -207,7 +224,7 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsOpen(false)}
+                    onClick={closeBox}
                     className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
                   >
                     Done
@@ -401,8 +418,9 @@ export function SuggestionBox({ user, className = '' }: SuggestionBoxProps) {
       {/* Floating Lower-Right Trigger Pill */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-white/95 dark:bg-[#0d121f]/95 hover:bg-slate-50 dark:hover:bg-[#151c2e] border border-slate-300 dark:border-cyan-500/40 hover:border-indigo-400 dark:hover:border-cyan-400 text-slate-800 dark:text-slate-200 shadow-xl shadow-slate-300/40 dark:shadow-cyan-950/50 backdrop-blur-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.98]"
+        data-suggestion-trigger
+        onClick={toggleOpen}
+        className="group relative flex items-center gap-2.5 px-3.5 py-2.5 rounded-full bg-white/95 dark:bg-[#0d121f]/95 hover:bg-slate-50 dark:hover:bg-[#151c2e] border border-slate-300 dark:border-cyan-500/40 hover:border-indigo-400 dark:hover:border-cyan-400 text-slate-800 dark:text-slate-200 shadow-xl shadow-slate-300/40 dark:shadow-cyan-950/50 backdrop-blur-xl transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
         title="Share a suggestion or comment"
         aria-label="Open suggestion commenting box"
       >

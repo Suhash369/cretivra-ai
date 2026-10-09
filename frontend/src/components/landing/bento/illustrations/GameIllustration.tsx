@@ -16,7 +16,7 @@ export function GameIllustration() {
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative w-full h-44 sm:h-52 flex flex-col items-center justify-center overflow-hidden select-none"
+      className="relative w-full h-full max-h-full min-h-0 flex flex-col items-center justify-center overflow-hidden select-none"
     >
       {/* Dark-tinted Cyber Pixel Grid Background with Twinkling Stars */}
       <div
@@ -55,7 +55,7 @@ export function GameIllustration() {
         {/* 8-bit Pixel Hero Sprite */}
         <div className="absolute bottom-11 z-20 animate-bento-bob flex flex-col items-center">
           {/* Pixel Knight/Hero in SVG */}
-          <svg width="32" height="32" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="32" height="32" viewBox="0 0 16 16" fill="none" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
             {/* Head / Helmet */}
             <rect x="5" y="1" width="6" height="5" fill="#8b5cf6" />
             <rect x="6" y="2" width="4" height="2" fill="#c4b5fd" />

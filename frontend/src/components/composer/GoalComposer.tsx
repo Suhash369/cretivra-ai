@@ -66,6 +66,8 @@ interface GoalComposerProps {
   availableModels: CretivraModel[];
   onSelectModel: (id: string) => void;
   onOpenModelSelector?: () => void;
+  // Compact Chat Variant
+  compact?: boolean;
   // Project scoping
   selectedProjectId?: string | null;
   onSelectProject?: (projectId: string | null) => void;
@@ -78,6 +80,7 @@ export function GoalComposer({
   isGenerating = false,
   onStop,
   placeholder = 'Assign a task or type / for more',
+  compact = false,
   visualMode = 'auto',
   onToggleVisualMode,
   attachments,
@@ -119,15 +122,18 @@ export function GoalComposer({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea (min 56px in compact, auto-grows to 200px then scrolls)
   useEffect(() => {
     const el = textareaRef.current;
     if (el) {
       el.style.height = 'auto';
-      const newHeight = Math.min(Math.max(el.scrollHeight, 48), 240);
+      const minH = compact ? 56 : 48;
+      const maxH = 200;
+      const newHeight = Math.min(Math.max(el.scrollHeight, minH), maxH);
       el.style.height = `${newHeight}px`;
+      el.style.overflowY = el.scrollHeight > maxH ? 'auto' : 'hidden';
     }
-  }, [input]);
+  }, [input, compact]);
 
   // Fetch projects for project picker
   useEffect(() => {
@@ -245,7 +251,7 @@ export function GoalComposer({
 
   return (
     <div
-      className={`floating-glass-composer relative w-full max-w-[1100px] mx-auto select-text ${
+      className={`floating-glass-composer relative w-full ${compact ? 'max-w-[820px]' : 'max-w-[1100px]'} mx-auto select-text ${
         isFocused ? 'is-focused' : ''
       }`}
     >
@@ -258,70 +264,72 @@ export function GoalComposer({
         className="hidden"
       />
 
-      {/* Top Strip Inside Card: Environment Chip & Project Picker Chip (Section E) */}
-      <div className="flex items-center gap-2 px-4 pt-3 pb-1 border-b border-[var(--border)]/40 text-xs">
-        {/* Environment chip ("Cloud" or "Sandbox") */}
-        <button
-          type="button"
-          onClick={() => setEnvironmentMode((prev) => (prev === 'Cloud' ? 'Sandbox' : 'Cloud'))}
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--surface-secondary)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-[11px] font-medium"
-          title="Toggle execution environment"
-        >
-          {environmentMode === 'Cloud' ? <Cloud size={11} className="text-cyan-500" /> : <Box size={11} className="text-violet-500" />}
-          <span>{environmentMode}</span>
-        </button>
-
-        {/* Project Picker chip ("Choose project") */}
-        <div className="relative">
+      {/* Top Strip Inside Card: Environment Chip & Project Picker Chip (Section E: hidden in compact chat variant) */}
+      {!compact && (
+        <div className="flex items-center gap-2 px-4 pt-3 pb-1 border-b border-[var(--border)]/40 text-xs">
+          {/* Environment chip ("Cloud" or "Sandbox") */}
           <button
             type="button"
-            onClick={() => setProjectPickerOpen((prev) => !prev)}
+            onClick={() => setEnvironmentMode((prev) => (prev === 'Cloud' ? 'Sandbox' : 'Cloud'))}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--surface-secondary)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-[11px] font-medium"
-            title="Scope task to a project sandbox"
+            title="Toggle execution environment"
           >
-            <FolderGit2 size={11} className="text-cyan-500" />
-            <span className="truncate max-w-[140px]">{selectedProjectName}</span>
-            <ChevronDown size={10} className="text-[var(--muted-foreground)]" />
+            {environmentMode === 'Cloud' ? <Cloud size={11} className="text-cyan-500" /> : <Box size={11} className="text-violet-500" />}
+            <span>{environmentMode}</span>
           </button>
 
-          {projectPickerOpen && (
-            <div className="absolute top-8 left-0 z-50 w-56 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-xl p-1.5 text-xs animate-scale">
-              <div className="px-2 py-1 text-[10px] uppercase font-semibold text-[var(--muted-foreground)]">
-                Select Project Scope
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onSelectProject) onSelectProject(null);
-                  setProjectPickerOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
-                  !selectedProjectId ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold' : 'hover:bg-[var(--surface-hover)] text-[var(--foreground)]'
-                }`}
-              >
-                <span>No project (Global)</span>
-                {!selectedProjectId && <Check size={12} />}
-              </button>
-              {projectsList.map((p) => (
+          {/* Project Picker chip ("Choose project") */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setProjectPickerOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--surface-secondary)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer text-[11px] font-medium"
+              title="Scope task to a project sandbox"
+            >
+              <FolderGit2 size={11} className="text-cyan-500" />
+              <span className="truncate max-w-[140px]">{selectedProjectName}</span>
+              <ChevronDown size={10} className="text-[var(--muted-foreground)]" />
+            </button>
+
+            {projectPickerOpen && (
+              <div className="absolute top-8 left-0 z-50 w-56 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-xl p-1.5 text-xs animate-scale">
+                <div className="px-2 py-1 text-[10px] uppercase font-semibold text-[var(--muted-foreground)]">
+                  Select Project Scope
+                </div>
                 <button
-                  key={p.id}
                   type="button"
                   onClick={() => {
-                    if (onSelectProject) onSelectProject(p.id);
+                    if (onSelectProject) onSelectProject(null);
                     setProjectPickerOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer truncate ${
-                    selectedProjectId === p.id ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold' : 'hover:bg-[var(--surface-hover)] text-[var(--foreground)]'
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer ${
+                    !selectedProjectId ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold' : 'hover:bg-[var(--surface-hover)] text-[var(--foreground)]'
                   }`}
                 >
-                  <span className="truncate">{p.name}</span>
-                  {selectedProjectId === p.id && <Check size={12} />}
+                  <span>No project (Global)</span>
+                  {!selectedProjectId && <Check size={12} />}
                 </button>
-              ))}
-            </div>
-          )}
+                {projectsList.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectProject) onSelectProject(p.id);
+                      setProjectPickerOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer truncate ${
+                      selectedProjectId === p.id ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-semibold' : 'hover:bg-[var(--surface-hover)] text-[var(--foreground)]'
+                    }`}
+                  >
+                    <span className="truncate">{p.name}</span>
+                    {selectedProjectId === p.id && <Check size={12} />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Attachment Chips (Section E: above textarea) */}
       {attachments.length > 0 && (
@@ -349,8 +357,8 @@ export function GoalComposer({
         </div>
       )}
 
-      {/* Textarea Area (Section E: placeholder "Assign a task or type / for more") */}
-      <div className="px-4 pt-3 pb-2 relative">
+      {/* Textarea Area (Near-solid layer at 0.96 so text behind is never legible) */}
+      <div className={`px-4 pt-3 pb-2 relative composer-input-layer rounded-2xl ${compact ? 'min-h-[56px] flex flex-col justify-center' : ''}`}>
         <textarea
           ref={textareaRef}
           value={input}
@@ -360,7 +368,9 @@ export function GoalComposer({
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           rows={1}
-          className="w-full bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] text-[14.5px] sm:text-[15px] leading-relaxed resize-none focus:outline-none"
+          className={`w-full bg-transparent text-[var(--foreground)] placeholder-[var(--muted-foreground)] text-[14.5px] sm:text-[15px] leading-relaxed resize-none focus:outline-none ${
+            compact ? 'min-h-[56px]' : 'min-h-[48px]'
+          }`}
         />
 
         {/* "/" Command Menu Popup (Section E) */}

@@ -5,7 +5,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import {
   Copy,
   Check,
@@ -315,8 +314,8 @@ export function cleanHtmlToMarkdown(raw: string): string {
   text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '\n\n$1\n\n');
 
   // 7. Convert HTML formatting tags
-  text = text.replace(/<(?:b|strong)[^>]*>([\s\S]*?)<\/(?:b|strong)>/gi, '**$1**');
-  text = text.replace(/<(?:i|em)[^>]*>([\s\S]*?)<\/(?:i|em)>/gi, '*$1*');
+  text = text.replace(/<(?:b|strong)[^>]*>([\s\S]*?)<\/(?:b|strong)>/gi, (_m, inner) => ` **${inner.trim()}** `);
+  text = text.replace(/<(?:i|em)[^>]*>([\s\S]*?)<\/(?:i|em)>/gi, (_m, inner) => ` *${inner.trim()}* `);
   text = text.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, '`$1`');
   text = text.replace(/<br\s*\/?>/gi, '\n');
   text = text.replace(/<hr\s*\/?>/gi, '\n---\n');
@@ -329,14 +328,13 @@ export function cleanHtmlToMarkdown(raw: string): string {
 }
 
 // Preprocessor to normalize LaTeX math expressions, strip internal thinking tags, sanitize HTML, and format tables
-function preprocessMarkdown(raw: string): string {
+function preprocessMarkdown(raw: string, isStreaming = false): string {
   if (!raw) return '';
   let text = raw;
 
   // 1. Strip internal reasoning/thinking tags
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');
   text = text.replace(/\[thinking\][\s\S]*?\[\/thinking\]/gi, '');
-  // Strip unclosed <think> during active stream
   text = text.replace(/<think>[\s\S]*$/gi, '');
 
   // 2. Strip accidental meta-planning checklist prefix if present
@@ -348,24 +346,77 @@ function preprocessMarkdown(raw: string): string {
   // 3. Convert raw HTML tags (e.g. <ul><li>...</li></ul>, <table>...</table>) to native Markdown
   text = cleanHtmlToMarkdown(text);
 
-  // 4. Convert standard LaTeX \[ ... \] display math to $$ ... $$
-  text = text.replace(/\\\[([\s\S]*?)\\\]/g, '$$\n$1\n$$');
+  // Mask fenced code blocks (```...```, ~~~...~~~) and inline code (`...`) so math regexes never touch them
+  const codeBlocks: string[] = [];
+  text = text.replace(/(```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]+`)/g, (match) => {
+    const placeholder = `%%CODE_BLOCK_${codeBlocks.length}%%`;
+    codeBlocks.push(match);
+    return placeholder;
+  });
 
-  // 5. Convert standard LaTeX \( ... \) inline math to $ ... $
-  text = text.replace(/\\\(([\s\S]*?)\\\)/g, '$$$1$$');
+  // Rule 1: \[ ... \] -> $$ ... $$ (on separate lines)
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner) => `\n$$\n${inner.trim()}\n$$\n`);
 
-  // 6. Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
+  // Rule 2: \( ... \) -> $ ... $
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner) => `$${inner.trim()}$`);
+
+  // Rule 3: A line containing only "$", followed by content, followed by a line containing only "$" -> "$$" newline content newline "$$"
+  text = text.replace(/^[ \t]*\$[ \t]*\r?\n([\s\S]*?)\r?\n[ \t]*\$[ \t]*$/gm, (_m, inner) => {
+    return `\n$$\n${inner.trim()}\n$$\n`;
+  });
+
+  // Rule 4: Any \begin{aligned|align|equation|cases|matrix|pmatrix...}...\end{...} block not already inside math delimiters gets wrapped in $$
+  const existingMath: string[] = [];
+  text = text.replace(/(\$\$[\s\S]*?\$\$|\$[^$\n\r]+\$)/g, (m) => {
+    const placeholder = `%%MATH_BLOCK_${existingMath.length}%%`;
+    existingMath.push(m);
+    return placeholder;
+  });
+
+  const envRegex = /(\\begin\{(?:aligned|align\*?|equation\*?|cases|matrix|pmatrix|bmatrix|vmatrix|split|gather\*?)\}[\s\S]*?\\end\{(?:aligned|align\*?|equation\*?|cases|matrix|pmatrix|bmatrix|vmatrix|split|gather\*?)\})/g;
+  text = text.replace(envRegex, (_m, envBlock) => {
+    return `\n$$\n${envBlock.trim()}\n$$\n`;
+  });
+
+  // Restore existing math blocks
+  text = text.replace(/%%MATH_BLOCK_(\d+)%%/g, (_, idx) => {
+    return existingMath[parseInt(idx, 10)] ?? '';
+  });
+
+  // Normalize bracketed math blocks like `[ \boxed{...} ]` or `[ I = \frac{V}{R} ]`
   text = text.replace(
     /^\s*\[\s*(\\boxed\{[\s\S]*?\}|\\frac\{[\s\S]*?\}|[\w\s=+\-*/(),.]*?\\[a-zA-Z]+[\s\S]*?)\s*\]\s*$/gm,
     (match, formula) => {
       if (formula.startsWith('x]') || formula.startsWith(' ]') || formula.includes('](')) {
         return match;
       }
-      return `$$\n${formula.trim()}\n$$`;
+      return `\n$$\n${formula.trim()}\n$$\n`;
     }
   );
 
-  // 7. Fix markdown links with unencoded spaces in URLs e.g. [Eiffel Tower](https://maps.google.com/?q=Eiffel Tower, Paris)
+  // Streaming: while an opening "$$" has no closing delimiter yet, do not render partial math.
+  // Show a small skeleton line until the block closes, then render. This avoids flicker and raw LaTeX during SSE deltas.
+  if (isStreaming) {
+    // Check unclosed lone-$ block at end of stream
+    const loneDollarMatch = text.match(/(?:^|\n)[ \t]*\$[ \t]*\r?\n([^\n$]*\\[a-zA-Z][\s\S]*)$/);
+    if (loneDollarMatch) {
+      const loneIdx = text.lastIndexOf('$');
+      text = text.slice(0, loneIdx) + '\n\n```math-skeleton\n```\n\n';
+    }
+    // Check odd count of $$ delimiters
+    const matches = text.match(/\$\$/g);
+    if (matches && matches.length % 2 === 1) {
+      const lastIdx = text.lastIndexOf('$$');
+      text = text.slice(0, lastIdx) + '\n\n```math-skeleton\n```\n\n';
+    }
+  }
+
+  // Restore code blocks
+  text = text.replace(/%%CODE_BLOCK_(\d+)%%/g, (_, idx) => {
+    return codeBlocks[parseInt(idx, 10)] ?? '';
+  });
+
+  // Fix markdown links with unencoded spaces in URLs
   text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\)\n\r]+)\)/g, (fullMatch, label, urlPart) => {
     if (urlPart.includes(' ')) {
       const encodedUrl = urlPart.replace(/ /g, '%20');
@@ -374,11 +425,11 @@ function preprocessMarkdown(raw: string): string {
     return fullMatch;
   });
 
-  // 8. Fix collapsed markdown table rows joined by || or | | without newlines (e.g. || **0** | `0 0 0 0` | ...)
+  // Fix collapsed markdown table rows joined by || or | | without newlines
   text = text.replace(/\|\s*\|\s*/g, '|\n| ');
   text = text.replace(/(\|\s*:[-\s:]+\|)\s*(\|)/g, '$1\n$2');
 
-  // 9. Ensure newline before table headers if glued to narrative paragraph text
+  // Ensure newline before table headers if glued to narrative paragraph text
   text = text.replace(/([^\n|])\s*(\|[\w\s()$#*_\-.,]+(?:\|[\w\s()$#*_\-.,]+)+\|)\s*\n\s*(\|[\s:-]+\|)/g, '$1\n\n$2\n$3');
 
   return text.trim();
@@ -421,7 +472,7 @@ export const AsuraTable: React.FC<AsuraTableProps> = ({ columns, rows, title }) 
           <thead className="bg-slate-100/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200">
             <tr>
               {columns.map((col, idx) => (
-                <th key={idx} className="px-4 py-3 text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-100 text-left uppercase font-sans whitespace-nowrap min-w-[120px]">
+                <th key={idx} className="px-4 py-3 text-xs font-semibold tracking-[0.02em] text-slate-700 dark:text-slate-100 text-left normal-case font-sans whitespace-nowrap min-w-[120px]">
                   {col}
                 </th>
               ))}
@@ -449,13 +500,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
   className = '',
   isStreaming = false,
 }) => {
-  const processedContent = useMemo(() => preprocessMarkdown(content), [content]);
+  const processedContent = useMemo(() => preprocessMarkdown(content, isStreaming), [content, isStreaming]);
 
   return (
     <div className={`chat-markdown prose-asura text-slate-900 dark:text-slate-100 text-[15.5px] sm:text-[16px] leading-[1.78] font-sans ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[[rehypeKatex, { throwOnError: false, errorColor: 'inherit', strict: false }]]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false, errorColor: 'var(--danger)' }]]}
         components={{
           // Tables (Enterprise card-styled with perfect Light & Dark theme contrast)
           table({ children }) {
@@ -485,7 +536,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
           th({ children, ...props }) {
             return (
               <th
-                className="px-4 py-3 text-xs font-semibold tracking-wider text-slate-700 dark:text-slate-100 text-left uppercase font-sans whitespace-nowrap min-w-[120px]"
+                className="px-4 py-3 text-xs font-semibold tracking-[0.02em] text-slate-700 dark:text-slate-100 text-left normal-case font-sans whitespace-nowrap min-w-[120px]"
                 {...props}
               >
                 {children}
@@ -709,8 +760,21 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = React.memo(({
 
           // Code blocks & Inline code pills
           code({ inline, className, children, ...props }: any) {
-            const match = /language-(\w+)/.exec(className || '');
+            const match = /language-([-\w]+)/.exec(className || '');
             const codeText = String(children).replace(/\n$/, '');
+
+            if (match && match[1] === 'math-skeleton') {
+              return (
+                <div
+                  className="my-3 py-2.5 px-4 rounded-xl bg-slate-100/70 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-3 animate-pulse select-none"
+                  aria-label="Rendering math formula..."
+                >
+                  <div className="h-3.5 w-28 bg-slate-300/80 dark:bg-slate-600/80 rounded" />
+                  <div className="h-3.5 w-16 bg-slate-200/80 dark:bg-slate-700/80 rounded" />
+                  <div className="h-3.5 w-10 bg-slate-200/50 dark:bg-slate-700/50 rounded" />
+                </div>
+              );
+            }
 
             if (!inline && match) {
               return <CodeBlock language={match[1]} code={codeText} />;

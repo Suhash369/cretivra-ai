@@ -8,6 +8,7 @@ import {
   Search,
   StopCircle,
   Headphones,
+  MessageSquarePlus,
 } from 'lucide-react';
 import type { CretivraModel, HealthStatus } from '../../types';
 
@@ -29,6 +30,7 @@ interface TopBarProps {
   onOpenSearch?: () => void;
   onOpenMobileMenu?: () => void;
   onOpenVoiceMode?: () => void;
+  onOpenSuggestions?: () => void;
   taskStatus?: string;
 }
 
@@ -47,6 +49,7 @@ export function TopBar({
   onOpenSearch,
   onOpenMobileMenu,
   onOpenVoiceMode,
+  onOpenSuggestions,
   taskStatus,
 }: TopBarProps) {
   const currentModelObj = availableModels.find((m) => m.id === selectedModel);
@@ -158,6 +161,18 @@ export function TopBar({
             aria-label="Search sessions"
           >
             <Search size={16} />
+          </button>
+        )}
+
+        {/* Suggestions & Feedback Trigger */}
+        {onOpenSuggestions && (
+          <button
+            onClick={onOpenSuggestions}
+            className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--surface-secondary)] transition-colors cursor-pointer"
+            title="Suggestions & Feedback"
+            aria-label="Suggestions & Feedback"
+          >
+            <MessageSquarePlus size={16} />
           </button>
         )}
 

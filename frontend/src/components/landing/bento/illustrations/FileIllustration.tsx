@@ -7,7 +7,7 @@ interface FileIllustrationProps {
 
 export function FileIllustration({ isDragging = false }: FileIllustrationProps) {
   return (
-    <div className="relative w-full h-44 sm:h-52 flex flex-col items-center justify-center p-3 select-none pointer-events-none">
+    <div className="relative w-full h-full max-h-full min-h-0 flex flex-col items-center justify-center p-2 sm:p-3 select-none pointer-events-none">
       {/* Dashed Outline Drop Target Zone */}
       <div
         className={`w-full h-full rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-4 ${

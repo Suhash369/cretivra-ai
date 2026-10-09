@@ -145,9 +145,9 @@ export function BentoGrid({
       />
 
       {/* 12-Column Responsive Bento Grid with strictly aligned heights */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 lg:[grid-template-rows:repeat(2,clamp(160px,22vh,200px))]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 lg:[grid-template-rows:repeat(2,minmax(0,1fr))] lg:h-[clamp(340px,46vh,420px)]">
         {/* CARD 1: BUILD (Cols 1-5, Row 1 on desktop) */}
-        <div className="sm:col-span-2 lg:col-span-5 lg:row-start-1 lg:row-end-2 sm:h-[190px] lg:h-full min-h-[170px]">
+        <div className="sm:col-span-2 lg:col-span-5 lg:row-start-1 lg:row-end-2 h-full min-h-0 relative hover:z-[1]">
           <BentoCard
             title="Build"
             subtitle="Websites, apps, and dashboards"
@@ -158,7 +158,6 @@ export function BentoGrid({
             entranceClass="animate-bento-entrance-1"
             illustration={<BuildIllustration />}
             chips={buildChips}
-            isHorizontal={true}
             onClickCard={() => {
               if (onOpenWebsite) onOpenWebsite();
               else onSelectPrompt('Build a responsive web application with interactive UI and Stitch styling');
@@ -167,7 +166,7 @@ export function BentoGrid({
         </div>
 
         {/* CARD 2: CREATE (Cols 1-5, Row 2 on desktop) */}
-        <div className="sm:col-span-2 lg:col-span-5 lg:row-start-2 lg:row-end-3 sm:h-[190px] lg:h-full min-h-[170px]">
+        <div className="sm:col-span-2 lg:col-span-5 lg:row-start-2 lg:row-end-3 h-full min-h-0 relative hover:z-[1]">
           <BentoCard
             title="Create"
             subtitle="Generate PPT, PDF, and documents"
@@ -178,7 +177,6 @@ export function BentoGrid({
             entranceClass="animate-bento-entrance-2"
             illustration={<CreateIllustration />}
             chips={createChips}
-            isHorizontal={true}
             onClickCard={() => {
               if (onOpenSlides) onOpenSlides();
               else onSelectPrompt('Create an executive pitch deck presentation with structured slides');
@@ -187,7 +185,7 @@ export function BentoGrid({
         </div>
 
         {/* CARD 3: BUILD A GAME (Cols 6-9, Rows 1-2 on desktop, Col 1 on tablet) */}
-        <div className="sm:col-span-1 lg:col-span-4 lg:row-start-1 lg:row-end-3 sm:h-[300px] lg:h-full min-h-[170px]">
+        <div className="sm:col-span-1 lg:col-span-4 lg:row-start-1 lg:row-end-3 h-full min-h-0 relative hover:z-[1]">
           <BentoCard
             title="Build a game"
             subtitle="Browser games, arcade, puzzles"
@@ -198,7 +196,6 @@ export function BentoGrid({
             entranceClass="animate-bento-entrance-3"
             illustration={<GameIllustration />}
             chips={gameChips}
-            isHorizontal={false}
             onClickCard={() => {
               if (onOpenGame) onOpenGame();
               else onSelectPrompt('Build a playable browser retro arcade shooter game in HTML5 canvas');
@@ -207,7 +204,7 @@ export function BentoGrid({
         </div>
 
         {/* CARD 4: START FROM A LOCAL FILE (Cols 10-12, Rows 1-2 on desktop, Col 2 on tablet) */}
-        <div className="sm:col-span-1 lg:col-span-3 lg:row-start-1 lg:row-end-3 sm:h-[300px] lg:h-full min-h-[170px]">
+        <div className="sm:col-span-1 lg:col-span-3 lg:row-start-1 lg:row-end-3 h-full min-h-0 relative hover:z-[1]">
           <BentoCard
             title="Start from a local file"
             subtitle="Open files for analysis"
@@ -217,8 +214,6 @@ export function BentoGrid({
             breatheClass="bento-breathe-4"
             entranceClass="animate-bento-entrance-4"
             illustration={<FileIllustration isDragging={isDraggingOverFile} />}
-            footerCaption="PDF, DOCX, images, code, CSV"
-            isHorizontal={false}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}

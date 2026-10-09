@@ -230,6 +230,10 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [replayOpening, setReplayOpening] = useState(false);
   const [subscriptionModalOpen, setSubscriptionModalOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  const chatViewContainerRef = useRef<HTMLDivElement>(null);
+  const chatComposerRef = useRef<HTMLDivElement>(null);
 
   const handleOpeningComplete = useCallback(() => {
     setTimeout(() => {
@@ -323,6 +327,21 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
     }
     return 'home';
   });
+
+  // Measure composer with ResizeObserver and publish --composer-h on the chat view container
+  useEffect(() => {
+    if (!chatComposerRef.current || !chatViewContainerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? entry.target.getBoundingClientRect().height);
+        if (h > 0 && chatViewContainerRef.current) {
+          chatViewContainerRef.current.style.setProperty('--composer-h', `${h}px`);
+        }
+      }
+    });
+    ro.observe(chatComposerRef.current);
+    return () => ro.disconnect();
+  }, [workspaceView]);
 
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null);
   const [healthOpen, setHealthOpen] = useState(false);
@@ -1026,10 +1045,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
         onOpenAuth={() => setAuthOpen(true)}
         onOpenImageStudio={() => setImageStudioOpen(true)}
         onOpenVoiceMode={() => setVoiceModalOpen(true)}
-        onOpenSuggestions={() => {
-          const btn = document.querySelector('[data-suggestion-trigger]') as HTMLElement;
-          if (btn) btn.click();
-        }}
+        onOpenSuggestions={() => setSuggestionsOpen(true)}
         onReplayAnimation={() => setReplayOpening(true)}
         onOpenUpgrade={() => setSubscriptionModalOpen(true)}
       />
@@ -1052,6 +1068,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
           onOpenSearch={() => setSearchOpen(true)}
           onOpenMobileMenu={() => setSidebarOpen(true)}
           onOpenVoiceMode={() => setVoiceModalOpen(true)}
+          onOpenSuggestions={() => setSuggestionsOpen(true)}
           taskStatus={activePlaygroundRunId ? 'RUNNING' : undefined}
         />
 
@@ -1151,10 +1168,15 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
         )}
 
         {workspaceView === 'chat' && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+          <div
+            ref={chatViewContainerRef}
+            style={{ ['--composer-h' as any]: '120px' }}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden relative"
+          >
             {/* Scrollable Message Feed */}
             <div
-              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 pb-[200px] space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
+              className="flex-1 min-h-0 overflow-y-auto relative flex flex-col p-4 sm:p-6 space-y-4 scrollbar-thin scrollbar-thumb-[#232D45]"
+              style={{ paddingBottom: 'calc(var(--composer-h, 120px) + 48px)' }}
               ref={scrollRef}
               onScroll={handleChatScroll}
               onWheel={handleUserWheel}
@@ -1166,7 +1188,7 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
                 </div>
               ) : (
                 messages.map((m, i) => (
-                  <div key={m.id || i} className="w-full max-w-3xl mx-auto">
+                  <div key={m.id || i} className="w-full max-w-[820px] mx-auto">
                     {m.role === 'user' ? (
                       <div className="flex justify-end group my-2">
                         {editingUserMsgId === m.id ? (
@@ -1368,11 +1390,14 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
 
             {/* Jump to latest button */}
             {showScrollBottom && (
-              <div className="absolute bottom-[160px] left-1/2 -translate-x-1/2 z-30 animate-enter">
+              <div
+                className="absolute left-1/2 -translate-x-1/2 z-30 animate-enter"
+                style={{ bottom: 'calc(var(--composer-h, 120px) + 24px)' }}
+              >
                 <button
                   type="button"
                   onClick={() => scrollToBottom(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] shadow-lg text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-secondary)] border border-[var(--border)] shadow-lg text-xs text-[var(--foreground)] hover:bg-[var(--surface)] transition-all cursor-pointer"
                 >
                   <ArrowDown size={13} />
                   <span>Jump to latest</span>
@@ -1380,13 +1405,17 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
               </div>
             )}
 
-            {/* Soft fade gradient behind composer */}
-            <div className="absolute bottom-0 inset-x-0 h-24 pointer-events-none z-10 bg-gradient-to-t from-[var(--background)] to-transparent" />
+            {/* Scrim behind composer: content < scrim < composer */}
+            <div
+              className="composer-scrim pointer-events-none absolute bottom-0 inset-x-0 z-10"
+              style={{ height: 'calc(var(--composer-h, 120px) + 40px)' }}
+            />
 
             {/* Floating Glass Composer */}
             <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center px-3 sm:px-6 pointer-events-none">
-              <div className="w-full max-w-[1100px] pointer-events-auto relative">
+              <div ref={chatComposerRef} className="w-full max-w-[820px] pointer-events-auto relative">
                 <GoalComposer
+                  compact={true}
                   input={input}
                   onInputChange={setInput}
                   onSubmit={() => {
@@ -1599,7 +1628,12 @@ export function App({ initialMode }: { initialMode?: 'chat' } = {}) {
       <DragAndDropOverlay isDragging={isDraggingFile} />
 
       {/* Floating Lower-Right Suggestion & Commenting Widget */}
-      <SuggestionBox user={user} />
+      <SuggestionBox
+        user={user}
+        isOpen={suggestionsOpen}
+        onClose={() => setSuggestionsOpen(false)}
+        onToggleOpen={() => setSuggestionsOpen((prev) => !prev)}
+      />
 
       {/* Asura Cinematic Opening Animation & Intelligence Core Gate */}
       <AsuraOpeningAnimation

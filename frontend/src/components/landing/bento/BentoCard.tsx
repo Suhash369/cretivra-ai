@@ -52,7 +52,7 @@ export function BentoCard({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className={`h-full w-full ${entranceClass} ${className}`}
+      className={`h-full min-h-0 w-full overflow-hidden rounded-2xl ${entranceClass} ${className}`}
     >
       <GlowSurface
         accentColor={accentColor}
@@ -61,12 +61,12 @@ export function BentoCard({
         breatheClass={breatheClass}
         onClick={onClickCard}
         aria-label={title}
-        className={`h-full w-full p-3.5 sm:p-4.5 flex flex-col justify-between relative overflow-hidden rounded-2xl ${
+        className={`h-full min-h-0 w-full p-3 sm:p-4 flex flex-col justify-between overflow-hidden rounded-2xl ${
           isDraggingOver ? 'ring-2 ring-emerald-500 bg-emerald-500/5' : ''
         }`}
       >
-        {/* Top Header Row with Title, Chevron, Subtitle */}
-        <div className={`relative z-10 ${isHorizontal ? 'max-w-[55%] sm:max-w-[58%]' : 'w-full'}`}>
+        {/* Top Header: Title, Chevron, Subtitle */}
+        <div className="relative z-10 flex-none w-full">
           <div className="flex items-center gap-1.5 text-[14px] sm:text-[15px] font-semibold text-[var(--foreground)] tracking-tight">
             <span style={{ color: 'inherit' }} className="group-hover:text-[var(--accent-color)] transition-colors truncate">
               {title}
@@ -81,21 +81,15 @@ export function BentoCard({
           </p>
         </div>
 
-        {/* Center / Side Illustration Viewport */}
-        {isHorizontal ? (
-          <div className="absolute right-2 sm:right-3.5 top-2.5 bottom-10 flex items-center justify-end pointer-events-none z-0 overflow-hidden">
-            {illustration}
-          </div>
-        ) : (
-          <div className="my-auto relative z-10 flex items-center justify-center pointer-events-none overflow-hidden py-1">
-            {illustration}
-          </div>
-        )}
+        {/* Center Illustration Area: flex-1, min-h-0, never clipped */}
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden py-1 relative z-10 pointer-events-none">
+          {illustration}
+        </div>
 
-        {/* Bottom Quick Action Chips or Caption */}
+        {/* Bottom Quick Action Chips or Caption: flex-none */}
         {chips.length > 0 ? (
           <div
-            className="relative z-20 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar scrollbar-none pt-1"
+            className="relative z-20 flex-none flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar scrollbar-none pt-1"
             onClick={(e) => e.stopPropagation()}
           >
             {chips.map((chip, idx) => (
@@ -110,7 +104,7 @@ export function BentoCard({
             ))}
           </div>
         ) : footerCaption ? (
-          <div className="relative z-20 text-[10.5px] sm:text-[11px] text-[var(--muted-foreground)] font-medium text-center truncate pt-1">
+          <div className="relative z-20 flex-none text-[10.5px] sm:text-[11px] text-[var(--muted-foreground)] font-medium text-center truncate pt-1">
             {footerCaption}
           </div>
         ) : null}
