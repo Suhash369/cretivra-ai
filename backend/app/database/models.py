@@ -38,6 +38,9 @@ class ConversationDB(Base):
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=utc_now)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
+    active_entities = Column(JSON, default=list, nullable=True)
+    topic_summary = Column(Text, nullable=True)
+    summary_upto_message_id = Column(String, nullable=True)
 
     user = relationship("UserDB", back_populates="conversations")
     messages = relationship("MessageDB", back_populates="conversation", cascade="all, delete-orphan", order_by="MessageDB.created_at")

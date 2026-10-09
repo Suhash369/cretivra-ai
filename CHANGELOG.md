@@ -1,6 +1,44 @@
-# CHANGELOG - Cretivra Asura Bento Grid Redesign
+# CHANGELOG - Cretivra Asura
 
-## [Unreleased] - 2026-10-09
+## [Unreleased] - 2026-10-09: Conversational Follow-Up Context Resolution & Asura Registry Enhancements
+
+### Added
+- **Asura Query Rewriter Service (`services/query_rewriter.py`)**:
+  - Implemented `rewrite_query(history_last_6_turns, user_msg, conversation_state)`.
+  - Resolves pronouns and ellipses into self-contained search queries (`"where he is born"` -> `"Where was Virat Kohli born?"`).
+  - Strict classification of topic switches (`topic_switch=True`, `is_followup=False`).
+  - In-memory 60s TTL cache keyed by `hash(history_tail + message)`.
+  - Heuristic fallback mechanism prepending active entities for short pronoun/WH-queries when providers are unavailable.
+- **Logical Provider Roles in `DEFAULT_ASURA_REGISTRY` (`core/config.py`, `core/model_manager.py`)**:
+  - `"Asura Rewriter"`: Groq (`openai/gpt-oss-20b`) -> Gemini (`gemini-flash-lite-latest`) -> OpenRouter (`liquid/lfm-2.5-2.6b:free`) [JSON mode, max_tokens=200, 3s timeout].
+  - `"Asura Summarizer"`: Groq -> Gemini -> OpenRouter [rolling summary ~120 words].
+  - `"Asura Suggest"`: Groq -> Gemini -> OpenRouter [3 related questions, JSON array, 2s timeout].
+- **Conversation State Persistence (`database/models.py`, `database/migrations/add_conversation_state.py`, `services/conversation_service.py`)**:
+  - Added `active_entities` (JSON/JSONB), `topic_summary` (TEXT), and `summary_upto_message_id` (VARCHAR) to `conversations` table.
+  - Dual SQLite & PostgreSQL automated migration executed on startup.
+  - Background asynchronous task summarizes dropped history turns on `"Asura Summarizer"` and updates active entities.
+- **Contextual Related Questions on "Asura Suggest" (`services/response_orchestrator.py`)**:
+  - Dynamically synthesizes 3 contextual follow-up questions from `standalone_query` and the initial 500 characters of the assistant's answer. Emits empty array if providers fail rather than generic fallback templates.
+- **Startup Model Registry Auditor (`core/registry_auditor.py`)**:
+  - Asynchronously probes all unique provider/model pairs across `DEFAULT_ASURA_REGISTRY` with 1-token diagnostic calls on startup.
+- **Automated Test Suite (`tests/test_conversation_followup.py`)**:
+  - 11 comprehensive automated tests covering 5-turn Kohli follow-up sequence, Tamil Nadu CM sequence, fragments/typos, topic switch isolation without entity leakage, rewriter fallback chains, missing API keys, 40-turn token budget trimming, LaTeX formula integrity, and live smoke tests for Groq, Gemini, and OpenRouter.
+
+### Changed
+- **`services/response_orchestrator.py`**:
+  - Context isolation applies strictly only when `topic_switch=True` (preserving the last 2 turns even then). For regular follow-ups, full history within budget is passed.
+  - Intent routing, entity extraction, web search, and image search execute on `standalone_query`, while original user text is sent to the answering model.
+  - Strict prompt ordering: `system (persona, Asia/Kolkata date, rules, STRICT_FACT_MODE) -> system (conversation summary) -> system (active entities) -> history window -> system (web evidence) -> user`.
+  - Updated `STRICT_FACT_MODE` specifying facts established earlier in the conversation count as supplied context.
+  - History budget enforced at max 12 turns or ~6000 tokens, trimming oldest turns into background summarizer.
+  - Stream persistence: user message saved before stream starts, assistant message persisted at completion or on abort (`[aborted]`).
+  - First SSE event immediately returns `conversation_id`.
+- **`providers/groq.py`, `providers/gemini.py`, `providers/openrouter.py`**:
+  - Added non-streaming `chat()` methods supporting `json_mode`, model resolution, error categorization (401/403, 429, timeout), and cooldown tracking.
+- **`core/http_client.py`**:
+  - Added event loop tracking to `get_shared_client()` to safely handle event loop changes across async pytest runs without `RuntimeError: Event loop is closed`.
+
+## [Previous] - 2026-10-09: Bento Grid Redesign
 
 ### Added
 - **Interactive Bento Grid Layout (`frontend/src/components/landing/bento/BentoGrid.tsx`)**:

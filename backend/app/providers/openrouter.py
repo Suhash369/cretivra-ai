@@ -53,6 +53,16 @@ class OpenRouterProvider(AIProvider):
 
     def _resolve_model(self, model: str) -> List[str]:
         m = (model or "").lower()
+        if model and "/" in model:
+            base_list = [model]
+            for fallback in [
+                "liquid/lfm-2.5-2.6b:free",
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                "nvidia/nemotron-3.5-lightning:free"
+            ]:
+                if fallback not in base_list:
+                    base_list.append(fallback)
+            return base_list
         if "reason" in m or "logic" in m or "math" in m:
             return [
                 "liquid/lfm-2.5-2.6b:free",
@@ -77,14 +87,84 @@ class OpenRouterProvider(AIProvider):
         messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        full_text = ""
-        async for chunk in self.stream_chat(model, messages, options=options):
-            full_text += chunk.get("content", "")
-        return {
-            "model": model,
-            "message": {"role": "assistant", "content": full_text},
-            "done": True
+        if not self.is_available():
+            raise RuntimeError("OpenRouter provider not available")
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://asura.cretivra.com",
+            "X-Title": "Cretivra Asura"
         }
+
+        formatted_messages = []
+        for m in messages:
+            content_val = m.get("content", "")
+            if not content_val:
+                continue
+            formatted_messages.append({
+                "role": m.get("role", "user"),
+                "content": str(content_val)
+            })
+
+        if not formatted_messages:
+            formatted_messages = [{"role": "user", "content": "Hello"}]
+
+        candidate_models = self._resolve_model(model)
+        temp = (options or {}).get("temperature", settings.TEMPERATURE)
+        max_tokens = (options or {}).get("max_tokens", 4096)
+        timeout = float((options or {}).get("timeout", 10.0))
+        json_mode = bool((options or {}).get("json_mode", False))
+
+        client = get_shared_client()
+        last_err = None
+        for target_model in candidate_models:
+            payload: Dict[str, Any] = {
+                "model": target_model,
+                "messages": formatted_messages,
+                "stream": False,
+                "temperature": temp,
+                "max_tokens": max_tokens
+            }
+            if json_mode:
+                payload["response_format"] = {"type": "json_object"}
+
+            try:
+                response = await client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=timeout
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    choice = data.get("choices", [{}])[0]
+                    msg_obj = choice.get("message", {})
+                    content = msg_obj.get("content") or msg_obj.get("reasoning") or ""
+                    return {
+                        "model": target_model,
+                        "message": {"role": "assistant", "content": content},
+                        "done": True
+                    }
+                elif response.status_code in (401, 403):
+                    raise ValueError(f"Invalid API key for OpenRouter: {response.text}")
+                elif response.status_code == 429:
+                    raise RuntimeError(f"Rate limit exceeded for OpenRouter (HTTP 429): {response.text}")
+                else:
+                    logger.warning(f"OpenRouter {target_model} returned {response.status_code}: {response.text[:200]}")
+                    last_err = RuntimeError(f"OpenRouter error {response.status_code}: {response.text[:200]}")
+            except httpx.TimeoutException as te:
+                last_err = TimeoutError(f"OpenRouter request timed out: {te}")
+                continue
+            except (ValueError, RuntimeError):
+                raise
+            except Exception as e:
+                last_err = e
+                continue
+
+        if last_err:
+            raise last_err
+        raise RuntimeError("OpenRouter failed to generate response")
 
     async def stream_chat(
         self,

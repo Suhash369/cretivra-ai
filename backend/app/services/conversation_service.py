@@ -38,6 +38,40 @@ class ConversationService:
     def get_conversation(self, db: Session, conversation_id: str) -> Optional[ConversationDB]:
         return db.query(ConversationDB).filter(ConversationDB.id == conversation_id).first()
 
+    def get_conversation_state(self, db: Session, conversation_id: str) -> Dict[str, Any]:
+        conv = self.get_conversation(db, conversation_id)
+        if not conv:
+            return {"active_entities": [], "topic_summary": "", "summary_upto_message_id": None}
+        return {
+            "active_entities": list(conv.active_entities or []),
+            "topic_summary": str(conv.topic_summary or ""),
+            "summary_upto_message_id": conv.summary_upto_message_id
+        }
+
+    def update_conversation_state(
+        self,
+        db: Session,
+        conversation_id: str,
+        active_entities: Optional[List[str]] = None,
+        topic_summary: Optional[str] = None,
+        summary_upto_message_id: Optional[str] = None
+    ) -> None:
+        conv = self.get_conversation(db, conversation_id)
+        if not conv:
+            return
+        if active_entities is not None:
+            conv.active_entities = active_entities
+        if topic_summary is not None:
+            conv.topic_summary = topic_summary
+        if summary_upto_message_id is not None:
+            conv.summary_upto_message_id = summary_upto_message_id
+        try:
+            db.commit()
+            db.refresh(conv)
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Failed to update conversation state: {e}")
+
     def get_messages(self, db: Session, conversation_id: str) -> List[MessageDB]:
         conv = self.get_conversation(db, conversation_id)
         return list(conv.messages) if conv and conv.messages else []
@@ -266,5 +300,84 @@ class ConversationService:
             title = " ".join(words[:6]).capitalize() + "..."
         
         return title[:50] or "New Conversation"
+
+    async def summarize_and_update_state(
+        self,
+        conversation_id: str,
+        new_entities: List[str],
+        dropped_turns: Optional[List[Dict[str, Any]]] = None,
+        summary_upto_message_id: Optional[str] = None
+    ) -> None:
+        """
+        Background task to update active_entities and summarize dropped turns on 'Asura Summarizer'.
+        """
+        from app.database.database import SessionLocal
+        from app.core.model_manager import model_manager
+
+        db = SessionLocal()
+        try:
+            conv = self.get_conversation(db, conversation_id)
+            if not conv:
+                return
+
+            existing_entities = list(conv.active_entities or [])
+            for ent in new_entities:
+                if ent and ent not in existing_entities:
+                    existing_entities.append(ent)
+            active_entities = existing_entities[-15:]
+
+            topic_summary = conv.topic_summary or ""
+
+            if dropped_turns:
+                turns_formatted = []
+                for t in dropped_turns:
+                    role = t.get("role", "user")
+                    c = str(t.get("content", ""))[:400]
+                    turns_formatted.append(f"{role}: {c}")
+                turns_text = "\n".join(turns_formatted)
+
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are the Asura AI conversation summarizer. Summarize key facts, "
+                            "established context, and entities from the provided conversation turns into a "
+                            "concise rolling summary (~120 words). Focus only on factual information that might "
+                            "be referenced later. Do not include pleasantries or meta commentary."
+                        )
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Previous topic summary (if any):\n{topic_summary}\n\n"
+                            f"Dropped conversation turns to incorporate:\n{turns_text}\n\n"
+                            "Produce an updated, concise rolling summary (~120 words):"
+                        )
+                    }
+                ]
+
+                new_summary = await model_manager.complete_task(
+                    logical_mode="Asura Summarizer",
+                    messages=messages,
+                    json_mode=False,
+                    max_tokens=250,
+                    timeout=5.0,
+                    temperature=0.0
+                )
+                if new_summary and new_summary.strip():
+                    topic_summary = new_summary.strip()
+                    logger.info(f"[ASURA SUMMARIZER] Updated topic summary for conversation {conversation_id} ({len(topic_summary)} chars)")
+
+            self.update_conversation_state(
+                db=db,
+                conversation_id=conversation_id,
+                active_entities=active_entities,
+                topic_summary=topic_summary,
+                summary_upto_message_id=summary_upto_message_id
+            )
+        except Exception as e:
+            logger.warning(f"Error in background state update for conversation {conversation_id}: {e}")
+        finally:
+            db.close()
 
 conversation_service = ConversationService()

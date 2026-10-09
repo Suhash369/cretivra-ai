@@ -53,6 +53,8 @@ class GroqProvider(AIProvider):
         return ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 
     def _resolve_model(self, model_id: str) -> str:
+        if model_id and ("/" in model_id or "-" in model_id):
+            return model_id
         m = (model_id or "").lower()
         if any(k in m for k in ["code", "qwen", "coder", "embed"]):
             return "qwen/qwen3.8-27b"
@@ -66,12 +68,72 @@ class GroqProvider(AIProvider):
         messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        full_text = ""
-        async for chunk in self.stream_chat(model, messages, options=options):
-            full_text += chunk.get("content", "")
+        if not self.is_available():
+            raise RuntimeError("Groq provider not available")
+
+        target_model = self._resolve_model(model)
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        cleaned_messages = []
+        for m in messages:
+            c = m.get("content", "")
+            if not c:
+                continue
+            cleaned_messages.append({
+                "role": m.get("role", "user"),
+                "content": str(c)
+            })
+
+        if not cleaned_messages:
+            cleaned_messages = [{"role": "user", "content": "Hello"}]
+
+        temp = (options or {}).get("temperature", settings.TEMPERATURE)
+        max_tokens = (options or {}).get("max_tokens", 4096)
+        timeout = float((options or {}).get("timeout", 10.0))
+        json_mode = bool((options or {}).get("json_mode", False))
+
+        payload: Dict[str, Any] = {
+            "model": target_model,
+            "messages": cleaned_messages,
+            "stream": False,
+            "temperature": temp,
+            "max_tokens": max_tokens
+        }
+        supports_json_object = not any(k in target_model.lower() for k in ["oss", "reasoning"])
+        if json_mode and supports_json_object:
+            payload["response_format"] = {"type": "json_object"}
+
+        client = get_shared_client()
+        try:
+            response = await client.post(url, headers=headers, json=payload, timeout=timeout)
+            if response.status_code == 400 and "json_validate_failed" in response.text and "response_format" in payload:
+                # Retry without response_format if model failed strict validation
+                logger.info(f"Groq {target_model} failed strict json_object, retrying with prompt-instructed JSON")
+                del payload["response_format"]
+                response = await client.post(url, headers=headers, json=payload, timeout=timeout)
+        except httpx.TimeoutException as te:
+            raise TimeoutError(f"Groq request timed out: {te}")
+
+        if response.status_code != 200:
+            err_msg = response.text
+            logger.warning(f"Groq chat error ({response.status_code}): {err_msg}")
+            if response.status_code in (401, 403):
+                raise ValueError(f"Invalid API key for Groq: {err_msg}")
+            elif response.status_code == 429:
+                raise RuntimeError(f"Rate limit exceeded for Groq (HTTP 429): {err_msg}")
+            raise RuntimeError(f"Groq error ({response.status_code}): {err_msg}")
+
+        data = response.json()
+        choice = data.get("choices", [{}])[0]
+        msg_obj = choice.get("message", {})
+        content = msg_obj.get("content") or msg_obj.get("reasoning") or ""
         return {
-            "model": model,
-            "message": {"role": "assistant", "content": full_text},
+            "model": target_model,
+            "message": {"role": "assistant", "content": content},
             "done": True
         }
 

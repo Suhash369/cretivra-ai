@@ -96,6 +96,12 @@ def _run_sqlite_migrations(target_engine):
                 conn.execute(text("ALTER TABLE conversations ADD COLUMN user_id VARCHAR"))
             if "model_id" not in conv_cols:
                 conn.execute(text("ALTER TABLE conversations ADD COLUMN model_id VARCHAR DEFAULT 'cretivra-1'"))
+            if "active_entities" not in conv_cols:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN active_entities JSON"))
+            if "topic_summary" not in conv_cols:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN topic_summary TEXT"))
+            if "summary_upto_message_id" not in conv_cols:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN summary_upto_message_id VARCHAR"))
 
             # 3. messages table migrations
             msg_result = conn.execute(text("PRAGMA table_info(messages)")).fetchall()
@@ -151,7 +157,9 @@ def init_db():
     if connected:
         try:
             Base.metadata.create_all(bind=engine)
-            logger.info("Primary PostgreSQL schema verified.")
+            from app.database.migrations.add_conversation_state import migrate_conversation_state
+            migrate_conversation_state(engine)
+            logger.info("Primary PostgreSQL schema verified and state columns migrated.")
         except Exception as schema_err:
             logger.warning(f"Schema check notice (non-fatal): {schema_err}")
     else:

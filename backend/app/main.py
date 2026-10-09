@@ -46,8 +46,10 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(groq_provider.health_check())
         asyncio.create_task(gemini_provider.health_check())
         asyncio.create_task(openrouter_provider.health_check())
+        from app.core.registry_auditor import audit_model_registry
+        asyncio.create_task(audit_model_registry())
     except Exception as e:
-        logger.debug(f"Pre-warm health check notice: {e}")
+        logger.debug(f"Startup task notice: {e}")
 
     logger.info("CRETIVRA ASURA backend ready. Listening for incoming requests.")
     yield

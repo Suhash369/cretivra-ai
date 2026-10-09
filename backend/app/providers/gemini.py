@@ -51,6 +51,12 @@ class GeminiProvider(AIProvider):
 
     def _resolve_model(self, model: str) -> List[str]:
         m = (model or "").lower()
+        if model and ("gemini-" in m or "gemma-" in m):
+            base_list = [model]
+            for fallback in ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]:
+                if fallback not in base_list:
+                    base_list.append(fallback)
+            return base_list
         if "vision" in m or "image" in m:
             return ["gemini-2.5-flash-image", "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]
         elif "reason" in m or "pro" in m:
@@ -63,14 +69,90 @@ class GeminiProvider(AIProvider):
         messages: List[Dict[str, Any]],
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        full_text = ""
-        async for chunk in self.stream_chat(model, messages, options=options):
-            full_text += chunk.get("content", "")
-        return {
-            "model": model,
-            "message": {"role": "assistant", "content": full_text},
-            "done": True
+        if not self.is_available():
+            raise RuntimeError("Gemini provider not available")
+
+        clean_key = self._clean_key()
+        model_candidates = self._resolve_model(model)
+
+        contents = []
+        system_instructions = []
+        for m in messages:
+            role = m.get("role", "user")
+            content_text = m.get("content", "")
+            if not content_text:
+                continue
+            if role == "system":
+                if isinstance(content_text, str):
+                    system_instructions.append(content_text)
+            else:
+                gem_role = "user" if role == "user" else "model"
+                txt = content_text if isinstance(content_text, str) else str(content_text)
+                if contents and contents[-1]["role"] == gem_role:
+                    contents[-1]["parts"][0]["text"] += f"\n\n{txt}"
+                else:
+                    contents.append({
+                        "role": gem_role,
+                        "parts": [{"text": txt}]
+                    })
+        if not contents:
+            contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+
+        temp = (options or {}).get("temperature", settings.TEMPERATURE)
+        max_tokens = (options or {}).get("max_tokens", 4096)
+        timeout = float((options or {}).get("timeout", 10.0))
+        json_mode = bool((options or {}).get("json_mode", False))
+
+        payload: Dict[str, Any] = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temp,
+                "maxOutputTokens": max_tokens
+            }
         }
+        if json_mode:
+            payload["generationConfig"]["responseMimeType"] = "application/json"
+        if system_instructions:
+            payload["system_instruction"] = {
+                "parts": [{"text": "\n\n".join(system_instructions)}]
+            }
+
+        client = get_shared_client()
+        last_err = None
+        for gem_model in model_candidates:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:generateContent?key={clean_key}"
+            try:
+                response = await client.post(url, json=payload, timeout=timeout)
+                if response.status_code == 200:
+                    data = response.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        text = "".join(p.get("text", "") for p in parts if "text" in p)
+                        return {
+                            "model": gem_model,
+                            "message": {"role": "assistant", "content": text},
+                            "done": True
+                        }
+                elif response.status_code in (401, 403):
+                    raise ValueError(f"Invalid API key for Gemini: {response.text}")
+                elif response.status_code == 429:
+                    raise RuntimeError(f"Rate limit exceeded for Gemini (HTTP 429): {response.text}")
+                else:
+                    logger.warning(f"Gemini {gem_model} chat returned {response.status_code}: {response.text[:200]}")
+                    last_err = RuntimeError(f"Gemini error {response.status_code}: {response.text[:200]}")
+            except httpx.TimeoutException as te:
+                last_err = TimeoutError(f"Gemini request timed out: {te}")
+                continue
+            except (ValueError, RuntimeError):
+                raise
+            except Exception as e:
+                last_err = e
+                continue
+
+        if last_err:
+            raise last_err
+        raise RuntimeError("Gemini failed to generate response")
 
     async def stream_chat(
         self,

@@ -106,6 +106,78 @@ DEFAULT_ASURA_REGISTRY: Dict[str, Dict[str, Any]] = {
             {"provider": "groq", "model": "openai/gpt-oss-20b"},
             {"provider": "openrouter", "model": "liquid/lfm-2.5-2.6b:free"}
         ]
+    },
+    "Asura Rewriter": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_REWRITER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_REWRITER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_REWRITER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "asura_rewriter": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_REWRITER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_REWRITER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_REWRITER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "rewriter": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_REWRITER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_REWRITER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_REWRITER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "Asura Summarizer": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUMMARIZER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUMMARIZER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUMMARIZER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "asura_summarizer": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUMMARIZER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUMMARIZER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUMMARIZER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "summarizer": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUMMARIZER_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUMMARIZER_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUMMARIZER_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "Asura Suggest": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUGGEST_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUGGEST_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUGGEST_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "asura_suggest": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUGGEST_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUGGEST_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUGGEST_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
+    },
+    "suggest": {
+        "provider": "groq",
+        "model": os.getenv("ASURA_SUGGEST_MODEL_GROQ", "openai/gpt-oss-20b"),
+        "fallbacks": [
+            {"provider": "gemini", "model": os.getenv("ASURA_SUGGEST_MODEL_GEMINI", "gemini-3.1-flash-lite")},
+            {"provider": "openrouter", "model": os.getenv("ASURA_SUGGEST_MODEL_OPENROUTER", "liquid/lfm-2.5-2.6b:free")}
+        ]
     }
 }
 
@@ -150,6 +222,19 @@ class Settings(BaseSettings):
     VISION_MODEL: str = Field(default="asura-vision")
     CREATIVE_MODEL: str = Field(default="asura-creative")
     IMAGE_SEARCH_PROVIDER: str = Field(default="wikimedia")
+    
+    # Asura Sub-Task Engine Mappings
+    ASURA_REWRITER_MODEL_GROQ: str = Field(default="openai/gpt-oss-20b")
+    ASURA_REWRITER_MODEL_GEMINI: str = Field(default="gemini-3.1-flash-lite")
+    ASURA_REWRITER_MODEL_OPENROUTER: str = Field(default="liquid/lfm-2.5-2.6b:free")
+
+    ASURA_SUMMARIZER_MODEL_GROQ: str = Field(default="openai/gpt-oss-20b")
+    ASURA_SUMMARIZER_MODEL_GEMINI: str = Field(default="gemini-3.1-flash-lite")
+    ASURA_SUMMARIZER_MODEL_OPENROUTER: str = Field(default="liquid/lfm-2.5-2.6b:free")
+
+    ASURA_SUGGEST_MODEL_GROQ: str = Field(default="openai/gpt-oss-20b")
+    ASURA_SUGGEST_MODEL_GEMINI: str = Field(default="gemini-3.1-flash-lite")
+    ASURA_SUGGEST_MODEL_OPENROUTER: str = Field(default="liquid/lfm-2.5-2.6b:free")
 
     SYSTEM_PROMPT: str = Field(
         default=(

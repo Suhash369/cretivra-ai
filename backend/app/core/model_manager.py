@@ -95,6 +95,15 @@ class AsuraModelManager:
         self._provider_cooldowns: Dict[str, float] = {}
         self._disabled_providers: set = set()
 
+    @property
+    def provider_cooldowns(self) -> Dict[str, float]:
+        return self._provider_cooldowns
+
+    def reset_cooldowns(self):
+        """Resets all provider cooldowns and disabled states."""
+        self._provider_cooldowns.clear()
+        self._disabled_providers.clear()
+
     def get_logical_models(self) -> List[LogicalModelInfo]:
         """Returns Cretivra-owned logical capabilities for user display."""
         return list(ASURA_LOGICAL_MODELS.values())
@@ -113,11 +122,16 @@ class AsuraModelManager:
         """
         Determines the primary provider/model and fallback chain from centralized registry.
         """
-        mode_key = "balanced"
-        lm = (logical_mode or "").lower()
+        lm = (logical_mode or "").strip().lower()
 
         if has_images or "vision" in lm:
             mode_key = "vision"
+        elif "rewriter" in lm:
+            mode_key = "Asura Rewriter" if "Asura Rewriter" in self.registry else "asura_rewriter"
+        elif "summariz" in lm:
+            mode_key = "Asura Summarizer" if "Asura Summarizer" in self.registry else "asura_summarizer"
+        elif "suggest" in lm:
+            mode_key = "Asura Suggest" if "Asura Suggest" in self.registry else "asura_suggest"
         elif "reason" in lm:
             mode_key = "reasoning"
         elif "code" in lm or "coding" in lm:
@@ -129,13 +143,85 @@ class AsuraModelManager:
         else:
             mode_key = "balanced"
 
-        config_entry = self.registry.get(mode_key, self.registry["balanced"])
+        config_entry = self.registry.get(mode_key) or self.registry.get(mode_key.lower()) or self.registry.get("balanced", {})
         primary = {
             "provider": config_entry.get("provider", "groq"),
             "model": config_entry.get("model", "openai/gpt-oss-120b")
         }
         fallbacks = config_entry.get("fallbacks", [])
         return [primary] + list(fallbacks)
+
+    async def complete_task(
+        self,
+        logical_mode: str,
+        messages: List[Dict[str, Any]],
+        json_mode: bool = False,
+        max_tokens: int = 500,
+        timeout: float = 5.0,
+        temperature: float = 0.0
+    ) -> Optional[str]:
+        """
+        Executes a non-streaming sub-task (Query Rewriter, Summarizer, Related Questions)
+        through allowed providers (Groq -> Gemini -> OpenRouter) with automatic fallback and cooldown tracking.
+        """
+        execution_plan = self._get_execution_plan(logical_mode)
+        now_ts = time.time()
+
+        for attempt_idx, candidate in enumerate(execution_plan):
+            prov_name = candidate.get("provider", "").lower()
+            model_name = candidate.get("model", "")
+            provider_inst = self.providers.get(prov_name)
+
+            if not provider_inst or not provider_inst.is_available():
+                continue
+
+            if prov_name in self._disabled_providers:
+                logger.debug(f"[ASURA ROUTER] Provider {prov_name} permanently disabled, skipping.")
+                continue
+
+            cooldown_exp = self._provider_cooldowns.get(prov_name, 0.0)
+            if now_ts < cooldown_exp:
+                remaining_cd = int(cooldown_exp - now_ts)
+                logger.info(f"[ASURA ROUTER] Provider {prov_name} in cooldown ({remaining_cd}s remaining), skipping.")
+                continue
+
+            logger.info(f"[ASURA ROUTER] Attempting task '{logical_mode}' on provider={prov_name} model={model_name} (attempt {attempt_idx + 1})")
+
+            try:
+                res = await provider_inst.chat(
+                    model=model_name,
+                    messages=messages,
+                    options={
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "timeout": timeout,
+                        "json_mode": json_mode
+                    }
+                )
+                text = (res.get("message", {}).get("content") or "").strip()
+                if text:
+                    logger.info(f"[ASURA ROUTER] Task '{logical_mode}' successfully completed by provider={prov_name} model={model_name}")
+                    return text
+                else:
+                    logger.warning(f"[ASURA ROUTER] Provider {prov_name} returned empty text for task '{logical_mode}'")
+            except ValueError as ve:
+                logger.error(f"[ASURA ROUTER] Provider {prov_name} credentials error: {ve}")
+                self._disabled_providers.add(prov_name)
+            except RuntimeError as re_err:
+                logger.warning(f"[ASURA ROUTER] Provider {prov_name} rate limit reached: {re_err}")
+                self._provider_cooldowns[prov_name] = time.time() + 60.0
+            except (asyncio.TimeoutError, TimeoutError) as te:
+                logger.warning(f"[ASURA ROUTER] Provider {prov_name} timed out ({timeout}s): {te}")
+                self._provider_cooldowns[prov_name] = time.time() + 15.0
+            except Exception as e:
+                logger.warning(f"[ASURA ROUTER] Provider {prov_name} error: {e}")
+                if "rate limit" in str(e).lower() or "429" in str(e):
+                    self._provider_cooldowns[prov_name] = time.time() + 60.0
+                elif "invalid api key" in str(e).lower() or "401" in str(e) or "403" in str(e):
+                    self._disabled_providers.add(prov_name)
+
+        logger.warning(f"[ASURA ROUTER] All providers failed for task '{logical_mode}'")
+        return None
 
     async def stream_orchestrated_chat(
         self,
