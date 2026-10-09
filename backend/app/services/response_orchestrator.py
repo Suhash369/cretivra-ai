@@ -303,6 +303,35 @@ class AsuraResponseOrchestrator:
                     f"- MANDATORY INSTRUCTION: You MUST state clearly and directly that {top_entity.canonical_name} is the {top_entity.role}. Do not withhold the name or claim policy restrictions.\n"
                 )
 
+            if top_entity and top_entity.role:
+                format_guidelines = (
+                    f"FORMAT GUIDELINE (Requirement 22, 23 & 36):\n"
+                    f"State the verified answer clearly with date anchor:\n"
+                    f"## [Current Office / Subject Title]\n"
+                    f"**[Exact Canonical Name from Evidence]**\n\n"
+                    f"As of **{current_date_str}**, authoritative current sources identify **[Exact Canonical Name]** as the {top_entity.role}...\n\n"
+                    f"### Sources\n"
+                    f"- [Publisher Name or Domain](URL)\n\n"
+                    f"### Verification\n"
+                    f"✓ Cross-checked\n"
+                    f"✓ Current-source research performed\n"
+                )
+            else:
+                format_guidelines = (
+                    f"FORMAT GUIDELINE (Requirement 22, 23 & 36):\n"
+                    f"State the verified answer clearly with a concise topic heading and direct answer:\n"
+                    f"## [Topic / Subject Heading]\n"
+                    f"**[Direct Answer / Primary Fact]**\n\n"
+                    f"[Clear, accurate, and informative details synthesized from the verified web sources and context]\n\n"
+                    f"### Sources\n"
+                    f"- [Publisher Name or Domain](URL)\n\n"
+                    f"### Verification\n"
+                    f"✓ Cross-checked\n"
+                    f"✓ Current-source research performed\n"
+                )
+
+            query_label = f"{clean_query} (Subject: {decision.entity})" if (decision.is_follow_up and decision.entity) else clean_query
+
             # Internal system instruction for STRICT_FACT_MODE (Requirement 21)
             system_instruction = (
                 f"You are Asura, developed by Cretivra.\n\n"
@@ -329,17 +358,8 @@ class AsuraResponseOrchestrator:
                 f"Timezone:\nAsia/Kolkata\n\n"
                 f"VERIFICATION STATUS:\n{v_status} ({verification_guidance}){context_guidance}\n"
                 f"{canonical_lock_text}\n"
-                f"FORMAT GUIDELINE (Requirement 22, 23 & 36):\n"
-                f"State the verified answer clearly with date anchor:\n"
-                f"## [Current Office / Subject Title]\n"
-                f"**[Exact Canonical Name from Evidence]**\n\n"
-                f"As of **{current_date_str}**, authoritative current sources identify **[Exact Canonical Name]** as the [Office]...\n\n"
-                f"### Sources\n"
-                f"- [Publisher Name or Domain](URL)\n\n"
-                f"### Verification\n"
-                f"✓ Cross-checked\n"
-                f"✓ Current-source research performed\n\n"
-                f"USER QUERY:\n{clean_query}\n\n"
+                f"{format_guidelines}\n"
+                f"USER QUERY:\n{query_label}\n\n"
                 f"WEB SOURCES:\n{normalized_results_block or 'In-prompt context and verified sources provided by user'}\n\n"
                 f"Now answer the user directly and authoritatively in rich, structured Markdown based on the verified evidence."
             )

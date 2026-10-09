@@ -169,7 +169,7 @@ class EntityDetector:
             if "governor" in q_lower:
                 return "R. N. Ravi"
         if "kerala" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
-            return "Pinarayi Vijayan"
+            return "V. D. Satheesan"
         if "karnataka" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
             return "Siddaramaiah"
         if "andhra" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
@@ -270,9 +270,36 @@ class EntityDetector:
             return None
 
     def _extract_recent_entity_from_context(self, context: List[Dict[str, Any]], current_query: Optional[str] = None) -> Optional[str]:
-        """Extracts the active entity or topic from previous conversation turns."""
+        """Extracts the active anchor entity or topic across consecutive conversation turns."""
         if not context:
             return None
+
+        NON_ENTITY_TERMS = {
+            "birth date", "date of birth", "age", "current age", "overview", "summary", "details",
+            "location", "venue", "schedule", "results", "closing date", "start date", "dates",
+            "companies", "company", "net worth", "salary", "biography", "profile", "education",
+            "qualification", "family", "wife", "husband", "children", "founder", "ceo", "career",
+            "chief minister", "prime minister", "president", "governor", "cm", "pm", "early life",
+            "personal life", "achievements", "leadership", "background", "history", "records",
+            "key facts", "fast facts", "about", "introduction", "status", "role", "position"
+        }
+
+        def _is_valid_candidate(cand: str) -> bool:
+            if not cand or len(cand) < 3:
+                return False
+            c_low = cand.strip().lower()
+            if c_low in NON_ENTITY_TERMS:
+                return False
+            if any(w in c_low for w in [
+                "age", "birth", "born", "date", "life", "fact", "detail", "summary",
+                "overview", "year", "old", "career", "result", "venue", "location"
+            ]):
+                return False
+            if re.search(r"\d", cand):
+                return False
+            if any(w in c_low for w in ["asura", "cretivra", "answer"]):
+                return False
+            return True
 
         q_clean = (current_query or "").strip().lower()
         prior_messages = [
@@ -280,47 +307,60 @@ class EntityDetector:
             if not q_clean or m.get("content", "").strip().lower() != q_clean
         ]
 
+        # Scan backwards across prior conversation turns for the genuine anchor entity
         for msg in reversed(prior_messages):
             content = (msg.get("content") or "").strip()
             role = msg.get("role")
 
-            # 1. From Assistant message: Check markdown headings, bold subjects, or tournament/event names
-            if role == "assistant":
-                # Check for ## [Heading]
+            # Check for major tournament / sports event first across all messages
+            event_m = re.search(
+                r"\b((?:(?:19|20)\d{2}\s+)?(?:Asian\s+Games|Olympics?|Olympic\s+Games|World\s+Cup|Commonwealth\s+Games|Champions\s+Trophy)(?:\s+(?:19|20)\d{2})?)\b",
+                content,
+                re.IGNORECASE
+            )
+            if event_m:
+                return event_m.group(1).strip()
+
+            if role == "user":
+                # Check if user message had office query
+                if self.is_office_or_role_query(content):
+                    holder = self.resolve_office_holder_sync(content)
+                    if holder and _is_valid_candidate(holder):
+                        return holder
+
+                clean_user = re.sub(
+                    r"^(?:who\s+is|who\s+was|when\s+was|when\s+is|where\s+is|where\s+was|what\s+is|tell\s+me\s+about)\s+",
+                    "", content, flags=re.IGNORECASE
+                ).rstrip("?").strip()
+                clean_user = re.sub(
+                    r"\b(?:closing\s+date|starting\s+date|start\s+date|end\s+date|schedule|date|born|age|how\s+old|companies|lead)\b",
+                    "", clean_user, flags=re.IGNORECASE
+                ).strip()
+                tokens = clean_user.lower().split()
+                if tokens and not any(t in ["he", "him", "his", "she", "her", "it", "its", "they", "them", "that", "this"] for t in tokens):
+                    ent, etype = self.detect_entity(content)
+                    if ent and _is_valid_candidate(ent):
+                        return ent
+                    if len(clean_user) > 2 and _is_valid_candidate(clean_user):
+                        return self._clean_entity_name(clean_user)
+
+            elif role == "assistant":
+                # Check bold entity in assistant message: **Entity Name**
+                for m in re.finditer(r"\*\*([^\*]+)\*\*", content):
+                    cand = m.group(1).strip()
+                    if _is_valid_candidate(cand):
+                        return self._clean_entity_name(cand)
+
+                # Check for ## Heading
                 heading_match = re.search(r"^##\s+([^\n]+)", content, re.MULTILINE)
                 if heading_match:
-                    heading = heading_match.group(1).strip()
-                    clean_h = re.sub(r"\b(?:closing\s+date|start\s+date|schedule|results?|venue|location|overview|summary)\b", "", heading, flags=re.IGNORECASE).strip()
-                    if clean_h and len(clean_h) > 2 and not any(w in clean_h.lower() for w in ["asura", "cretivra", "answer"]):
+                    h_text = heading_match.group(1).strip()
+                    clean_h = re.sub(
+                        r"\b(?:closing\s+date|start\s+date|schedule|results?|venue|location|overview|summary|details)\b",
+                        "", h_text, flags=re.IGNORECASE
+                    ).strip()
+                    if _is_valid_candidate(clean_h):
                         return self._clean_entity_name(clean_h)
-
-                # Check for explicit bold entity at top: **Entity Name**
-                bold_match = re.search(r"^\*\*([^\*]+)\*\*", content, re.MULTILINE)
-                if bold_match:
-                    cand = bold_match.group(1).strip()
-                    if not re.search(r"\b(?:january|february|march|april|may|june|july|august|september|october|november|december|\d{4})\b", cand.lower()):
-                        if len(cand) > 2 and not any(w in cand.lower() for w in ["asura", "cretivra", "verified"]):
-                            return self._clean_entity_name(cand)
-
-                # Check for major games / events in content
-                event_m = re.search(r"\b((?:(?:19|20)\d{2}\s+)?(?:Asian\s+Games|Olympics?|Olympic\s+Games|World\s+Cup|Commonwealth\s+Games|Champions\s+Trophy)(?:\s+(?:19|20)\d{2})?)\b", content, re.IGNORECASE)
-                if event_m:
-                    return event_m.group(1).strip()
-
-            # 2. From User message: Extract entity candidate
-            elif role == "user":
-                event_m = re.search(r"\b((?:(?:19|20)\d{2}\s+)?(?:Asian\s+Games|Olympics?|Olympic\s+Games|World\s+Cup|Commonwealth\s+Games|Champions\s+Trophy)(?:\s+(?:19|20)\d{2})?)\b", content, re.IGNORECASE)
-                if event_m:
-                    return event_m.group(1).strip()
-
-                ent, etype = self.detect_entity(content)
-                if ent and etype != EntityType.TECHNOLOGY and ent.lower() not in ["he", "she", "it", "they", "that", "this"]:
-                    return self._clean_entity_name(ent)
-
-                clean_user = re.sub(r"^(?:when\s+is|when\s+was|where\s+is|where\s+was|who\s+is|who\s+was|what\s+is|tell\s+me\s+about)\s+", "", content, flags=re.IGNORECASE).rstrip("?").strip()
-                clean_user = re.sub(r"\b(?:closing\s+date|starting\s+date|start\s+date|end\s+date|schedule|date)\b", "", clean_user, flags=re.IGNORECASE).strip()
-                if len(clean_user) > 3 and not any(clean_user.lower() == w for w in ["it", "he", "she", "they", "that", "this"]):
-                    return self._clean_entity_name(clean_user)
 
         return None
 

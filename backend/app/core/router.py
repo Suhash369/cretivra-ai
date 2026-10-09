@@ -161,10 +161,12 @@ DOCUMENT_KEYWORDS = [
 def is_anaphoric_follow_up(query: str) -> bool:
     """
     Checks if a query is an anaphoric follow-up relying on prior conversation turn.
-    Returns True for: 'How old is he?', 'What is his party?', 'where it is conducted', 'where is it held'.
-    Returns False for standalone queries or queries introducing new entities or locations.
+    Returns True for: 'How old is he?', 'When was he born?', 'What companies does he lead?',
+    'where it is conducted', 'where is it held', 'date of birth of him'.
+    Returns False for standalone queries introducing new entities or locations.
     """
-    q_lower = query.strip().lower()
+    q_strip = (query or "").strip()
+    q_lower = q_strip.lower()
     
     # If the query explicitly introduces a new state/country/subject, it is NOT a follow-up
     entities_locations = [
@@ -178,18 +180,25 @@ def is_anaphoric_follow_up(query: str) -> bool:
             return False
 
     tokens = set(re.findall(r'\b\w+\b', q_lower))
-    pronoun_set = {"he", "him", "his", "she", "her", "hers", "they", "them", "their", "it", "its", "that", "this", "there"}
+    pronoun_set = {"he", "him", "his", "she", "her", "hers", "they", "them", "their", "it", "its"}
     if any(p in tokens for p in pronoun_set):
         return True
 
     follow_up_patterns = [
         r"\b(?:where|when|who|how|why)\b.*\b(?:conducted|held|organized|located|hosted|venue|stadium|started|ended|place|dates?)\b",
-        r"\b(?:where|when|who|how|why)\s+(?:is|was|will|are|were|it|he|she|they)\b",
+        r"\b(?:where|when|who|how|why)\s+(?:is|was|will|are|were)\s+(?:conducted|held|organized|hosted|started|ended)\b",
         r"\b(?:tell\s+me\s+more|more\s+details|elaborate|explain\s+further)\b",
         r"\b(?:what\s+about|and\s+what|what\s+else)\b",
         r"\b(?:who\s+(?:won|leads?|hosts?|is\s+the\s+winner))\b"
     ]
-    return any(re.search(pat, q_lower) for pat in follow_up_patterns)
+    if any(re.search(pat, q_lower) for pat in follow_up_patterns):
+        # Don't treat queries that explicitly specify a multi-word proper noun entity as follow-ups
+        from app.core.entity import entity_detector
+        ent, _ = entity_detector.detect_entity(q_strip)
+        if not ent:
+            return True
+
+    return False
 
 def extract_concise_search_keywords(prompt: str) -> str:
     """Extracts clean, concise keywords for search engines from potentially long prompts."""
@@ -313,7 +322,86 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 4. Check for Explicit Historical Knowledge (Overrides real-time)
+    # 4. ANAPHORIC FOLLOW-UP RESOLUTION WITH CONTEXT PRESERVATION
+    is_follow = is_anaphoric_follow_up(q)
+    if is_follow and conversation_history:
+        from app.core.entity import entity_detector
+        active_entity = entity_detector._extract_recent_entity_from_context(conversation_history, current_query=q)
+        if active_entity:
+            clean_sub_q = re.sub(r"\b(?:it|this|that|he|she|they|them|his|her)\b", "", q, flags=re.IGNORECASE).strip()
+            clean_sub_q = re.sub(r"[\s\u202f\xa0]+", " ", clean_sub_q).strip()
+            clean_aspect = re.sub(r"[?!.,]", "", clean_sub_q).strip()
+
+            # Generate focused search queries tailored to the aspect asked
+            if any(w in q_lower for w in ["born", "birth", "dob", "birthday"]):
+                search_queries = [
+                    f"{active_entity} date of birth born",
+                    f"{active_entity} birthday birth date",
+                    f"{active_entity} biography profile",
+                    active_entity
+                ]
+            elif any(w in q_lower for w in ["how old", "age", "years old"]):
+                search_queries = [
+                    f"{active_entity} age date of birth {current_year}",
+                    f"{active_entity} current age {current_year}",
+                    f"{active_entity} birth date",
+                    active_entity
+                ]
+            elif any(w in q_lower for w in ["companies", "company", "lead", "leads", "head", "heads", "founder", "founded", "ceo", "owns", "businesses", "business"]):
+                search_queries = [
+                    f"{active_entity} companies led founded CEO",
+                    f"{active_entity} current companies leadership",
+                    f"{active_entity} companies {current_year}",
+                    active_entity
+                ]
+            elif any(w in q_lower for w in ["where", "conducted", "held", "venue", "place", "location", "stadium", "city", "country", "hosted"]):
+                search_queries = [
+                    f"{active_entity} host city venue location {current_year}".strip(),
+                    f"{active_entity} host location venue".strip(),
+                    f"{active_entity} where conducted held".strip(),
+                    active_entity
+                ]
+            elif any(w in q_lower for w in ["closing date", "closing ceremony", "start date", "opening date", "schedule", "dates"]):
+                search_queries = [
+                    f"{active_entity} dates schedule {current_year}".strip(),
+                    f"{active_entity} closing date schedule".strip(),
+                    active_entity
+                ]
+            elif any(w in q_lower for w in ["party", "political party", "ministry", "cabinet", "constituency", "mla", "mp", "portfolio"]):
+                search_queries = [
+                    f"{active_entity} political party office career",
+                    f"{active_entity} biography profile",
+                    active_entity
+                ]
+            else:
+                search_queries = [
+                    f"{active_entity} {clean_aspect} {current_year}".strip(),
+                    f"{active_entity} {clean_aspect}".strip(),
+                    f"{active_entity} official",
+                    active_entity
+                ]
+
+            primary_search = search_queries[0]
+            return {
+                "intent": QueryIntent.REAL_TIME.value,
+                "detected_intent": QueryIntent.REAL_TIME,
+                "entity": active_entity,
+                "entity_type": "EVENT" if any(w in active_entity.lower() for w in ["games", "cup", "tournament", "olympic"]) else "ENTITY",
+                "requires_web": True,
+                "force_web_search": True,
+                "requires_current_information": True,
+                "requires_images": True,
+                "image_search_query": active_entity,
+                "search_query": primary_search,
+                "search_queries": search_queries,
+                "is_follow_up": True,
+                "logical_mode": "Asura Balanced",
+                "reasoning": f"Follow-up query resolved with context entity '{active_entity}'",
+                "current_date": current_date_str,
+                "timezone": time_info["timezone"]
+            }
+
+    # 4B. Check for Explicit Historical Knowledge (Overrides real-time for standalone historical queries)
     is_historical = False
     for pat in HISTORICAL_INDICATORS:
         if re.search(pat, q_lower):
@@ -334,41 +422,6 @@ def query_router(
             "current_date": current_date_str,
             "timezone": time_info["timezone"]
         }
-
-    # 4B. ANAPHORIC FOLLOW-UP RESOLUTION WITH CONTEXT PRESERVATION
-    is_follow = is_anaphoric_follow_up(q)
-    if is_follow and conversation_history:
-        from app.core.entity import entity_detector
-        active_entity = entity_detector._extract_recent_entity_from_context(conversation_history, current_query=q)
-        if active_entity:
-            clean_sub_q = re.sub(r"\b(?:it|this|that|he|she|they|them|his|her)\b", "", q, flags=re.IGNORECASE).strip()
-            clean_sub_q = re.sub(r"[\s\u202f\xa0]+", " ", clean_sub_q).strip()
-            primary_search = f"{active_entity} {clean_sub_q}".strip()
-            venue_terms = "location venue host city" if any(w in q_lower for w in ["where", "conducted", "held", "venue", "place", "location"]) else "latest"
-            search_queries = [
-                f"{active_entity} {venue_terms} {current_year}".strip(),
-                f"{primary_search} official".strip(),
-                f"{active_entity} {venue_terms}".strip(),
-                active_entity
-            ]
-            return {
-                "intent": QueryIntent.REAL_TIME.value,
-                "detected_intent": QueryIntent.REAL_TIME,
-                "entity": active_entity,
-                "entity_type": "EVENT" if any(w in active_entity.lower() for w in ["games", "cup", "tournament", "olympic"]) else "ENTITY",
-                "requires_web": True,
-                "force_web_search": True,
-                "requires_current_information": True,
-                "requires_images": True,
-                "image_search_query": active_entity,
-                "search_query": search_queries[0],
-                "search_queries": search_queries,
-                "is_follow_up": True,
-                "logical_mode": "Asura Balanced",
-                "reasoning": f"Follow-up query resolved with context entity '{active_entity}'",
-                "current_date": current_date_str,
-                "timezone": time_info["timezone"]
-            }
 
     # 5. Specialized Real-Time Domain Detection
     is_ai_news = any(re.search(p, q_lower) for p in AI_KEYWORDS) and any(term in q_lower for term in ["news", "latest", "today", "this week", "model", "release"])

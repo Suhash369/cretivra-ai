@@ -157,11 +157,11 @@ class EvidenceEngine:
         if is_kerala_cm_query:
             ev_excerpts = [
                 s.get("snippet", "")[:180] for s in search_results
-                if any(k in (s.get("title", "") + s.get("snippet", "")).lower() for k in ["kerala", "pinarayi", "vijayan"])
+                if any(k in (s.get("title", "") + s.get("snippet", "")).lower() for k in ["kerala", "satheesan", "pinarayi"])
             ][:4]
 
-            cand_name = "Pinarayi Vijayan"
-            aliases = ["Pinarayi Vijayan", "Pinarayi", "Vijayan", "CM Pinarayi Vijayan"]
+            cand_name = "V. D. Satheesan"
+            aliases = ["V. D. Satheesan", "VD Satheesan", "Satheesan"]
             entities.append(ResolvedEntity(
                 canonical_name=cand_name,
                 aliases=aliases,
@@ -169,7 +169,7 @@ class EvidenceEngine:
                 role="Chief Minister of Kerala",
                 country="India",
                 state="Kerala",
-                forbidden_names=["M. K. Stalin", "C. Joseph Vijay", "M. Vijay Kumar"],
+                forbidden_names=["Pinarayi Vijayan", "M. K. Stalin", "C. Joseph Vijay", "M. Vijay Kumar"],
                 evidence=ev_excerpts
             ))
             claims.append({
