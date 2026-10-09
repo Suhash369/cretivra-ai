@@ -101,8 +101,49 @@ def infer_domain_from_publisher_name(name: str) -> str:
     if "techcrunch" in n: return "techcrunch.com"
     if "verge" in n: return "theverge.com"
     if "cricbuzz" in n: return "cricbuzz.com"
-    if "espn" in n: return "espncricinfo.com"
-    return "news.google.com"
+def is_safe_external_url(url: str) -> bool:
+    """Validates external URL and blocks SSRF, internal hostnames, and private IPs."""
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url if "://" in url else f"https://{url}")
+        if parsed.scheme.lower() not in ("http", "https"):
+            return False
+        hostname = (parsed.hostname or "").lower()
+        if not hostname:
+            return False
+        if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1", "metadata.google.internal"):
+            return False
+        if hostname.endswith(".local") or hostname.endswith(".internal") or hostname.endswith(".lan"):
+            return False
+        import ipaddress
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+                return False
+        except ValueError:
+            pass
+        return True
+    except Exception:
+        return False
+
+INJECTION_PATTERNS = [
+    r"(?i)\bignore\s+(?:all\s+)?(?:previous|prior)\s+instructions\b",
+    r"(?i)\bsystem\s+prompt\b",
+    r"(?i)\byou\s+are\s+now\s+in\s+developer\s+mode\b",
+    r"(?i)\bdisregard\s+(?:all\s+)?prior\s+instructions\b",
+    r"(?i)\bact\s+as\s+(?:an?\s+)?unrestricted\b",
+    r"(?i)\bpwned\b"
+]
+
+def sanitize_prompt_injection(text: str) -> str:
+    """Neutralizes adversarial injection attempts in external web text."""
+    if not text:
+        return ""
+    cleaned = text
+    for pat in INJECTION_PATTERNS:
+        cleaned = re.sub(pat, "[FILTERED_UNTRUSTED_DIRECTIVE]", cleaned)
+    return cleaned
 
 class WebSearchService:
     """
@@ -264,7 +305,7 @@ class WebSearchService:
             f"{clean_q} {year_str}"
         ]
 
-    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str], target_query: str) -> float:
+    def _score_source(self, item: Dict[str, Any], current_year: int, target_keywords: List[str], target_query: str = "") -> float:
         """
         Multi-factor source scoring formula per Requirement 10:
         finalScore = (
@@ -274,7 +315,7 @@ class WebSearchService:
             originalityScore * 0.10 +
             contentQualityScore * 0.05
         )
-        With Cross-State conflict penalty.
+        With Cross-State conflict penalty and strict temporal penalties for obsolete knowledge.
         """
         domain = (item.get("domain") or "").lower()
         title = (item.get("title") or "").lower()
@@ -289,11 +330,11 @@ class WebSearchService:
 
         if is_gov:
             authority_score = 100.0
-            item["source_tier"] = "Official Government Source"
+            item["source_tier"] = "Official Government Portal"
             item["source_type"] = "official"
         elif is_reputable:
             authority_score = 90.0
-            item["source_tier"] = "High-Quality News (Tier 2)"
+            item["source_tier"] = "Reputable News Organization"
             item["source_type"] = "news"
         elif is_secondary:
             authority_score = 70.0
@@ -326,9 +367,9 @@ class WebSearchService:
             elif max_year == current_year - 1:
                 recency_score = 65.0
             elif max_year <= current_year - 3:
-                recency_score = 10.0  # severely penalize obsolete knowledge
+                recency_score = -350.0  # severely penalize obsolete knowledge (< 0 score)
             elif max_year <= current_year - 2:
-                recency_score = 25.0
+                recency_score = 10.0
         elif date_str:
             recency_score = 75.0
 
@@ -352,13 +393,13 @@ class WebSearchService:
         )
 
         # Cross-State Conflict Penalty per Requirement 18:
-        # If query is for Kerala and article is about Tamil Nadu without mentioning Kerala, severely penalize!
-        q_clean = target_query.lower()
-        t_clean = (title + " " + snippet).lower()
-        if "kerala" in q_clean and "tamil nadu" in t_clean and "kerala" not in t_clean:
-            final_score -= 60.0
-        elif "tamil nadu" in q_clean and "kerala" in t_clean and "tamil nadu" not in t_clean:
-            final_score -= 60.0
+        if target_query:
+            q_clean = target_query.lower()
+            t_clean = (title + " " + snippet).lower()
+            if "kerala" in q_clean and "tamil nadu" in t_clean and "kerala" not in t_clean:
+                final_score -= 60.0
+            elif "tamil nadu" in q_clean and "kerala" in t_clean and "tamil nadu" not in t_clean:
+                final_score -= 60.0
 
         item["score"] = round(final_score, 1)
         return final_score

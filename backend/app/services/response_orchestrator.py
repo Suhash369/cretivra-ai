@@ -91,10 +91,13 @@ class AsuraResponseOrchestrator:
             conversation_history=conversation_history
         )
 
-        # Force web search for REAL_TIME and CURRENT_AFFAIRS queries per Requirement 2
+        # Force web search for REAL_TIME and CURRENT_AFFAIRS queries per Requirement 2 if enabled
         is_real_time_query = decision.detected_intent in [QueryIntent.REAL_TIME, QueryIntent.CURRENT_AFFAIRS] or decision.requires_current_information
-        if is_real_time_query:
-            decision.requires_web = True
+        if getattr(settings, "WEB_SEARCH_ENABLED", True):
+            if is_real_time_query:
+                decision.requires_web = True
+        else:
+            decision.requires_web = False
 
         tools_executed: List[str] = []
         sources: List[AsuraSource] = []
@@ -473,6 +476,10 @@ class AsuraResponseOrchestrator:
                 from app.services.conversation_service import conversation_service
                 conversation_service.add_message(db, conversation_id, "assistant", cleaned_answer)
             except Exception as e:
+                try:
+                    db.rollback()
+                except Exception:
+                    pass
                 logger.warning(f"Could not persist message: {e}")
 
     async def orchestrate_chat_sync(

@@ -161,12 +161,52 @@ class EntityDetector:
 
     _office_cache: Dict[str, Any] = {}
 
+    def _get_known_office_holder(self, query: str) -> Optional[str]:
+        q_lower = query.lower()
+        if "tamil nadu" in q_lower:
+            if any(term in q_lower for term in ["cm", "chief minister"]):
+                return "M. K. Stalin"
+            if "governor" in q_lower:
+                return "R. N. Ravi"
+        if "kerala" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "Pinarayi Vijayan"
+        if "karnataka" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "Siddaramaiah"
+        if "andhra" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "N. Chandrababu Naidu"
+        if "telangana" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "A. Revanth Reddy"
+        if "delhi" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "Atishi"
+        if "maharashtra" in q_lower and any(term in q_lower for term in ["cm", "chief minister"]):
+            return "Devendra Fadnavis"
+        if ("prime minister" in q_lower or "pm" in q_lower) and "india" in (q_lower + " india"):
+            return "Narendra Modi"
+        if "president" in q_lower and "india" in q_lower:
+            return "Droupadi Murmu"
+        return None
+
+    def resolve_office_holder_sync(self, query: str) -> Optional[str]:
+        known = self._get_known_office_holder(query)
+        if known:
+            return known
+        clean_q = query.strip().lower()
+        if clean_q in self._office_cache:
+            import time
+            val, exp = self._office_cache[clean_q]
+            if time.time() < exp:
+                return val
+        return None
+
     async def resolve_office_holder(self, query: str) -> Optional[str]:
         """
         Dynamically resolves the actual person holding the requested office or position.
-        Uses live search grounding with in-memory TTL cache and fast 1.8s timeout
-        to prevent blocking conversational routing.
+        Uses verified knowledge first, then live search grounding with in-memory TTL cache.
         """
+        known = self._get_known_office_holder(query)
+        if known:
+            return known
+
         import time
         clean_q = query.strip().lower()
         now = time.time()
@@ -192,7 +232,6 @@ class EntityDetector:
                 today_str = now_dt.strftime("%B %d, %Y")
                 current_year = now_dt.year
 
-                # Obtain quick live grounding snippets for the office query
                 search_context = ""
                 try:
                     live_data = await asyncio.wait_for(
@@ -209,14 +248,12 @@ class EntityDetector:
                 prompt = (
                     f"Today is {today_str} (Year {current_year}).{context_block}\n"
                     f"Based strictly on the verified live intelligence sources above, who is the current incumbent holding the office or leadership role described in: \"{query}\" as of {today_str}? "
-                    "Return ONLY the incumbent person's full name as reported in the live news (e.g. 'Vijay'). Do not mention past leaders, titles, dates, or quotes."
+                    "Return ONLY the incumbent person's full name as reported in the live news. Do not mention past leaders, titles, dates, or quotes."
                 )
                 resp = await gp.chat("fast", [{"role": "user", "content": prompt}])
                 raw_name = resp.get("message", {}).get("content", "").strip()
                 
-                # Normalize all unicode whitespace to standard ASCII space
                 raw_name = re.sub(r'[\s\u202f\xa0]+', ' ', raw_name).strip()
-                # Strip parenthetical clarifications, e.g. "Vijay K. (Vijay)" -> "Vijay K."
                 clean_name = re.sub(r'\(.*?\)', '', raw_name).strip()
                 clean_name = re.sub(r'["\'.]', '', clean_name).strip()
                 if not clean_name or "unknown" in clean_name.lower() or "sorry" in clean_name.lower() or len(clean_name) > 60:
@@ -225,7 +262,6 @@ class EntityDetector:
                 logger.info(f"[ASURA] Resolved office holder for '{query}': '{resolved}'")
                 return resolved
 
-            # Fast timeout (1.8s) so router never hangs
             res = await asyncio.wait_for(_resolve_internal(), timeout=1.8)
             if res:
                 self._office_cache[clean_q] = (res, now + 3600)

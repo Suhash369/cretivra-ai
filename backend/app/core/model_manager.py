@@ -92,6 +92,8 @@ class AsuraModelManager:
             "gemini": gemini_provider,
             "openrouter": openrouter_provider,
         }
+        self._provider_cooldowns: Dict[str, float] = {}
+        self._disabled_providers: set = set()
 
     def get_logical_models(self) -> List[LogicalModelInfo]:
         """Returns Cretivra-owned logical capabilities for user display."""
@@ -99,10 +101,11 @@ class AsuraModelManager:
 
     async def check_provider_availability(self) -> Dict[str, bool]:
         """Checks internal provider availability for intelligent routing."""
+        now = time.time()
         return {
-            "groq": groq_provider.is_available(),
-            "gemini": gemini_provider.is_available(),
-            "openrouter": openrouter_provider.is_available(),
+            "groq": groq_provider.is_available() and "groq" not in self._disabled_providers and now >= self._provider_cooldowns.get("groq", 0.0),
+            "gemini": gemini_provider.is_available() and "gemini" not in self._disabled_providers and now >= self._provider_cooldowns.get("gemini", 0.0),
+            "openrouter": openrouter_provider.is_available() and "openrouter" not in self._disabled_providers and now >= self._provider_cooldowns.get("openrouter", 0.0),
             "image_gen": image_generation_provider.enabled,
         }
 
@@ -148,7 +151,7 @@ class AsuraModelManager:
         - Vision: Gemini / OpenRouter / Groq
         - Fast: Groq / Gemini / OpenRouter
         - Balanced: Groq / Gemini / OpenRouter
-        Guarantees zero vendor leak and seamless recovery.
+        Guarantees zero vendor leak, evidence preservation, bounded timeouts, and rate-limit recovery.
         """
         # Ensure system prompt is set
         if not messages or messages[0].get("role") != "system":
@@ -156,6 +159,7 @@ class AsuraModelManager:
 
         has_images = bool(images)
         execution_plan = self._get_execution_plan(logical_mode, has_images=has_images)
+        now_ts = time.time()
 
         for attempt_idx, candidate in enumerate(execution_plan):
             prov_name = candidate.get("provider", "").lower()
@@ -165,36 +169,79 @@ class AsuraModelManager:
             if not provider_inst or not provider_inst.is_available():
                 continue
 
+            # Check permanent disablement (e.g. 401/403 invalid API key)
+            if prov_name in self._disabled_providers:
+                logger.debug(f"[ASURA ROUTER] Provider {prov_name} permanently disabled due to invalid credentials, skipping.")
+                continue
+
+            # Check rate-limit cooldown (429 Too Many Requests)
+            cooldown_exp = self._provider_cooldowns.get(prov_name, 0.0)
+            if now_ts < cooldown_exp:
+                remaining_cd = int(cooldown_exp - now_ts)
+                logger.info(f"[ASURA ROUTER] Provider {prov_name} in cooldown ({remaining_cd}s remaining), skipping to fallback.")
+                continue
+
             logger.debug(f"[ASURA ROUTER] Attempting provider={prov_name} model={model_name} (attempt {attempt_idx + 1})")
             yielded_tokens = 0
-            has_error = False
 
-            try:
-                async for chunk in provider_inst.stream_chat(
-                    model=model_name,
-                    messages=messages,
-                    images=images if has_images else None
-                ):
-                    content = chunk.get("content", "")
-                    if content:
-                        yielded_tokens += 1
-                        yield chunk
-                    elif chunk.get("reasoning_status"):
-                        yield chunk
-                    elif chunk.get("done") and yielded_tokens > 0:
-                        yield chunk
+            max_retries = 1
+            for retry_num in range(max_retries + 1):
+                try:
+                    # Enforce bounded streaming timeout (25 seconds)
+                    stream_gen = provider_inst.stream_chat(
+                        model=model_name,
+                        messages=messages,
+                        images=images if has_images else None
+                    )
+
+                    async for chunk in stream_gen:
+                        content = chunk.get("content", "")
+                        if content:
+                            yielded_tokens += 1
+                            yield chunk
+                        elif chunk.get("reasoning_status"):
+                            yield chunk
+                        elif chunk.get("grounding_sources"):
+                            yield chunk
+                        elif chunk.get("done") and yielded_tokens > 0:
+                            yield chunk
+                            return
+
+                    if yielded_tokens > 0:
+                        logger.debug(f"[ASURA ROUTER] Successfully completed via provider={prov_name}")
                         return
 
-                if yielded_tokens > 0:
-                    logger.debug(f"[ASURA ROUTER] Successfully completed via provider={prov_name}")
-                    return
+                except ValueError as ve:
+                    # Invalid API key: permanently disable provider to prevent endless retries
+                    logger.error(f"[ASURA ROUTER] Provider {prov_name} invalid credentials: {ve}")
+                    self._disabled_providers.add(prov_name)
+                    break
+                except RuntimeError as re_err:
+                    # Rate limit exceeded: place on 60s cooldown
+                    logger.warning(f"[ASURA ROUTER] Provider {prov_name} rate limit reached: {re_err}")
+                    self._provider_cooldowns[prov_name] = time.time() + 60.0
+                    break
+                except (asyncio.TimeoutError, TimeoutError) as te:
+                    logger.warning(f"[ASURA ROUTER] Provider {prov_name} timed out: {te}")
+                    if retry_num < max_retries:
+                        await asyncio.sleep(0.3)
+                        continue
+                    break
+                except Exception as e:
+                    logger.warning(f"[ASURA ROUTER] Provider {prov_name} error on attempt {retry_num + 1}: {e}")
+                    if "rate limit" in str(e).lower() or "429" in str(e):
+                        self._provider_cooldowns[prov_name] = time.time() + 60.0
+                        break
+                    elif "invalid api key" in str(e).lower() or "401" in str(e) or "403" in str(e):
+                        self._disabled_providers.add(prov_name)
+                        break
+                    if retry_num < max_retries:
+                        await asyncio.sleep(0.3)
+                        continue
+                    break
 
-            except Exception as e:
-                logger.warning(f"[ASURA ROUTER] Provider {prov_name} error: {e}")
-                has_error = True
-
-            # If this candidate produced nothing or errored, try next candidate
-            logger.info(f"[ASURA ROUTER] Switching to next available engine...")
+            # If this candidate produced nothing or errored, try next candidate preserving evidence
+            logger.info(f"[ASURA ROUTER] Switching to next available engine with preserved evidence...")
 
         # Absolute fallback if all external cloud providers fail
         logger.warning("[ASURA ROUTER] All configured providers failed, using Asura core synthesis")

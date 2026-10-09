@@ -24,10 +24,12 @@ class QueryIntent(str, Enum):
     PRICE = "PRICE"
     HISTORICAL = "HISTORICAL"
     REASONING = "REASONING"
-    CODING = "CODING"
+    CODE = "CODE"
+    CODING = "CODE"
     DOCUMENT = "DOCUMENT"
     IMAGE = "IMAGE"
     CREATIVE = "CREATIVE"
+    PERSON = "PERSON"
 
 class RoutingDecision(BaseModel):
     intent: str
@@ -130,6 +132,8 @@ HISTORICAL_INDICATORS = [
 
 CODE_KEYWORDS = [
     r"\b(?:write\s+code|implement|function|algorithm|bug|error|stack\s+trace|regex)\b",
+    r"\b(?:write|create|implement|build)\s+(?:an?\s+)?(?:[a-z0-9_]+\s+)*(?:driver|code|function|script|program|class|algorithm)\b",
+    r"\b(?:driver|firmware|embedded\s+c|kernel\s+module)\b",
     r"\b(?:python|javascript|typescript|c\+\+|java|rust|golang|sql|html|css|react)\b",
     r"\b(?:pointer|struct|class|variable|compiler|github|api\s+endpoint)\b"
 ]
@@ -141,7 +145,9 @@ REASONING_KEYWORDS = [
 
 CREATIVE_KEYWORDS = [
     r"^\s*/(?:image|draw|art|flux)\b",
-    r"\b(?:generate|create|design|draw|paint|render)\s+(?:an?|the)?\s*(?:image|picture|photo|visual|logo|wallpaper|poster|illustration)\b"
+    r"\b(?:generate|create|design|draw|paint|render)\s+(?:an?|the)?\s*(?:image|picture|photo|visual|logo|wallpaper|poster|illustration)\b",
+    r"\b(?:generate|create|draw|paint|render)\s+(?:an?|the)?\s*(?:[a-z0-9_-]+\s+)*(?:office|scene|character|room|landscape|car|robot|city|building|artwork|visual|concept|train|vehicle)\b",
+    r"\b(?:generate|create|draw|paint|render)\s+(?:an?|the)?\s*(?:futuristic|cyberpunk|hyperrealistic|cinematic|photorealistic)\b"
 ]
 
 IMAGE_SEARCH_KEYWORDS = [
@@ -285,7 +291,7 @@ def query_router(
     if any(re.search(p, q_lower) for p in CREATIVE_KEYWORDS):
         clean_prompt = re.sub(r"^/(?:image|draw|art|flux)\s*", "", q, flags=re.IGNORECASE).strip()
         clean_prompt = re.sub(
-            r"\b(?:generate|create|design|draw|paint|sketch|make)\s+(?:an?|the)?\s*(?:image|picture|photo|visual|logo|poster|wallpaper|render)\s*(?:of|for)?\s*",
+            r"\b(?:generate|create|design|draw|paint|sketch|make)\s+(?:an?|the)?\s*(?:image|picture|photo|visual|logo|poster|wallpaper|render)?\s*(?:of|for)?\s*",
             "",
             clean_prompt,
             flags=re.IGNORECASE
@@ -360,13 +366,33 @@ def query_router(
             f"{clean_search_base} latest news {current_year}".strip(),
             clean_search_base
         ]
+        
+        from app.core.entity import entity_detector, EntityType
+        office_entity = None
+        requires_imgs = False
+        img_q = None
+        if entity_detector.is_office_or_role_query(q):
+            office_entity = entity_detector.resolve_office_holder_sync(q)
+            if office_entity:
+                requires_imgs = True
+                img_q = office_entity
+        else:
+            cand_ent, cand_type = entity_detector.detect_entity(q, conversation_history)
+            if cand_ent and cand_type in [EntityType.PERSON, EntityType.ATHLETE, EntityType.ACTOR, EntityType.POLITICIAN, EntityType.LANDMARK]:
+                office_entity = cand_ent
+                requires_imgs = True
+                img_q = cand_ent
+
         return {
             "intent": detected.value,
             "detected_intent": detected,
+            "entity": office_entity,
+            "entity_type": "POLITICIAN" if office_entity else None,
             "requires_web": True,
             "force_web_search": True,
             "requires_current_information": True,
-            "requires_images": False,
+            "requires_images": requires_imgs,
+            "image_search_query": img_q,
             "search_query": search_queries[0],
             "search_queries": search_queries,
             "logical_mode": "Asura Balanced",
@@ -376,10 +402,11 @@ def query_router(
         }
 
     # 6. CODING
-    if any(re.search(p, q_lower) for p in CODE_KEYWORDS) and any(w in q_lower for w in ["code", "function", "script", "program", "error", "debug"]):
+    if any(re.search(p, q_lower) for p in CODE_KEYWORDS) and any(w in q_lower for w in ["code", "function", "script", "program", "error", "debug", "pointer", "driver", "struct", "class", "embedded"]):
         return {
             "intent": QueryIntent.CODING.value,
             "detected_intent": QueryIntent.CODING,
+            "entity": None,
             "requires_web": False,
             "force_web_search": False,
             "requires_images": False,
@@ -394,6 +421,7 @@ def query_router(
         return {
             "intent": QueryIntent.REASONING.value,
             "detected_intent": QueryIntent.REASONING,
+            "entity": None,
             "requires_web": False,
             "force_web_search": False,
             "requires_images": False,
@@ -409,6 +437,7 @@ def query_router(
         return {
             "intent": QueryIntent.IMAGE.value,
             "detected_intent": QueryIntent.IMAGE,
+            "entity": clean_sub or q,
             "requires_web": False,
             "force_web_search": False,
             "requires_images": True,
@@ -419,13 +448,33 @@ def query_router(
             "timezone": time_info["timezone"]
         }
 
-    # 9. GENERAL_KNOWLEDGE
+    # 9. GENERAL_KNOWLEDGE / PERSON ENTITY
+    from app.core.entity import entity_detector, EntityType
+    detected_entity, detected_type = entity_detector.detect_entity(q, conversation_history)
+    
+    intent_val = QueryIntent.GENERAL_KNOWLEDGE.value
+    detected_intent_val = QueryIntent.GENERAL_KNOWLEDGE
+    requires_imgs = False
+    img_q = None
+
+    if detected_entity and detected_type in [EntityType.PERSON, EntityType.ATHLETE, EntityType.ACTOR, EntityType.POLITICIAN, EntityType.LANDMARK]:
+        intent_val = QueryIntent.PERSON.value
+        detected_intent_val = QueryIntent.PERSON
+        requires_imgs = True
+        img_q = detected_entity
+    elif detected_type == EntityType.TECHNOLOGY or any(t in q_lower for t in ["pointer in c", "gpio", "stm32", "microcontroller"]):
+        requires_imgs = False
+        detected_entity = None
+
     return {
-        "intent": QueryIntent.GENERAL_KNOWLEDGE.value,
-        "detected_intent": QueryIntent.GENERAL_KNOWLEDGE,
+        "intent": intent_val,
+        "detected_intent": detected_intent_val,
+        "entity": detected_entity,
+        "entity_type": detected_type.value if detected_entity else None,
         "requires_web": False,
         "force_web_search": False,
-        "requires_images": False,
+        "requires_images": requires_imgs,
+        "image_search_query": img_q,
         "logical_mode": "Asura Balanced",
         "reasoning": "General knowledge query answered from internal intelligence",
         "current_date": current_date_str,
@@ -436,9 +485,9 @@ def queryRouter(query: str, attachments: Optional[List[Dict[str, Any]]] = None) 
     return query_router(query, attachments)
 
 class AsuraRouter:
-    """Class wrapper for router."""
+    """Class wrapper for router supporting both synchronous and asynchronous routing."""
 
-    async def route_async(
+    def route(
         self,
         query: str,
         attachments: Optional[List[Dict[str, Any]]] = None,
@@ -447,13 +496,11 @@ class AsuraRouter:
         selected_model: Optional[str] = None,
         conversation_history: Optional[List[Dict[str, Any]]] = None
     ) -> RoutingDecision:
+        """Synchronous routing method."""
         res = query_router(query, attachments, conversation_history)
-        
-        # Follow-up check
         is_follow = is_anaphoric_follow_up(query)
         res["is_follow_up"] = is_follow
 
-        # Honor explicit web toggle if manually set, otherwise auto-enforce for real-time
         if force_web_search is True:
             res["requires_web"] = True
             res["search_query"] = res.get("search_query") or query
@@ -462,9 +509,9 @@ class AsuraRouter:
 
         if force_image_mode is True:
             res["requires_image_generation"] = True
+            res["requires_images"] = False
             res["logical_mode"] = "Asura Creative"
 
-        # Model selection overrides
         if selected_model:
             sm = selected_model.lower()
             if any(k in sm for k in ["reason", "deep", "r1"]):
@@ -478,9 +525,88 @@ class AsuraRouter:
             elif any(k in sm for k in ["creative", "art"]):
                 res["logical_mode"] = "Asura Creative"
 
+        # Check settings
+        if not getattr(settings, "WEB_SEARCH_ENABLED", True):
+            res["requires_web"] = False
+
         return RoutingDecision(
             intent=res["intent"],
             detected_intent=res["detected_intent"],
+            entity=res.get("entity"),
+            entity_type=res.get("entity_type"),
+            requires_web=res.get("requires_web", False),
+            requires_current_information=res.get("requires_current_information", False),
+            requires_images=res.get("requires_images", False),
+            requires_image_generation=res.get("requires_image_generation", False),
+            requires_vision=res.get("requires_vision", False),
+            is_follow_up=res.get("is_follow_up", False),
+            search_query=res.get("search_query"),
+            search_queries=res.get("search_queries", []),
+            image_search_query=res.get("image_search_query"),
+            image_generation_prompt=res.get("image_generation_prompt"),
+            logical_mode=res.get("logical_mode", "Asura Balanced"),
+            reasoning=res.get("reasoning", ""),
+            current_date=res.get("current_date", ""),
+            timezone=res.get("timezone", "Asia/Kolkata")
+        )
+
+    async def route_async(
+        self,
+        query: str,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+        force_web_search: Optional[bool] = None,
+        force_image_mode: Optional[bool] = None,
+        selected_model: Optional[str] = None,
+        conversation_history: Optional[List[Dict[str, Any]]] = None
+    ) -> RoutingDecision:
+        """Asynchronous routing method with async entity and office resolution."""
+        res = query_router(query, attachments, conversation_history)
+        is_follow = is_anaphoric_follow_up(query)
+        res["is_follow_up"] = is_follow
+
+        # Async office holder resolution if not resolved by sync router
+        from app.core.entity import entity_detector
+        if entity_detector.is_office_or_role_query(query) and not res.get("entity"):
+            resolved = await entity_detector.resolve_office_holder(query)
+            if resolved:
+                res["entity"] = resolved
+                res["entity_type"] = "POLITICIAN"
+                res["requires_images"] = True
+                res["image_search_query"] = resolved
+
+        if force_web_search is True:
+            res["requires_web"] = True
+            res["search_query"] = res.get("search_query") or query
+        elif force_web_search is False and not res.get("force_web_search", False):
+            res["requires_web"] = False
+
+        if force_image_mode is True:
+            res["requires_image_generation"] = True
+            res["requires_images"] = False
+            res["logical_mode"] = "Asura Creative"
+
+        if selected_model:
+            sm = selected_model.lower()
+            if any(k in sm for k in ["reason", "deep", "r1"]):
+                res["logical_mode"] = "Asura Reasoning"
+            elif any(k in sm for k in ["code", "coder"]):
+                res["logical_mode"] = "Asura Coding"
+            elif any(k in sm for k in ["fast", "mini", "quick"]):
+                res["logical_mode"] = "Asura Fast"
+            elif any(k in sm for k in ["vision"]):
+                res["logical_mode"] = "Asura Vision"
+            elif any(k in sm for k in ["creative", "art"]):
+                res["logical_mode"] = "Asura Creative"
+
+        # Check settings
+        if not getattr(settings, "WEB_SEARCH_ENABLED", True):
+            res["requires_web"] = False
+
+        return RoutingDecision(
+            intent=res["intent"],
+            detected_intent=res["detected_intent"],
+            entity=res.get("entity"),
+            entity_type=res.get("entity_type"),
             requires_web=res.get("requires_web", False),
             requires_current_information=res.get("requires_current_information", False),
             requires_images=res.get("requires_images", False),

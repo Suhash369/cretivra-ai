@@ -122,7 +122,12 @@ class GroqProvider(AIProvider):
             async with client.stream("POST", url, headers=headers, json=payload, timeout=30.0) as response:
                 if response.status_code != 200:
                     err_b = await response.aread()
-                    logger.warning(f"Groq stream error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')}")
+                    err_msg = err_b.decode('utf-8', errors='ignore')
+                    logger.warning(f"Groq stream error ({response.status_code}): {err_msg}")
+                    if response.status_code in (401, 403):
+                        raise ValueError(f"Invalid API key for Groq: {err_msg}")
+                    elif response.status_code == 429:
+                        raise RuntimeError(f"Rate limit exceeded for Groq (HTTP 429): {err_msg}")
                     return
 
                 async for line in response.aiter_lines():

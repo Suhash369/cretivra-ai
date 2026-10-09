@@ -77,6 +77,8 @@ def clean_ai_response(content: str) -> str:
     cleaned = re.sub(r'<br\s*\/?>', '\n', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'<hr\s*\/?>', '\n---\n', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>([\s\S]*?)<\/a>', r'[\2](\1)', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<(?:script|style)[^>]*>[\s\S]*?<\/(?:script|style)>', '', cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r'<\/?(?:script|style|iframe|object|embed)[^>]*>', '', cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r'<\/?(?:span|div|font|article|section|header|footer)[^>]*>', '', cleaned, flags=re.IGNORECASE)
 
     return cleaned.strip()

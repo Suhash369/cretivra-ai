@@ -184,7 +184,15 @@ class OpenRouterProvider(AIProvider):
                             yield {"content": "", "done": True}
                             return
                     else:
-                        logger.warning(f"OpenRouter {target_model} stream error ({response.status_code})")
+                        err_b = await response.aread()
+                        err_msg = err_b.decode('utf-8', errors='ignore')
+                        logger.warning(f"OpenRouter {target_model} stream error ({response.status_code}): {err_msg[:120]}")
+                        if response.status_code in (401, 403):
+                            raise ValueError(f"Invalid API key for OpenRouter: {err_msg[:120]}")
+                        elif response.status_code == 429:
+                            raise RuntimeError(f"Rate limit exceeded for OpenRouter (HTTP 429): {err_msg[:120]}")
+            except (ValueError, RuntimeError):
+                raise
             except Exception as e:
                 logger.warning(f"OpenRouter {target_model} attempt failed: {e}")
                 continue

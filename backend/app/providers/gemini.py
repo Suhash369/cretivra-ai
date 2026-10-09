@@ -209,7 +209,14 @@ class GeminiProvider(AIProvider):
                             return
                     else:
                         err_b = await response.aread()
-                        logger.warning(f"Gemini {gem_model} error ({response.status_code}): {err_b.decode('utf-8', errors='ignore')[:120]}")
+                        err_msg = err_b.decode('utf-8', errors='ignore')
+                        logger.warning(f"Gemini {gem_model} error ({response.status_code}): {err_msg[:120]}")
+                        if response.status_code in (401, 403) or "API_KEY_INVALID" in err_msg:
+                            raise ValueError(f"Invalid API key for Gemini: {err_msg[:120]}")
+                        elif response.status_code == 429:
+                            raise RuntimeError(f"Rate limit exceeded for Gemini (HTTP 429): {err_msg[:120]}")
+            except (ValueError, RuntimeError):
+                raise
             except Exception as e:
                 logger.warning(f"Gemini {gem_model} stream attempt failed: {e}")
                 continue
